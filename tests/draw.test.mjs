@@ -53,7 +53,7 @@ import { GROUND_Y_DEFAULT_3D, BUILD_WALL_DEFAULT_HEIGHT, PANEL_CAM_DEFAULT_DIST_
 // et vide. Tous les tests d'inspection de ce fichier passent désormais par ici.
 import { sourceSansCommentaires } from './helpers/source.mjs';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
-import { QUEUE_ECARTEMENT } from '../src/bubble-tail.js';
+import { QUEUE_ECARTEMENT, longueurMinimaleDeLaQueue3D } from '../src/bubble-tail.js';
 import { pointesDeLEpine3D, graineTrembleBulle } from '../src/bubble-style.js';
 // Le nombre de points dont draw.js échantillonne le contour pour la frange (POINTS_EPINE).
 const POINTS_EPINE_ATTENDUS = 240;
@@ -2786,7 +2786,9 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     const chaine = (tailLen) => appels(
       dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds', tailLen })), 'ellipse')
       .map(e => ({ x: e.args[0], y: e.args[1], r: e.args[2] }));
-    const courte = chaine(0.5), longue = chaine(1.6);
+    // ⚠️ LA COURTE EST AU MINIMUM DU MOTIF : en deçà, la chaîne est rétrécie pour tenir, et le
+    // relevé mesurerait ce repli au lieu de l'étirement.
+    const courte = chaine(longueurMinimaleDeLaQueue3D('ronds')), longue = chaine(1.6);
     assert.equal(courte.length, 3);
     for (let i = 0; i < 3; i++) {
       assert.ok(Math.abs(courte[i].r - longue[i].r) < 1e-9,
@@ -2811,6 +2813,38 @@ describe('#425h — les quatre queues atteignent réellement le canevas', () => 
     // serait vraie de n'importe quelle clé posée sur l'objet.
     assert.deepEqual(chemin({ tailBidon: true }), droit,
       'un champ inventé change le tracé : le relevé ne prouve rien sur `tailMirror`');
+  });
+
+  /**
+   * ⚠️ LES RONDS SONT PEINTS AVANT LA BULLE, et c'est ce qui cache la portion du premier rond
+   * entrée dans le contour. Ils étaient peints après, du temps où ce rond était tangent et ne
+   * chevauchait donc rien ; depuis qu'il entre dans la Bulle, sa moitié intérieure s'y voyait —
+   * « la partie du rond dans la bulle ne doit pas être visible », relevé à l'usage.
+   *
+   * L'ordre est la seule chose qui masque ici : pas de découpe, pas de masque. Le test le lit donc
+   * dans le JOURNAL, en comparant les rangs, parce que c'est là que l'ordre existe.
+   */
+  test('⚠️ LES RONDS SONT PEINTS AVANT LE FOND DE LA BULLE, SANS QUOI ILS S’Y VERRAIENT', () => {
+    const j = dessiner(bulle({ bulleShape: 'rect', tailShape: 'ronds' }));
+    /*
+     * ⚠️ LE REPÈRE EST LE REMPLISSAGE, PAS LA CONSTRUCTION DU CHEMIN. Une première écriture cherchait
+     * l'appel `rect` du corps : il n'existe pas ici, une Bulle rectangulaire À QUEUE émettant son
+     * contour en segments et non par le raccourci du canevas. Et surtout, ce qui masque un rond
+     * n'est pas le chemin du corps mais son FOND : c'est donc l'ordre des `fill` qu'il faut lire.
+     */
+    const rang = (nom, depuis = 0) => j.findIndex((e, i) => i >= depuis && e.nom === nom);
+    const dernier = (nom) => j.map(e => e.nom).lastIndexOf(nom);
+    assert.ok(rang('ellipse') >= 0, 'aucun rond tracé : le relevé ne mesure rien');
+    assert.ok(dernier('fill') >= 0, 'aucun remplissage : le relevé ne mesure rien');
+    assert.ok(dernier('ellipse') < dernier('fill'),
+      `le dernier rond est tracé au rang ${dernier('ellipse')}, le dernier remplissage au rang `
+      + `${dernier('fill')} : les ronds passent par-dessus la Bulle et leur portion intérieure se verra`);
+    // Le témoin : les ronds SONT remplis eux aussi, donc l'ordre observé n'est pas celui d'un
+    // remplissage unique arrivé par hasard en dernier.
+    const fills = j.filter(e => e.nom === 'fill').length;
+    const sans = dessiner(bulle({ bulleShape: 'rect', tailShape: 'aucune' }))
+      .filter(e => e.nom === 'fill').length;
+    assert.equal(fills - sans, 3, `${fills - sans} remplissages de plus : les trois ronds n’en ont pas un chacun`);
   });
 
   test('⚠️ « AUCUNE » NE DESSINE RIEN — ni tracé continu, ni rond', () => {

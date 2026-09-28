@@ -21,7 +21,8 @@ import assert from 'node:assert/strict';
 
 import {
   QUEUE_TRIANGLE, QUEUE_ECLAIR, QUEUE_CHEVEU, QUEUE_RONDS, QUEUE_AUCUNE, QUEUE_DEFAUT,
-  RONDS_PART_DEDANS, RONDS_RAYON_PART, RONDS_CHAINE_MINIMALE, rayonDuPremierRond3D,
+  RONDS_PART_DEDANS, rayonDuPremierRond3D,
+  longueurMinimaleDeLaQueue3D,
   queueInverseeDeLaBulle3D, queuePeutSInverser3D,
   QUEUE_ECARTEMENT,
   queuesConnues, queueDeLaBulle, traceContinuDeLaQueue, elementsDetachesDeLaQueue,
@@ -302,10 +303,10 @@ describe('Chaque queue fait ce qui la distingue', () => {
      * Un test qui relit le réglage qu'il prétend tenir ne tient rien. Deux tiers est un chiffre
      * DEMANDÉ, il appartient donc au test autant qu'au code.
      */
-    assert.ok(Math.abs(dedans - 2 / 3) < 0.01,
-      `${(dedans * 100).toFixed(0)} % du premier rond est dans la Bulle, attendu 67 %`);
+    assert.ok(Math.abs(dedans - 0.55) < 0.01,
+      `${(dedans * 100).toFixed(0)} % du premier rond est dans la Bulle, attendu 55 %`);
     // Et la constante du module dit bien la même chose : sinon l'une des deux mentirait.
-    assert.ok(Math.abs(RONDS_PART_DEDANS - 2 / 3) < 1e-9, 'RONDS_PART_DEDANS ne vaut plus deux tiers');
+    assert.ok(Math.abs(RONDS_PART_DEDANS - 0.55) < 1e-9, 'RONDS_PART_DEDANS ne vaut plus 0,55');
     // Et la chaîne va bien VERS la pointe, pas ailleurs.
     const dernier = ronds[ronds.length - 1];
     assert.ok(Math.hypot(dernier.x - bord.x, dernier.y - bord.y)
@@ -325,9 +326,17 @@ describe('Chaque queue fait ce qui la distingue', () => {
    */
   test('⚠️ ÉTIRER LA CHAÎNE ÉCARTE LES RONDS SANS CHANGER LEUR TAILLE', () => {
     const o = avec(QUEUE_RONDS);
-    const loin = { x: bord.x + (pointe.x - bord.x) * 3, y: bord.y + (pointe.y - bord.y) * 3 };
-    const courte = elementsDetachesDeLaQueue(o, bord, pointe);
-    const longue = elementsDetachesDeLaQueue(o, bord, loin);
+    /*
+     * ⚠️ LA POINTE COURTE EST PRISE AU MINIMUM DU MOTIF, PAS PLUS BAS. En deçà, la chaîne entre
+     * dans le repli qui rétrécit les rayons pour la faire tenir : ce test mesurerait alors ce
+     * repli en croyant mesurer l'étirement, et il l'a fait le jour où la taille des ronds est
+     * passée de 0,10 à 0,17. La fixture dit donc explicitement d'où elle part.
+     */
+    const aLongueur = (t) => ({ x: bord.x + (pointe.x - bord.x) * t,
+                                y: bord.y + (pointe.y - bord.y) * t });
+    const mini = longueurMinimaleDeLaQueue3D(QUEUE_RONDS) / 0.45;   // `pointe` vaut 0,45 de long
+    const courte = elementsDetachesDeLaQueue(o, bord, aLongueur(mini));
+    const longue = elementsDetachesDeLaQueue(o, bord, aLongueur(mini * 3));
     assert.equal(courte.length, longue.length, 'le nombre de ronds a changé avec la longueur');
     for (let i = 0; i < courte.length; i++) {
       assert.ok(Math.abs(courte[i].r - longue[i].r) < 1e-9,
@@ -357,7 +366,9 @@ describe('Chaque queue fait ce qui la distingue', () => {
       const o = Object.assign({}, BULLE, { tailShape: QUEUE_RONDS, w, h });
       const b = pointDuContourBulle(o, THETA);
       const c = { x: o.x + w / 2, y: o.y + h / 2 };
-      const bout = { x: c.x + (b.x - c.x) * 1.45, y: c.y + (b.y - c.y) * 1.45 };
+      // Une pointe au minimum du motif : en deçà, on mesurerait le repli et non l'échelle.
+      const t = 1 + longueurMinimaleDeLaQueue3D(QUEUE_RONDS);
+      const bout = { x: c.x + (b.x - c.x) * t, y: c.y + (b.y - c.y) * t };
       return elementsDetachesDeLaQueue(o, b, bout)[0].r;
     };
     const rp = premier(100, 60), rg = premier(400, 240);
@@ -433,31 +444,37 @@ describe('Chaque queue fait ce qui la distingue', () => {
   });
 
   /**
-   * ⚠️ UNE BULLE NEUVE NE TOMBE PAS DANS LE REPLI « QUEUE TROP COURTE ». Ce repli rétrécit les
-   * rayons pour faire tenir la chaîne : c'est précisément l'ancien comportement, gardé pour les
-   * queues raccourcies à la main. S'il se déclenchait au réglage PAR DÉFAUT, la correction demandée
-   * — étirer écarte au lieu de grossir — serait invisible jusqu'à ce qu'on étire beaucoup, et le
-   * premier essai de ce chantier était dans ce cas sans que rien ne le dise.
+   * ⚠️ LA CHAÎNE DE RONDS EXIGE UNE POINTE PLUS LONGUE QUE LE DÉFAUT, ET C'EST ELLE QUI LE DIT.
    *
-   * La relation est arithmétique et on la vérifie comme telle, plutôt que de la constater sur une
-   * fixture : chaîne minimale × part ≤ longueur de queue par défaut.
+   * Ce test tenait d'abord la propriété inverse : que la chaîne TIENNE dans la longueur par défaut,
+   * ce qui bornait la taille des ronds à 0,110 du demi-axe. L'usage a demandé des ronds 70 % plus
+   * gros, valeur incompatible avec cette borne — trois sorties existaient, et rallonger la pointe
+   * de ce motif a été choisi explicitement plutôt que déduit.
+   *
+   * Ce qui reste à tenir n'est donc plus une inégalité mais une COHÉRENCE : le minimum annoncé par
+   * le motif doit être exactement celui que la disposition exige, sans quoi l'un des deux ment.
    */
-  test('⚠️ AU RÉGLAGE PAR DÉFAUT, LA CHAÎNE TIENT SANS ÊTRE RÉTRÉCIE', () => {
-    assert.ok(RONDS_CHAINE_MINIMALE * RONDS_RAYON_PART < BUBBLE_TAIL_LEN_DEFAULT,
-      `chaîne minimale ${(RONDS_CHAINE_MINIMALE * RONDS_RAYON_PART).toFixed(3)} demi-axe contre une `
-      + `queue de ${BUBBLE_TAIL_LEN_DEFAULT} : une Bulle neuve verrait ses ronds rétrécis`);
+  test('⚠️ LA CHAÎNE ANNONCE LA LONGUEUR DE POINTE QU’ELLE EXIGE, ET LA DISPOSITION S’Y TIENT', () => {
+    const mini = longueurMinimaleDeLaQueue3D(QUEUE_RONDS);
+    assert.ok(mini > BUBBLE_TAIL_LEN_DEFAULT,
+      `la chaîne annonce ${mini.toFixed(3)}, en deçà du défaut : ce minimum ne sert à rien`);
+    // Les autres queues n'exigent rien : leur en faire annoncer un allongerait leur pointe sans raison.
+    for (const queue of queuesConnues()) {
+      if (queue === QUEUE_RONDS) continue;
+      assert.equal(longueurMinimaleDeLaQueue3D(queue), 0, `« ${queue} » exige une longueur minimale`);
+    }
 
-    // Et on le vérifie aussi en vrai, sur une Bulle dont la queue pointe le long du PETIT axe —
-    // le cas le plus serré, puisque le rayon du contour y est le plus court.
+    // ⚠️ ET À CETTE LONGUEUR EXACTE, LES RAYONS SONT PLEINS. C'est ce qui relie le nombre annoncé à
+    // la disposition réelle : un minimum trop bas laisserait la chaîne rétrécie malgré lui.
     const o = Object.assign({}, BULLE, { tailShape: QUEUE_RONDS });
-    const versLeBas = pointDuContourBulle(o, Math.PI / 2);
     const c = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
-    const bout = { x: c.x + (versLeBas.x - c.x) * (1 + BUBBLE_TAIL_LEN_DEFAULT),
-                   y: c.y + (versLeBas.y - c.y) * (1 + BUBBLE_TAIL_LEN_DEFAULT) };
-    const ronds = elementsDetachesDeLaQueue(o, versLeBas, bout);
+    // Le cas le plus serré : la pointe le long du PETIT axe, où le rayon du contour est minimal.
+    const b = pointDuContourBulle(o, Math.PI / 2);
+    const bout = { x: c.x + (b.x - c.x) * (1 + mini), y: c.y + (b.y - c.y) * (1 + mini) };
+    const ronds = elementsDetachesDeLaQueue(o, b, bout);
     assert.ok(Math.abs(ronds[0].r - rayonDuPremierRond3D(o)) < 1e-9,
-      `le premier rond mesure ${ronds[0].r.toFixed(2)} au lieu de ${rayonDuPremierRond3D(o).toFixed(2)} : `
-      + 'il a été rétréci pour tenir');
+      `à la longueur annoncée, le premier rond mesure ${ronds[0].r.toFixed(2)} au lieu de `
+      + `${rayonDuPremierRond3D(o).toFixed(2)} : le minimum est sous-évalué`);
   });
 
   test('toutes les queues suivent l’angle demandé, et grandissent avec la longueur', () => {

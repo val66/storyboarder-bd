@@ -19,6 +19,8 @@ import {
   afficherManuelLateral, masquerManuelLateral, manuelEstAffiche,
   majAffichageReglagesTraitBulle3D, updateSidePanel, _oublierZonesDeLobes3D,
 } from '../src/sidebar.js';
+import { longueurMinimaleDeLaQueue3D } from '../src/bubble-tail.js';
+import { BUBBLE_TAIL_LEN_DEFAULT } from '../src/constants.js';
 import { S, currentPage } from '../src/state.js';
 import { getBubbleTailTip } from '../src/draw.js';
 import { pointDuContourBulle, formesConnues } from '../src/bubble-shape.js';
@@ -1038,6 +1040,43 @@ describe('#425c — la fiche montre ce que le dessin applique, et la création p
     b.tailShape = 'cheveu';
     updateSidePanel();
     assert.notEqual(bloc.style.display, 'none', 'la fiche seule ne montre pas la case');
+  });
+
+  /**
+   * ⚠️ CHOISIR LA CHAÎNE DE RONDS ALLONGE LA POINTE, ET SEULEMENT SI ELLE EST TROP COURTE. Une
+   * Bulle naît avec une pointe dimensionnée pour un triangle ; la chaîne n'y tient pas à la taille
+   * de ronds arrêtée à l'usage, et ses ronds seraient rétrécis dès la création — le défaut que ce
+   * chantier venait de corriger, réapparaissant par la porte de la création.
+   *
+   * Dans l'autre sens on ne touche à rien : raccourcir une pointe que l'utilisateur a peut-être
+   * réglée lui-même serait lui reprendre un geste.
+   */
+  test('⚠️ CHOISIR LA CHAÎNE DE RONDS ALLONGE LA POINTE TROP COURTE, ET JAMAIS L’INVERSE', () => {
+    const b = nouvelleBulle();
+    S.selectedId = b.id;
+    const menu = document.getElementById('sideBubbleTailShapeSelect');
+    const choisir = (queue) => {
+      menu.value = queue;
+      (menu._ecouteurs.change || []).forEach(fn => fn({ target: menu }));
+    };
+    const minimum = longueurMinimaleDeLaQueue3D('ronds');
+    assert.ok(minimum > 0, 'la fixture suppose un motif qui exige une longueur');
+
+    b.tailLen = BUBBLE_TAIL_LEN_DEFAULT;
+    assert.ok(b.tailLen < minimum, 'la fixture part d’une pointe déjà assez longue : elle ne prouve rien');
+    choisir('ronds');
+    assert.ok(Math.abs(b.tailLen - minimum) < 1e-9,
+      `la pointe vaut ${b.tailLen} au lieu du minimum ${minimum.toFixed(3)} : les ronds naîtront rétrécis`);
+
+    // ⚠️ UNE POINTE DÉJÀ PLUS LONGUE N'EST PAS RAMENÉE AU MINIMUM.
+    b.tailLen = 1.5;
+    choisir('triangle');
+    choisir('ronds');
+    assert.equal(b.tailLen, 1.5, 'la pointe longue a été raccourcie : on a repris un geste à l’utilisateur');
+
+    // Et repasser à une pointe sans exigence ne raccourcit rien non plus.
+    choisir('triangle');
+    assert.equal(b.tailLen, 1.5, 'changer de motif a raccourci la pointe');
   });
 
   test('⚠️ #425m : CHOISIR UNE TEXTURE LA POSE VRAIMENT, et la fiche la relit', () => {

@@ -218,23 +218,37 @@ function traceCheveu(o, base1, pointe, base2){
 const RONDS_NOMBRE = 3;
 const RONDS_DECROISSANCE = 0.62;    // chaque rond vaut tant de fois le précédent
 const RONDS_INTERVALLE = 0.55;      // écart MINIMAL entre deux ronds, en fraction du plus petit
-export const RONDS_PART_DEDANS = 2 / 3;   // part du premier rond située à l'intérieur du contour
+/**
+ * Part du premier rond située à l'intérieur du contour.
+ *
+ * ⚠️ DESCENDUE DE 2/3 À 0,55 QUAND LES RONDS SONT PASSÉS SOUS LA BULLE. Tant qu'ils étaient peints
+ * par-dessus, la portion intérieure se VOYAIT et les deux tiers se lisaient bien. Peinte sous le
+ * fond, cette portion disparaît : à 2/3 dedans, il ne restait plus qu'un tiers de disque à voir, et
+ * le rond paraissait rogné — « un peu trop rentré », relevé à l'usage. Les deux réglages se
+ * commandent, et le chiffre a suivi le changement d'ordre de peinture.
+ */
+export const RONDS_PART_DEDANS = 0.55;
 /**
  * Rayon du premier rond, en fraction du PETIT demi-axe de la Bulle.
  *
- * ⚠️ CETTE VALEUR EST BORNÉE PAR LA LONGUEUR DE QUEUE PAR DÉFAUT, ET LE CALCUL VAUT D'ÊTRE ÉCRIT.
- * La chaîne la plus serrée que cette disposition permet occupe environ 3,84 fois le rayon du
- * premier rond. La queue par défaut mesure `BUBBLE_TAIL_LEN_DEFAULT` = 0,45 fois le rayon du
- * contour, lequel vaut le petit demi-axe quand la queue pointe le long du petit axe — le cas le
- * plus serré. Il faut donc 3,84 × part ≤ 0,45, soit part ≤ 0,117.
+ * ⚠️ CETTE VALEUR ET LA LONGUEUR DE LA POINTE SE COMMANDENT, et il a fallu deux erreurs pour
+ * l'admettre. La chaîne la plus serrée que cette disposition permet occupe `RONDS_CHAINE_MINIMALE`
+ * fois le rayon du premier rond ; il faut donc une pointe au moins aussi longue, sans quoi le repli
+ * ci-dessous rétrécit les rayons pour la faire tenir — c'est-à-dire exactement le comportement que
+ * ce chantier retire.
  *
- * Au-delà, une Bulle NEUVE tomberait d'emblée dans le repli « queue trop courte » ci-dessous, qui
- * rétrécit les rayons pour faire tenir la chaîne — c'est-à-dire exactement le comportement que ce
- * chantier retire. Le premier essai était à 0,17 et le faisait : la correction aurait été invisible
- * jusqu'à ce que l'utilisateur étire beaucoup. Un test fige la relation, parce qu'un réglage qui
- * n'est juste que pour la valeur d'un AUTRE réglage doit être tenu et non deviné.
+ * Premier essai : 0,17, sans voir la contrainte. Deuxième : 0,10, en la subissant — la borne
+ * calculée depuis la longueur par défaut. Relevé à l'usage : « les ronds sont trop petits,
+ * augmente-les de 70 % », ce qui ramène à 0,17 et rend la borne intenable.
+ *
+ * ⚠️ C'EST DONC LA POINTE QUI CÈDE, ET C'EST UN ARBITRAGE, PAS UNE DÉDUCTION. Trois sorties
+ * existaient — rétrécir les ronds au départ, laisser la chaîne dépasser la pointe, ou rallonger la
+ * pointe de la chaîne — et aucune n'est bonne en soi : la première réintroduit le défaut corrigé, la
+ * seconde retire à la longueur son sens. La troisième a été CHOISIE, en connaissance de sa
+ * contrepartie : une Bulle à chaîne enregistrée sans longueur explicite voit sa pointe s'allonger.
+ * C'est une entorse assumée à « pas de réglage vaut l'existant », et elle ne concerne que ce motif.
  */
-export const RONDS_RAYON_PART = 0.10;
+export const RONDS_RAYON_PART = 0.17;
 /** La longueur de la chaîne la plus serrée, en rayons du premier rond. Sert à la borne ci-dessus. */
 export const RONDS_CHAINE_MINIMALE = (() => {
   let total = -RONDS_PART_DEDANS * 2 + 1 + 1;   // (1 − 2p) puis le premier rayon
@@ -257,6 +271,19 @@ export const RONDS_CHAINE_MINIMALE = (() => {
 export function rayonDuPremierRond3D(o){
   const demi = Math.min(Math.abs((o && o.w) || 0), Math.abs((o && o.h) || 0)) / 2;
   return demi * RONDS_RAYON_PART;
+}
+
+/**
+ * La longueur de pointe qu'exige une queue pour se dessiner à sa taille pleine, en fraction du
+ * rayon du contour — les mêmes unités que `tailLen`. Zéro pour les queues qui n'en exigent aucune.
+ *
+ * ⚠️ LE CAS LE PLUS SERRÉ EST PRIS COMME RÉFÉRENCE : la chaîne se mesure sur le PETIT demi-axe et la
+ * pointe sur le rayon du contour à son angle, lequel vaut au minimum ce même petit demi-axe. Le
+ * rapport calculé ici est donc une borne SUFFISANTE quel que soit l'angle de la pointe ; la prendre
+ * à l'angle courant obligerait à rallonger la pointe chaque fois qu'on la fait tourner.
+ */
+export function longueurMinimaleDeLaQueue3D(queue){
+  return queue === QUEUE_RONDS ? RONDS_CHAINE_MINIMALE * RONDS_RAYON_PART : 0;
 }
 
 function rondsDetaches(o, bord, pointe){

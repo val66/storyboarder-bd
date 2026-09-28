@@ -109,7 +109,6 @@ export const I18N_TEXT = [
   // « Aucune » est une valeur de l'axe, pas une absence de réglage — elle a remplacé la case à
   // cocher « Afficher la pointe », qui disait la même chose une seconde fois.
   ['#sideBubbleTailShapeSelect option[value="aucune"]', 'None', 'Aucune'],
-  ['#sideBubbleTailMirrorWrap', 'Flip the tail', 'Inverser la pointe'],
   // #425m — l'axe TEXTURE. Indépendant de la forme : une couronne d'épines peut être marbrée, et
   // la tache d'encre rester en aplat.
   ['label[for="sideBubbleTextureSelect"]', 'Fill texture', 'Texture du fond'],
@@ -372,11 +371,28 @@ export const I18N_TRAILING = [
   ['#objectTypeSelect option[value="autel"]', "✝️ Altar", "✝️ Autel"],
   // Checkbox labels (text = last node after the <input>, inside the <label> wrapper).
   ['#sideBorderToggleWrap', 'Show border', 'Afficher la bordure'],
+  // ⚠️ DEUX LIBELLÉS QUI N'ÉTAIENT TRADUITS NULLE PART, et qui sont antérieurs à ce chantier : les
+  // cases « Peut traverser le Sol » d'un Personnage et d'un Élément restaient en français dans
+  // l'interface anglaise. Trouvés par la garde écrite juste après être tombé dans le piège voisin —
+  // c'est exactement le même manque que #426b avait relevé sur la case de la Bulle, à ceci près que
+  // celui-là avait été vu à l'œil et celui-ci par un test. La différence est qu'il ne pourra plus
+  // revenir.
+  // ⚠️ EN MINUSCULES, ET LE HTML A ÉTÉ CORRIGÉ AVEC : la règle #403n veut une seule majuscule par
+  // libellé, la première. Le « Sol » capitalisé de ces deux libellés violait la règle depuis
+  // toujours, hors de portée de la garde qui ne lit que les boutons et les options.
+  ['#personaTraverseGroundField', 'Can pass through the ground', 'Peut traverser le sol'],
+  ['#objectTraverseGroundField', 'Can pass through the ground', 'Peut traverser le sol'],
   // ⚠️ LA CASE DE LA BULLE N'ÉTAIT PAS TRADUITE, seule celle de la Case l'était — deux libellés
   // identiques, un seul déclaré. Manque antérieur à #426b, trouvé en cherchant où ranger la
   // voisine : un `textContent` effacerait l'<input>, donc ces entrées vivent ICI et nulle part
   // ailleurs, et j'avais d'abord posé la mienne dans I18N_TEXT.
   ['#sideBulleBorderToggleWrap', 'Show border', 'Afficher la bordure'],
+  // ⚠️ ET LA MIENNE AVEC ELLES, APRÈS ÊTRE TOMBÉE DANS LE PIÈGE QUE LE COMMENTAIRE CI-DESSUS DÉCRIT.
+  // Je l'avais rangée dans I18N_TEXT, à côté des options du menu des pointes : le `textContent` a
+  // effacé l'<input>, et la fiche n'affichait plus qu'un libellé sans case. Un avertissement écrit
+  // deux lignes plus haut ne protège de rien s'il n'est pas TENU — c'est ce que fait désormais le
+  // test « aucun libellé enveloppant une case à cocher ne vit dans I18N_TEXT ».
+  ['#sideBubbleTailMirrorWrap', 'Flip the tail', 'Inverser la pointe'],
   // #426b — la case qui AUTORISE la fusion, et qu'il faut cocher des DEUX côtés.
   ['#sideBubbleFusionnableWrap', 'Mergeable bubble', 'Bulle fusionnable'],
   // La section Lumière (#414d, simplifiée en #414h : la case à cocher a disparu, « Jour » étant

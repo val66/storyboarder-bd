@@ -81,7 +81,7 @@ import {
 } from './constants.js';
 import { champsApparenceBulle } from './bubble-style.js';
 import { FORME_DEFAUT, formeDeLaBulle } from './bubble-shape.js';
-import { queueDeLaBulle } from './bubble-tail.js';
+import { queueDeLaBulle, longueurMinimaleDeLaQueue3D } from './bubble-tail.js';
 import { textureDeLaBulle, CHAMPS_RENDUS_PAR_LA_TEXTURE } from './bubble-texture.js';
 import {
   candidateDeFusion3D, refusPerimes3D, clePaire3D, fusionner3D, separer3D, groupeDeLaBulle3D,
@@ -7475,6 +7475,15 @@ sideBubbleTailShapeSelect.addEventListener('change', () => {
   // Validé par le registre, comme la forme : une option ajoutée au menu sans entrée au registre
   // lève ICI, au moment du choix, et non plus tard au dessin.
   S.sideDescTarget.tailShape = queueDeLaBulle({ tailShape: sideBubbleTailShapeSelect.value });
+  // ⚠️ CHOISIR LA CHAÎNE DE RONDS ALLONGE LA POINTE SI ELLE EST TROP COURTE, jamais ne la raccourcit.
+  // Une Bulle naît avec une pointe de longueur par défaut, choisie pour un triangle ; la chaîne, à
+  // la taille de ronds arrêtée à l'usage, n'y tient pas et ses ronds seraient rétrécis — le défaut
+  // que ce chantier vient de corriger, réapparaissant à la création. On relève donc la longueur au
+  // minimum du motif. Dans l'autre sens on ne touche à rien : raccourcir une pointe que
+  // l'utilisateur a peut-être réglée lui-même serait lui reprendre un geste.
+  const minimum = longueurMinimaleDeLaQueue3D(S.sideDescTarget.tailShape);
+  const actuelle = S.sideDescTarget.tailLen != null ? S.sideDescTarget.tailLen : BUBBLE_TAIL_LEN_DEFAULT;
+  if (actuelle < minimum) S.sideDescTarget.tailLen = minimum;
   // ⚠️ L'ANCIEN CHAMP EST RETIRÉ EN MÊME TEMPS. « Aucune » étant devenue une valeur de cette liste,
   // `tailVisible` ne dit plus rien que `tailShape` ne dise mieux. Le laisser traîner dans le
   // fichier enregistré ferait cohabiter deux réglages pour une même chose — la situation exacte que

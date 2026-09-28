@@ -145,6 +145,51 @@ describe('I18N_TEXT : forme des entrées', () => {
     assert.ok(attrEn && attrFr, 'les deux langues sont fournies');
   });
 
+  /**
+   * ⚠️ UN LIBELLÉ QUI ENVELOPPE UNE CASE À COCHER NE PEUT PAS VIVRE DANS I18N_TEXT. Cette table
+   * écrit dans `textContent`, ce qui remplace TOUT le contenu du `<label>` — l'`<input>` compris.
+   * La case disparaît, et il ne reste qu'un texte inerte.
+   *
+   * ⚠️ L'AVERTISSEMENT EXISTAIT DÉJÀ, EN COMMENTAIRE, DANS src/i18n.js, ET N'A PROTÉGÉ PERSONNE. Il
+   * y est écrit deux lignes au-dessus de la table où ces entrées doivent aller ; j'ai malgré tout
+   * rangé « Inverser la pointe » dans I18N_TEXT, et l'utilisateur a reçu une fiche où le libellé
+   * s'affichait sans sa case. La suite entière est restée verte. Un commentaire n'est pas une
+   * garde : il faut que quelque chose ÉCHOUE.
+   *
+   * Le relevé part du HTML, seule source de vérité sur ce qui enveloppe un `<input>` — une liste
+   * tenue à la main des libellés concernés se périmerait au premier ajout.
+   */
+  test('⚠️ AUCUN LIBELLÉ ENVELOPPANT UNE CASE À COCHER NE VIT DANS I18N_TEXT', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    // Les <label id="…"> … <input type="checkbox"> … </label>, refermés sans <label> imbriqué.
+    const enveloppants = [];
+    const re = /<label\b([^>]*)>([\s\S]*?)<\/label>/g;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      if (!/type=["']checkbox["']/.test(m[2])) continue;
+      const id = /id=["']([^"']+)["']/.exec(m[1]);
+      if (id) enveloppants.push(id[1]);
+    }
+    assert.ok(enveloppants.length >= 3,
+      `${enveloppants.length} libellé(s) enveloppant(s) trouvé(s) : le relevé ne lit pas le HTML`);
+    const fautifs = enveloppants.filter(id => I18N_TEXT.some(e => e[0] === `#${id}`));
+    assert.deepEqual(fautifs, [],
+      `ces libellés enveloppent une case et sont dans I18N_TEXT, dont le textContent l’effacera : `
+      + fautifs.join(', '));
+
+    /*
+     * ⚠️ ET L'AUTRE MOITIÉ : ILS DOIVENT ÊTRE TRADUITS QUELQUE PART. L'assertion ci-dessus dit où un
+     * libellé de case NE PEUT PAS vivre ; sans son pendant, supprimer purement et simplement son
+     * entrée la satisfait — mutation échappée. Le libellé resterait alors en français dans l'anglais,
+     * exactement le manque que #426b avait trouvé sur la case de la Bulle, « antérieur et trouvé en
+     * cherchant où ranger la voisine ». Un manque repéré une fois mérite une garde, pas un souvenir.
+     */
+    const toutes = [...I18N_TEXT, ...I18N_TRAILING, ...I18N_LEADING];
+    const muets = enveloppants.filter(id => !toutes.some(e => e[0] === `#${id}`));
+    assert.deepEqual(muets, [],
+      `ces libellés de case ne sont traduits nulle part et resteront en français : ${muets.join(', ')}`);
+  });
+
   test('toute entrée à attribut fournit ses deux traductions', () => {
     // Une entrée mal formée n'échoue nulle part : applyI18n écrirait `undefined` dans l'attribut,
     // et l'infobulle afficherait littéralement « undefined ».

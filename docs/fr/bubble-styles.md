@@ -177,7 +177,26 @@ visible mais inopérant** pour quatre d'entre elles. C'est `queuePeutSInverser3D
 fiche l'interroge plutôt que de recoder la liste : deux copies d'une même décision divergent
 toujours, ce chantier l'a constaté quatre fois.
 
-⚠️ **LE PREMIER ROND DE LA CHAÎNE EST AUX DEUX TIERS DANS LA BULLE.** Il était exactement TANGENT au
+⚠️ **ET SA PORTION INTÉRIEURE NE SE VOIT PAS : LES RONDS SONT PEINTS AVANT LA BULLE.** Ils passaient
+par-dessus, du temps où le premier rond était tangent et ne chevauchait donc rien. Dès qu'il entre
+dans la Bulle, un disque cerné se voyait en travers du fond. L'ordre de peinture suffit à le
+masquer — pas de découpe, pas de masque. Ce que cet ordre ne peut pas faire : sur un fond
+translucide, la portion intérieure transparaîtra ; la corriger demanderait de découper le disque par
+le contour, c'est-à-dire de refaire en géométrie ce que la peinture fait déjà bien dans le cas
+courant. La part enfoncée est passée de 2/3 à 0,55 le jour du changement d'ordre : invisible, les
+deux tiers ne laissaient plus voir qu'un tiers de disque.
+
+⚠️ **LA TAILLE DES RONDS ET LA LONGUEUR DE LA POINTE SE COMMANDENT, ET C'EST LA POINTE QUI A CÉDÉ.**
+La chaîne la plus serrée occupe 4,08 fois le rayon du premier rond ; il faut donc une pointe au moins
+aussi longue, sans quoi le repli rétrécit les rayons. L'usage a demandé des ronds 70 % plus gros, ce
+qui rend la borne calculée sur la longueur par défaut intenable. Trois sorties existaient — rétrécir
+les ronds au départ, laisser la chaîne dépasser la pointe, ou rallonger la pointe de ce motif — et
+aucune n'est bonne en soi : la première réintroduit le défaut qu'on venait de corriger, la seconde
+retire à la longueur son sens. La troisième a été **choisie**, pas déduite, en connaissance de sa
+contrepartie : une Bulle à chaîne enregistrée sans longueur explicite voit sa pointe s'allonger.
+Entorse assumée à « pas de réglage vaut l'existant », bornée à ce motif.
+
+⚠️ **LE PREMIER ROND DE LA CHAÎNE EST À CHEVAL SUR LE CONTOUR.** Il était exactement TANGENT au
 contour, et trois écrits l'affirmaient faux de concert : le commentaire du module disait « ne touche
 pas la Bulle », le test le vérifiait par un `>` strict que seule l'arithmétique flottante rendait
 vrai, et la note ne s'en préoccupait pas. Signalé à l'usage — « au contact direct du bord ». Un rond

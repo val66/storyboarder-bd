@@ -68,6 +68,21 @@ export function toile(w, h, s = SURECHANTILLONNAGE) {
       }
     }
   };
+  /**
+   * Remet à blanc l'intérieur d'une ellipse. Sert aux planches qui doivent reproduire un ORDRE de
+   * peinture : un fond opaque posé par-dessus ce qui le précède, comme le fait un canevas. Sans
+   * lui, une planche ne peut pas montrer ce qu'un remplissage MASQUE, et c'est précisément la
+   * question que pose la chaîne de ronds, dont le premier disque entre dans la Bulle.
+   */
+  const effacerEllipse = (cx, cy, rx, ry) => {
+    const [X, Y, RX, RY] = [cx * s, cy * s, rx * s, ry * s];
+    for (let y = Math.max(0, Math.floor(Y - RY)); y <= Math.min(H - 1, Math.ceil(Y + RY)); y++) {
+      for (let x = Math.max(0, Math.floor(X - RX)); x <= Math.min(W - 1, Math.ceil(X + RX)); x++) {
+        const dx = (x - X) / RX, dy = (y - Y) / RY;
+        if (dx * dx + dy * dy <= 1) couv[y * W + x] = 0;
+      }
+    }
+  };
   const reduire = () => {
     const out = Buffer.alloc(w * h * 3);
     for (let y = 0; y < h; y++) {
@@ -105,7 +120,7 @@ export function toile(w, h, s = SURECHANTILLONNAGE) {
     return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
       bloc('IHDR', ihdr), bloc('IDAT', zlib.deflateSync(brut)), bloc('IEND', Buffer.alloc(0))]);
   };
-  return { ligne, png };
+  return { ligne, effacerEllipse, png };
 }
 
 const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');

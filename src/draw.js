@@ -74,6 +74,7 @@ import { apparenceBulle, decalagesTrembleBulle,
 import { pointDuContourBulle, pointsDuContourBulle, encartInterieurBulle,
          queueParDefautBulle, angleDuContourBulle } from './bubble-shape.js';
 import { traceContinuDeLaQueue, elementsDetachesDeLaQueue, QUEUE_ECARTEMENT,
+         longueurMinimaleDeLaQueue3D,
          queueDeLaBulle, QUEUE_DEFAUT, QUEUE_AUCUNE } from './bubble-tail.js';
 import { couchesDeTextureBulle, couleurDeFondDeLaBulle3D,
          couleurTexteParDefautDeLaTexture,
@@ -1493,7 +1494,14 @@ function sommetsEntreAngles3D(o, sommets, depuis, jusqu){
 export function getBubbleTailTip(o){
   const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
   const theta = o.tailAngle != null ? o.tailAngle : BUBBLE_TAIL_ANGLE_DEFAULT;
-  const len = o.tailLen != null ? o.tailLen : BUBBLE_TAIL_LEN_DEFAULT;
+  // ⚠️ LE DÉFAUT DE LONGUEUR DÉPEND DU MOTIF, pour lui seul. La chaîne de ronds exige une pointe
+  // assez longue pour la contenir à taille pleine ; en deçà, ses ronds se rétrécissent. Un Projet
+  // enregistré sans `tailLen` voit donc sa chaîne s'allonger — entorse à « pas de réglage vaut
+  // l'existant », arbitrée avec l'utilisateur et bornée à ce motif. Une pointe EXPLICITE, elle,
+  // est respectée telle quelle : c'est un choix, et le repli de la chaîne existe pour ce cas.
+  const len = o.tailLen != null
+    ? o.tailLen
+    : Math.max(BUBBLE_TAIL_LEN_DEFAULT, longueurMinimaleDeLaQueue3D(queueEffectiveDeLaBulle(o)));
   const edge = bubbleEdgePoint(o, theta);
   return { x: cx + (edge.x - cx) * (1 + len), y: cy + (edge.y - cy) * (1 + len) };
 }
@@ -1909,6 +1917,36 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
   c.beginPath();
   construireChemin(null);
   c.closePath();
+  // ⚠️ LES RONDS SE DESSINENT AVANT LA BULLE, ET CHACUN DANS SON PROPRE CHEMIN.
+  //
+  // CHACUN DANS SON CHEMIN : les mettre dans celui de la Bulle les ferait remplir par la règle de
+  // non-zéro avec elle, et le remplissage se percerait là où un rond chevauche le contour.
+  //
+  // AVANT : ils étaient peints par-dessus, du temps où le premier rond était tangent au contour et
+  // ne le chevauchait donc pas. Depuis qu'il entre dans la Bulle, sa portion intérieure s'y voyait
+  // — un disque cerné posé en travers du fond, relevé à l'usage : « la partie du rond dans la bulle
+  // et au contact de son contour ne doit pas être visible ». Peints AVANT, le remplissage de la
+  // Bulle et son trait les recouvrent exactement là où il faut, sans masque ni découpe.
+  //
+  // ⚠️ CE QUE CET ORDRE NE PEUT PAS FAIRE : sur une Bulle au fond translucide — l'opacité de
+  // remplissage descendue —, la portion intérieure transparaîtra, le fond ne la cachant plus
+  // complètement. C'est la conséquence assumée d'un masquage par superposition ; la corriger
+  // demanderait un découpage du disque par le contour, c'est-à-dire de refaire en géométrie ce que
+  // la peinture fait déjà bien dans le cas courant.
+  const peindreLesRonds = () => {
+    if (!queueVisible || traceQueue) return;
+    for (const rond of elementsDetachesDeLaQueue(oQueue, bubbleEdgePoint(o, theta), pointeQueue)) {
+      const cheminRond = (f) => {
+        const r = f ? rond.r * f(0) : rond.r;   // un disque n'a pas d'angle propre : facteur au repos
+        c.ellipse(rond.x, rond.y, r, r, 0, 0, Math.PI * 2);
+      };
+      c.beginPath();
+      cheminRond(null);
+      c.closePath();
+      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond, { x: cx, y: cy }, phase);
+    }
+  };
+  peindreLesRonds();
   // L'arc du CORPS : le périmètre entier, sauf quand une queue continue en remplace un morceau.
   // C'est exactement l'arc que `construireChemin` fait suivre à `emettreContour` juste au-dessus.
   const arcDuCorps = (queueVisible && traceQueue)
@@ -1924,22 +1962,6 @@ export function drawBubble(c, o, phase = PHASE_TOUT){
     peindreLesParticules3D(c, o, app, cx, cy, rx, ry);
   }
 
-  // ⚠️ LES RONDS SE DESSINENT APRÈS, ET CHACUN DANS SON PROPRE CHEMIN. Les mettre dans le chemin de
-  // la Bulle les ferait remplir par la règle de non-zéro avec elle : là où un rond chevaucherait le
-  // contour, le remplissage se percerait. Séparés, chacun est un disque plein et cerné comme la
-  // Bulle, ce qui est bien ce que montre le relevé.
-  if (queueVisible && !traceQueue) {
-    for (const rond of elementsDetachesDeLaQueue(oQueue, bubbleEdgePoint(o, theta), pointeQueue)) {
-      const cheminRond = (f) => {
-        const r = f ? rond.r * f(0) : rond.r;   // un disque n'a pas d'angle propre : facteur au repos
-        c.ellipse(rond.x, rond.y, r, r, 0, 0, Math.PI * 2);
-      };
-      c.beginPath();
-      cheminRond(null);
-      c.closePath();
-      remplirEtCernerBulle3D(c, o, app, largeurTrait, cheminRond, { x: cx, y: cy }, phase);
-    }
-  }
   c.restore();
 
   if (o.description && (phase === PHASE_TOUT || phase === PHASE_TEXTE)) {

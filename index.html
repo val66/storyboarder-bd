@@ -402,15 +402,18 @@
             <option value="ronds">Chaîne de ronds</option>
             <option value="aucune">Aucune</option>
           </select>
+          <!-- ⚠️ DANS L'ENCART DE LA POINTE, ET NON SOUS LUI. Posée en frère du `<div>`, la case
+               flottait entre deux sections encadrées et se lisait comme appartenant à la suivante —
+               signalé à l'usage, capture à l'appui. Un réglage d'un axe vit dans l'encart de cet
+               axe : c'est ce que l'encadré veut dire.
+               Visible pour le seul cheveu : un triangle est symétrique et un éclair alterne déjà de
+               part et d'autre de son axe, leur offrir la case donnerait un contrôle inopérant.
+               `queuePeutSInverser3D` tranche, et la fiche l'interroge — recoder la liste ici en
+               ferait une seconde copie. -->
+          <label id="sideBubbleTailMirrorWrap" class="side-bulle-tail">
+            <input type="checkbox" id="sideBubbleTailMirrorToggle"> Inverser la pointe
+          </label>
         </div>
-        <!-- ⚠️ SOUS LE MENU DE LA POINTE, ET VISIBLE POUR LE SEUL CHEVEU. Un triangle est symétrique
-             et un éclair alterne déjà de part et d'autre de son axe : leur offrir cette case
-             donnerait un contrôle visible et inopérant. C'est `queuePeutSInverser3D` qui tranche,
-             et la fiche l'interroge — recoder la liste ici en ferait une seconde copie.
-             La forme visuelle est celle de « Bulle fusionnable », pour la même raison qu'elle. -->
-        <label id="sideBubbleTailMirrorWrap" class="side-bulle-tail">
-          <input type="checkbox" id="sideBubbleTailMirrorToggle"> Inverser la pointe
-        </label>
         <div id="sideBubbleTextureWrap" class="tome-format">
           <label for="sideBubbleTextureSelect">Texture du fond</label>
           <select id="sideBubbleTextureSelect">
@@ -1230,7 +1233,7 @@
           <input type="checkbox" id="personaGroundMagnetCheckbox" checked> Aimanté au Sol (base posée au sol, déplacement vertical bloqué)
         </label>
         <label id="personaTraverseGroundField" style="display:none; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-          <input type="checkbox" id="personaTraverseGroundCheckbox"> Peut traverser le Sol
+          <input type="checkbox" id="personaTraverseGroundCheckbox"> Peut traverser le sol
         </label>
       </div>
     </div>
@@ -1493,7 +1496,7 @@
             <input type="checkbox" id="objectGroundMagnetCheckbox" checked> Aimanté au Sol (base posée au sol, déplacement vertical bloqué)
           </label>
           <label id="objectTraverseGroundField" style="display:none; align-items:center; gap:6px; font-size:13px; margin:2px 0 8px; cursor:pointer;">
-            <input type="checkbox" id="objectTraverseGroundCheckbox"> Peut traverser le Sol
+            <input type="checkbox" id="objectTraverseGroundCheckbox"> Peut traverser le sol
           </label>
         </div>
       </div>

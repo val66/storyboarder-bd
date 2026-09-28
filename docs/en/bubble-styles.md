@@ -172,7 +172,24 @@ already alternates on either side of its axis, and offering the box for all five
 panel asks that function rather than recoding the list: two copies of one decision always diverge,
 as this project has found four times.
 
-⚠️ **THE CHAIN'S FIRST CIRCLE SITS TWO THIRDS INSIDE THE BUBBLE.** It was exactly TANGENT to the
+⚠️ **AND ITS INNER PART DOES NOT SHOW: THE CIRCLES ARE PAINTED BEFORE THE BUBBLE.** They went on
+top, back when the first circle was tangent and overlapped nothing. As soon as it enters the Bubble,
+an outlined disc showed across the fill. Paint order alone hides it — no clipping, no mask. What
+that order cannot do: on a translucent fill the inner part will show through; fixing it would mean
+clipping the disc against the outline, redoing in geometry what painting already does well in the
+common case. The buried share went from 2/3 to 0.55 on the day the order changed: hidden, two thirds
+left only a third of a disc to see.
+
+⚠️ **CIRCLE SIZE AND TAIL LENGTH CONSTRAIN EACH OTHER, AND IT IS THE TAIL THAT GAVE WAY.** The
+tightest chain takes 4.08 times the first circle's radius, so the tail must be at least that long or
+the fallback shrinks the radii. Use called for circles 70% bigger, which makes the bound computed
+from the default length untenable. Three ways out existed — shrink the circles at creation, let the
+chain run past the tip, or lengthen this motif's tail — and none is good in itself: the first brings
+back the defect just fixed, the second strips the length of its meaning. The third was **chosen**,
+not deduced, knowing its cost: a saved chain Bubble with no explicit length sees its tail grow. A
+deliberate break with "no setting means what exists", confined to this motif.
+
+⚠️ **THE CHAIN'S FIRST CIRCLE SITS ASTRIDE THE OUTLINE.** It was exactly TANGENT to the
 outline, and three pieces of writing agreed on the opposite: the module comment said it "does not
 touch the Bubble", the test checked it with a strict `>` that only floating-point arithmetic made
 true, and the note said nothing. Reported from use — "in direct contact with the edge". A circle
