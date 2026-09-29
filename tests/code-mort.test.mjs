@@ -287,6 +287,13 @@ const EN_ATTENTE = {
   // énonce la condition à laquelle la couche large reste invisible en tant que carrelage, et c'est
   // tests/ground-3d.test.mjs qui l'exige du réglage livré.
   modulationAssezLente3D: '#435c — critère de période, tenu par la garde, appelé par aucun rendu',
+  // #435c bis — le critère de TAILLE, à deux côtés, et le calcul qui l'alimente. Même nature que
+  // les deux précédents : ils énoncent ce qui rend la couche large utile, et c'est
+  // tests/ground-3d.test.mjs qui l'exige du réglage livré. La première version de cette garde
+  // n'avait qu'un côté, et c'est elle qui a laissé passer des plaques trois fois plus larges
+  // qu'une Case : le critère mérite d'exister nommément plutôt que d'être un seuil enfoui.
+  tailleDeLaPlaque3D: '#435c — taille d\'une plaque, tenue par la garde, appelée par aucun rendu',
+  plaqueBienDimensionnee3D: '#435c — critère à deux côtés, tenu par la garde, appelé par aucun rendu',
 };
 
 function exportsSansAppelant(){
@@ -379,7 +386,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 3,
+    assert.equal(Object.keys(EN_ATTENTE).length, 5,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

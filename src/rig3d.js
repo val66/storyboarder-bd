@@ -10,7 +10,8 @@
  */
 
 import {
-  ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
+  ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D,
+  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
 import {
@@ -584,7 +585,7 @@ let _modulationSol3D = null;
 
 export function buildGroundModulation3D() {
   if (_modulationSol3D) return _modulationSol3D;
-  const T = 512;
+  const T = GROUND_MODULATION_TAILLE_3D;
 
   // Bruit de valeur lissé, en octaves. Repris de ce qui servait au relief retiré en #435b, à ceci
   // près qu'il alimente cette fois quelque chose que l'écran voit.
@@ -601,9 +602,10 @@ export function buildGroundModulation3D() {
   // Trois octaves seulement, sur une base large : au-delà, on rajouterait du détail fin, c'est-à-dire
   // exactement ce que cette couche existe pour ne pas faire.
   const couches = [];
+  const base = GROUND_PLAQUE_CELLULE_PX_3D;
   for (let o = 0; o < 3; o++) {
-    const f = 1 << o, nc = Math.ceil(T * f / 160) + 3;
-    couches.push({ f, cw: 160 / f, g: grille(nc), nc });
+    const f = 1 << o, nc = Math.ceil(T * f / base) + 3;
+    couches.push({ f, cw: base / f, g: grille(nc), nc });
   }
   const fbm = (px, py) => {
     let v = 0, a = 1, t = 0;
@@ -628,6 +630,14 @@ export function buildGroundModulation3D() {
     data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255;
   }
   const texture = new THREE.DataTexture(data, T, T, THREE.RGBAFormat, THREE.UnsignedByteType);
+  // ⚠️ UNE DataTexture NAÎT EN FILTRAGE « NEAREST », SANS MIPMAP. Une CanvasTexture, elle, naît en
+  // LinearMipMapLinear : les deux classes n'ont pas les mêmes défauts, et j'ai pris ceux de la
+  // seconde pour acquis. Sur un plan qui fuit vers l'horizon, du plus proche voisin sans mipmap
+  // crénèle franchement, ce que l'utilisateur a vu tout de suite. 512 est une puissance de deux,
+  // donc les mipmaps sont légales en WebGL 1.
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipMapLinearFilter;
+  texture.generateMipmaps = true;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(GROUND_MODULATION_REPEAT_3D, GROUND_MODULATION_REPEAT_3D);
   texture.needsUpdate = true;
@@ -925,6 +935,22 @@ export function applyGroundType(panel) {
   const mat = groundMesh3D.material;
   const { map } = buildGroundTexture(type);
   const plaques = buildGroundModulation3D();
+  // ⚠️ LE SOL EST LA SURFACE LA PLUS RASANTE DE L'APPLICATION, et c'est le cas d'école du filtrage
+  // anisotrope : la même note existe depuis #? dans model-cache.js pour les modèles importés, et le
+  // Sol ne l'avait jamais reçu. Posé ici plutôt qu'à la construction des textures, parce que le
+  // niveau dépend du WebGLRenderer, qui n'existe pas encore quand la première matière est cuite.
+  // ⚠️ ON LIT LE RENDERER, ON NE L'APPELLE PAS. `getMaxAnisotropy3D` passe par
+  // `ensurePersonaScene3D`, qui CONSTRUIT un WebGLRenderer : l'appeler ici le ferait naître au
+  // premier rendu de Sol, et faisait échouer les tests sous Node dès la première exécution. La
+  // valeur n'a de sens que si le renderer existe déjà ; sinon 1, qui est le défaut de three.js.
+  // ⚠️ ET ON NE SUPPOSE PAS SA FORME NON PLUS. Les tests posent un renderer FACTICE, qui n'a pas de
+  // `capabilities` : lire la propriété sans vérifier a fait tomber vingt et un tests d'un coup, tous
+  // sans rapport avec le Sol. Un renderer partiel est un cas réel, pas une hypothèse d'école.
+  const caps = personaRenderer3D && personaRenderer3D.capabilities;
+  const aniso = caps && typeof caps.getMaxAnisotropy === 'function' ? caps.getMaxAnisotropy() : 1;
+  for (const t of [map, plaques]) {
+    if (t && t.anisotropy !== aniso) { t.anisotropy = aniso; t.needsUpdate = true; }
+  }
   let dirty = false;
   if (mat.map !== map)                                 { mat.map = map; dirty = true; }
   if (mat.aoMap !== plaques)                           { mat.aoMap = plaques; dirty = true; }

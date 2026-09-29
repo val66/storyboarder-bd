@@ -37,6 +37,9 @@ import { dirname, join } from 'node:path';
 import {
   GROUND_TYPE_DEFS, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SIZE_3D, reliefRepresentable3D,
   GROUND_MODULATION_REPEAT_3D, MARGE_MODULATION_3D, modulationAssezLente3D,
+  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D,
+  PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
+  tailleDeLaPlaque3D, plaqueBienDimensionnee3D,
   PANEL_CAM_DEFAULT_DIST_3D,
 } from '../src/constants.js';
 
@@ -143,6 +146,39 @@ describe('Sol : la couche large, et les deux façons de la rendre inopérante', 
     assert.ok(modulationAssezLente3D(GROUND_MODULATION_REPEAT_3D, GROUND_PLANE_SIZE_3D, LARGEUR_VISIBLE),
       `tuile de modulation ${(GROUND_PLANE_SIZE_3D / GROUND_MODULATION_REPEAT_3D).toFixed(0)} u `
       + `pour ${LARGEUR_VISIBLE} u visibles : il en faut ${MARGE_MODULATION_3D} fois plus`);
+  });
+
+  test('⚠️ UNE PLAQUE A LA BONNE TAILLE, NI TROP FINE NI TROP GROSSE', () => {
+    // ⚠️ CE TEST REMPLACE UNE GARDE À UN SEUL CÔTÉ, ET C'EST ELLE QUI M'A FAIT LIVRER LE DÉFAUT.
+    // Elle exigeait « plus de la moitié de la variance au-delà de 64 px de texture », un seuil qui
+    // récompense l'excès de grossièreté. J'ai donc posé une cellule de bruit de 160 px, soit des
+    // plaques de 94 unités pour un champ visible de 30 : TROIS FOIS la Case. On n'en voyait jamais
+    // une entière, seulement un morceau, ce qui se lit comme un dégradé d'éclairage raté.
+    //
+    // Deux mutants avaient échappé en rendant le bruit plus grossier, et je les avais classés
+    // « question de réglage ». C'était l'indice que le critère ne contraignait qu'un côté.
+    const taille = tailleDeLaPlaque3D(
+      GROUND_PLAQUE_CELLULE_PX_3D, GROUND_MODULATION_TAILLE_3D,
+      GROUND_PLANE_SIZE_3D, GROUND_MODULATION_REPEAT_3D);
+    assert.ok(plaqueBienDimensionnee3D(taille, LARGEUR_VISIBLE),
+      `plaque de ${taille.toFixed(1)} u pour ${LARGEUR_VISIBLE} u visibles, soit `
+      + `${(LARGEUR_VISIBLE / taille).toFixed(1)} par Case : il en faut entre `
+      + `${PLAQUES_PAR_CASE_MIN_3D} et ${PLAQUES_PAR_CASE_MAX_3D}`);
+  });
+
+  test('le garde-fou : le critère de taille REFUSE les deux excès', () => {
+    // Un critère à deux côtés doit être éprouvé des deux côtés, sans quoi on reproduit le défaut
+    // qu'il corrige : une borne écrite mais jamais atteinte ne garde rien.
+    const v = LARGEUR_VISIBLE;
+    assert.equal(plaqueBienDimensionnee3D(v * 3, v), false, 'une plaque trois fois la Case doit être refusée');
+    assert.equal(plaqueBienDimensionnee3D(v / 100, v), false, 'une plaque minuscule doit être refusée');
+    assert.equal(plaqueBienDimensionnee3D(v / PLAQUES_PAR_CASE_MIN_3D, v), true, 'la borne haute est atteignable');
+    assert.equal(plaqueBienDimensionnee3D(v / PLAQUES_PAR_CASE_MAX_3D, v), true, 'la borne basse est atteignable');
+    for (const mauvais of [undefined, null, NaN, 0, -3, 'grande']) {
+      assert.equal(plaqueBienDimensionnee3D(mauvais, v), false);
+      assert.equal(plaqueBienDimensionnee3D(5, mauvais), false);
+      assert.equal(tailleDeLaPlaque3D(mauvais, 512, 12000, 40), 0);
+    }
   });
 
   test('le garde-fou : le critère REFUSE bien une couche trop rapide', () => {
@@ -298,18 +334,18 @@ describe('Sol : la couche large porte-t-elle vraiment ce que la matière ne port
     assert.ok(ecart > 30, `écart-type ${ecart.toFixed(1)} : presque uniforme, donc invisible`);
   });
 
-  test('⚠️ SA VARIATION EST GROSSIÈRE, c’est-à-dire qu’elle SURVIT à la minification', () => {
-    // La raison d'être de cette couche tient dans ce test. Mesuré sur les quatorze matières et sur
-    // deux photographies, au-delà de 64 px de motif il ne reste que 1 % de leur variance : c'est
-    // pour cela qu'une Case montre un aplat. Une couche large qui perdrait de même n'apporterait
-    // rien, et coûterait une texture, un jeu d'UV et treize réglages pour rien.
-    const p = pixels();
-    const total = varianceAuBloc(p, 1);
-    const grossier = varianceAuBloc(p, 64);
-    const part = grossier / total;
-    assert.ok(part > 0.5,
-      `${(part * 100).toFixed(0)} % de la variance seulement au-delà de 64 px : cette couche est du `
-      + 'détail fin, exactement ce qu’elle doit compenser');
+  test('⚠️ LA COUCHE LARGE EST FILTRÉE ET MIPMAPPÉE, comme toute texture qui fuit vers l’horizon', () => {
+    // ⚠️ UNE DataTexture NAÎT EN « NEAREST » SANS MIPMAP, là où une CanvasTexture naît en
+    // LinearMipMapLinear. J'ai pris les défauts de la seconde pour ceux de la première, et le Sol
+    // est sorti crénelé. Deux classes voisines, deux jeux de défauts, et rien qui le dise.
+    const t = buildGroundModulation3D();
+    assert.equal(t.magFilter, THREE.LinearFilter, 'la couche large est grossie au plus proche voisin');
+    assert.equal(t.minFilter, THREE.LinearMipMapLinearFilter, 'elle est réduite sans mipmap');
+    assert.equal(t.generateMipmaps, true);
+    // La puissance de deux est ce qui rend les mipmaps légales en WebGL 1 : sans elle, three.js les
+    // désactive en silence et on retombe sur le crénelage sans message.
+    const cote = t.image.width;
+    assert.equal(cote & (cote - 1), 0, `${cote} n’est pas une puissance de deux : mipmaps désactivées`);
   });
 
   test('le garde-fou : la mesure sait voir une présence ET une absence', () => {

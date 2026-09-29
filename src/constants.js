@@ -781,6 +781,44 @@ export function modulationAssezLente3D(repeat, tailleDuPlan, largeurVisible){
   return (t / r) >= MARGE_MODULATION_3D * v;
 }
 
+/** Côté d'une cellule du bruit de la couche large, en pixels de sa texture de 512. */
+export const GROUND_PLAQUE_CELLULE_PX_3D = 12;
+export const GROUND_MODULATION_TAILLE_3D = 512;
+
+/** Le côté d'une plaque, en unités monde. Fonction pure. */
+export function tailleDeLaPlaque3D(cellulePx, coteTexture, tailleDuPlan, repeat){
+  const c = Number(cellulePx), t = Number(coteTexture);
+  const p = Number(tailleDuPlan), r = Number(repeat);
+  if (![c, t, p, r].every(Number.isFinite) || c <= 0 || t <= 0 || p <= 0 || r <= 0) return 0;
+  return (p / r) * (c / t);
+}
+
+/**
+ * ⚠️ UNE PLAQUE A UNE TAILLE JUSTE, ET LE CRITÈRE EST À DEUX CÔTÉS. C'est la leçon de la première
+ * version de cette couche, qui n'en avait qu'un.
+ *
+ * TROP FINE, elle est moyennée par la minification et ne sert à rien : c'est le défaut qu'on
+ * corrige, puisque les matières perdent 99 % de leur variance au-delà de 64 px de motif.
+ *
+ * TROP GROSSE, et c'est ce que j'ai livré : à 94 unités pour un champ visible de 30, une plaque
+ * faisait TROIS FOIS la largeur de la Case. On n'en voyait jamais une, seulement un morceau, ce qui
+ * se lit comme un dégradé d'éclairage mal fichu plutôt que comme un sol inégal.
+ *
+ * ⚠️ ET MA GARDE POUSSAIT DU MAUVAIS CÔTÉ. Elle exigeait « plus de la moitié de la variance au-delà
+ * de 64 px », un seuil qui RÉCOMPENSE l'excès de grossièreté. Deux mutants avaient échappé en
+ * rendant le bruit plus grossier, et je les avais classés « réglage » : c'était l'indice, et je l'ai
+ * lu de travers. Un critère à un seul côté ne dit pas où est le juste, il dit seulement d'aller
+ * toujours dans le même sens.
+ */
+export const PLAQUES_PAR_CASE_MIN_3D = 3;
+export const PLAQUES_PAR_CASE_MAX_3D = 8;
+
+export function plaqueBienDimensionnee3D(tailleEnUnites, largeurVisible){
+  const t = Number(tailleEnUnites), v = Number(largeurVisible);
+  if (![t, v].every(Number.isFinite) || t <= 0 || v <= 0) return false;
+  return t <= v / PLAQUES_PAR_CASE_MIN_3D && t >= v / PLAQUES_PAR_CASE_MAX_3D;
+}
+
 export const GROUND_TYPE_DEFS = [
   // repeat: GROUND_PLANE_SIZE_3D=12000u → repeat=9600 gives a tile≈1.25u, repeat=1200 gives a tile≈10u.
   // The previous values (20-160) gave 75-600u tiles, hence the blurry look that was observed.
