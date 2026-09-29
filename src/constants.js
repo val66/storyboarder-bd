@@ -1011,19 +1011,19 @@ export const GROUND_TYPE_DEFS = [
   // que devinée d'un fichier présent ou non : un grain manquant doit se voir comme un manque, pas
   // se rattraper tout seul. tests/ground-3d.test.mjs exige que chaque grain déclaré existe.
   { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 , plaques: 0 },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 3200, plaques: 0.16, grain: 'herbe' },
-  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 2400, plaques: 0.16 , grain: 'gazon' },
-  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 , plaques: 0.34 },
-  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 , plaques: 0.22 },
-  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800 , plaques: 0.24 },
-  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600 , plaques: 0.14 },
-  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800 , plaques: 0.12 },
-  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000 , plaques: 0.18 },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 3000, plaques: 0.16, grain: 'herbe' },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 3000, plaques: 0.16 , grain: 'gazon' },
+  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 3000 , plaques: 0.34 , grain: 'terre.couleur' },
+  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 3000 , plaques: 0.22 , grain: 'sable' },
+  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 3000 , plaques: 0.24 , grain: 'gravier.couleur' },
+  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3000 , plaques: 0.14 , grain: 'bitume' },
+  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 3000 , plaques: 0.12 , grain: 'beton' },
+  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 3000 , plaques: 0.18 , grain: 'neige' },
   { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000 , plaques: 0.1 },
-  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400 , plaques: 0.05 },
-  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800 , plaques: 0.06 },
-  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200 , plaques: 0.04 },
-  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800 , plaques: 0.08 },
+  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 3000 , plaques: 0.05 , grain: 'carrelage.couleur' },
+  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 3000 , plaques: 0.06 },
+  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 3000 , plaques: 0.04 , grain: 'marbre.couleur' },
+  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 3000 , plaques: 0.08 , grain: 'moquette' },
 ];
 
 

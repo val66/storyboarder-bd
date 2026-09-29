@@ -493,11 +493,17 @@ describe('Sol : la matière photographiée, et le manque qui doit rester un manq
    * photographie n'est jamais arrivée.
    */
   test('⚠️ CHAQUE GRAIN DÉCLARÉ PAR UNE MATIÈRE EXISTE VRAIMENT DANS assets/textures/', () => {
-    const manquants = grainsDuSol3D().filter(g =>
-      !existsSync(join(RACINE, 'assets', 'textures', `${g}.png`))
-      && !existsSync(join(RACINE, 'assets', 'textures', `${g}.couleur.png`)));
+    // ⚠️ EXACTEMENT `<grain>.png`, ET PAS UNE VARIANTE. Ma première version acceptait aussi
+    // `<grain>.couleur.png`, par indulgence, et c'est précisément ce qui l'empêchait de voir le
+    // défaut qu'elle existe pour attraper : déclarer `terre` là où le fichier s'appelle
+    // `terre.couleur.png` passait la garde, alors que le chargeur concatène `clé + '.png'` sans
+    // rien deviner. Le grain n'aurait pas chargé, et la matière serait restée sur sa recette
+    // dessinée avec un simple avertissement dans la console. Un mutant l'a montré.
+    const manquants = grainsDuSol3D()
+      .filter(g => !existsSync(join(RACINE, 'assets', 'textures', `${g}.png`)));
     assert.deepEqual(manquants, [],
-      `grains déclarés au registre mais absents du dépôt : ${manquants.join(', ')}`);
+      `grains déclarés au registre mais absents du dépôt : ${manquants.join(', ')}. `
+      + 'Le nom déclaré est celui du FICHIER, suffixe « .couleur » compris.');
   });
 
   test('le garde-fou : la liste des grains n’est pas vide, et elle vient du registre', () => {
@@ -514,7 +520,13 @@ describe('Sol : la matière photographiée, et le manque qui doit rester un manq
     // L'état de transition doit RESTER visible : onze matières attendent encore leur photographie,
     // et aucune ne doit se rattraper silencieusement sur le grain d'une voisine.
     const sansGrain = GROUND_TYPE_DEFS.filter(d => !d.grain);
-    assert.ok(sansGrain.length > 5, 'toutes les matières ont un grain : ce test ne regarde plus rien');
+    // ⚠️ CE GARDE-FOU ÉPINGLAIT UN COMPTE QUI DÉCROÎT À MESURE DU TRAVAIL. Il exigeait plus de cinq
+    // matières sans grain, ce qui était vrai le jour où deux étaient sourcées et faux dès qu'il y en
+    // eut onze. Un seuil calibré sur un ÉTAT DE TRANSITION devient rouge quand la transition
+    // aboutit, c'est-à-dire au moment où tout va bien. On exige donc qu'il en reste AU MOINS UNE,
+    // ce qui suffit à donner un sujet au test, et rien de plus.
+    assert.ok(sansGrain.length >= 1,
+      'toutes les matières ont un grain : ce test n’a plus de sujet, retirez-le plutôt que de le tordre');
     for (const def of sansGrain) {
       assert.equal(def.grain, undefined, `${def.id} déclare un grain là où on n’en attendait pas`);
     }
