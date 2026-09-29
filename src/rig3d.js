@@ -19,6 +19,10 @@ import {
   clamp, orbitCameraPosition3D, poseJointsByKey3D
 } from './utils.js';
 import { S, currentVolume, tr } from './state.js';
+// La règle de teinte d'un grain et la lecture d'une couleur : les mêmes que pour les Bulles, parce
+// que c'est la même question. Voir tuileDuGrainDuSol3D pour ce qui n'est délibérément PAS partagé.
+import { appliquerTeinteAuMotif3D, natureDuNom3D, rvbDeCouleur3D } from './bubble-texture.js';
+import { grainCharge3D } from './bubble-grain.js';
 // ⚠️ LES INTENSITÉS DE RÉFÉRENCE VIENNENT DE LÀ, ET C'EST #415 QUI L'A IMPOSÉ. Elles étaient
 // écrites en clair ici ET dans lighting-3d.js, soit deux exemplaires de la même promesse : « Jour
 // vaut exactement l'éclairage d'origine » (cf. docs/en/lighting.md). Une mutation l'a montré, en
@@ -546,6 +550,16 @@ export let groundMesh3D = null;
  * d'observer ce que la fonction écrit vraiment sur le matériau.
  */
 export function _poserSolPourTests3D(mesh){ groundMesh3D = mesh; }
+
+/**
+ * Vide le cache des textures du Sol. Sans appelant dans l'application, par construction.
+ *
+ * ⚠️ IL EXISTE PARCE QUE DEUX DE MES TESTS SE SONT COUPLÉS PAR CE CACHE. L'un pose un faux grain et
+ * construit la texture de l'herbe ; le suivant la retrouve toute faite et ne traverse plus le
+ * chemin qu'il prétend vérifier. Un cache de module est un état partagé entre tous les tests d'un
+ * fichier, et l'ordre d'exécution devient alors une dépendance que personne n'a écrite.
+ */
+export function _viderTexturesDuSol3D(){ for (const k of Object.keys(_groundTexCache)) delete _groundTexCache[k]; }
 // ↳ src/constants.js
 // ↳ src/constants.js
 // ↳ src/constants.js
@@ -658,9 +672,66 @@ export function buildGroundModulation3D() {
   return texture;
 }
 
+/**
+ * La tuile d'une matière PHOTOGRAPHIÉE : le grain cuit, teinté par la couleur du registre.
+ *
+ * ⚠️ LE GRAIN EST GRIS, ET C'EST MESURÉ, PAS HÉRITÉ DES BULLES. Le cuiseur classe une matière selon
+ * l'endroit où vit sa structure : sur les deux herbes fournies, l'albédo rend 8,0 de contraste
+ * local contre 24,5 pour le relief, soit un rapport de 0,33 là où il faudrait dépasser 1,4 pour
+ * qu'on garde la couleur. Vérifié aussi sur la CHROMIE, au cas où la couleur porterait ce que la
+ * luminance n'a pas : 7 à 10 % de variance restante à la taille d'affichage, pour une amplitude de
+ * 6 niveaux Lab. Il n'y a rien à sauver dans la couleur de ces photographies.
+ *
+ * ⚠️ ET ON RÉEMPLOIE LA RÈGLE DE TEINTE, PAS LE CACHE. `bubble-grain.js` garde ses tuiles sous une
+ * politique d'éviction réglée pour des dizaines de Bulles recomposées au fil des images ; le Sol en
+ * veut une par matière, pour la session. Ce qui se partage est `appliquerTeinteAuMotif3D`, qui est
+ * la décision ; la file d'éviction n'en est pas une.
+ *
+ * Rend `null` tant que le grain n'est pas chargé : le préchargement est asynchrone, et la première
+ * Planche peut se dessiner avant lui. L'appelant retombe alors sur la recette dessinée, et la
+ * Planche se redessine à la fin du chargement.
+ */
+function tuileDuGrainDuSol3D(def) {
+  const img = grainCharge3D(def.grain);
+  if (!img) return null;
+  const rvb = rvbDeCouleur3D(def.swatch);
+  if (!rvb) return null;
+  const tuile = document.createElement('canvas');
+  tuile.width = img.width; tuile.height = img.height;
+  const tc = tuile.getContext('2d');
+  tc.drawImage(img, 0, 0);
+  const donnees = tc.getImageData(0, 0, tuile.width, tuile.height);
+  appliquerTeinteAuMotif3D(donnees.data, rvb, natureDuNom3D(def.grain));
+  tc.putImageData(donnees, 0, 0);
+  return tuile;
+}
+
 export function buildGroundTexture(type) {
-  if (_groundTexCache[type]) return _groundTexCache[type];
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
+  const garde = _groundTexCache[type];
+  // ⚠️ UNE ENTRÉE PEUT ÊTRE PÉRIMÉE PAR L'ARRIVÉE DE SON GRAIN, et c'est un test qui l'a exigé. Le
+  // préchargement est ASYNCHRONE : la première Planche peut se dessiner avant lui, et la recette
+  // dessinée serait alors figée pour toute la session. Le redessin déclenché par la fin du
+  // chargement repasserait ici et retrouverait la même entrée.
+  //
+  // ⚠️ ET LA PREMIÈRE CORRECTION ÉTAIT PIRE QUE LE DÉFAUT : ne rien mettre en cache tant que le
+  // grain manque faisait redessiner cinquante dégradés et 1 400 brins À CHAQUE RENDU DE CASE.
+  // On garde donc l'entrée, MARQUÉE, et on ne la refait que le jour où le grain est là.
+  if (garde && !(garde.enAttenteDeGrain && grainCharge3D(def.grain))) return garde;
+
+  // ⚠️ UNE MATIÈRE PHOTOGRAPHIÉE COURT-CIRCUITE LA RECETTE DESSINÉE.
+  if (def.grain) {
+    const tuile = tuileDuGrainDuSol3D(def);
+    if (tuile) {
+      const carte = new THREE.CanvasTexture(tuile);
+      carte.wrapS = carte.wrapT = THREE.RepeatWrapping;
+      carte.repeat.set(def.repeat || 60, def.repeat || 60);
+      carte.needsUpdate = true;
+      const entree = { map: carte, enAttenteDeGrain: false };
+      _groundTexCache[type] = entree;
+      return entree;
+    }
+  }
 
   // Deterministic LCG seed (visual reproducibility)
   let _seed = 42;
@@ -915,7 +986,11 @@ export function buildGroundTexture(type) {
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(rep, rep); map.needsUpdate = true;
 
-  const entry = { map };
+  // La marque dit ce que cette entrée ATTEND, et c'est elle que relit la garde en tête de fonction.
+  // Le défaut qu'elle empêche aurait été invisible en développement, où le disque est chaud et où
+  // les grains arrivent avant le premier rendu, et réel au premier lancement sur une autre machine :
+  // la famille du #370, un état que l'application produit et qu'aucune fixture ne reproduisait.
+  const entry = { map, enAttenteDeGrain: !!def.grain };
   _groundTexCache[type] = entry;
   return entry;
 }

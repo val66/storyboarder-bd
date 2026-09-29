@@ -831,9 +831,15 @@ export const GROUND_TYPE_DEFS = [
   // ⚠️ PLUS DE dispScale ICI, cf. reliefRepresentable3D ci-dessus : il ne gouvernait rien de ce
   // qu'il annonçait, et ce qu'il faisait à la place était de décaler le Sol entier jusqu'à 0,84
   // unité sous les pieds des personnages.
+  //
+  // ⚠️ `grain` NOMME UN FICHIER CUIT, et son absence est un ÉTAT DE TRANSITION ASSUMÉ, pas un repli
+  // silencieux. Les matières qui en portent un affichent une photographie ; les autres gardent leur
+  // recette dessinée au canevas, en attendant d'être sourcées. La distinction est DÉCLARÉE plutôt
+  // que devinée d'un fichier présent ou non : un grain manquant doit se voir comme un manque, pas
+  // se rattraper tout seul. tests/ground-3d.test.mjs exige que chaque grain déclaré existe.
   { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 , plaques: 0 },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600 , plaques: 0.3 },
-  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200 , plaques: 0.16 },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600 , plaques: 0.3 , grain: 'herbe' },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200 , plaques: 0.16 , grain: 'gazon' },
   { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 , plaques: 0.34 },
   { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 , plaques: 0.22 },
   { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800 , plaques: 0.24 },
@@ -1259,3 +1265,13 @@ export const ARCHETYPES_3D = [
 // apporte SES articulations, celles d'`ANIMAL_JOINT_DEFS` (#401b). La question n'avait pas besoin
 // d'être tranchée, elle a été dissoute. La fonction attendait depuis une réponse qui ne viendrait
 // pas.
+
+/**
+ * Les grains à charger pour le Sol, dérivés du registre. Fonction PURE.
+ *
+ * Dérivée et non écrite à la main : une seconde liste se périmerait au premier grain ajouté, et ce
+ * dépôt a déjà nommé cette famille de défaut plus d'une fois.
+ */
+export function grainsDuSol3D(){
+  return GROUND_TYPE_DEFS.filter(d => d.grain).map(d => d.grain);
+}

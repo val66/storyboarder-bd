@@ -239,6 +239,21 @@ function ancrer(motif, ancre, largeur, hauteur){
 }
 
 /** Pour les tests et le rechargement : tout oublier. */
+/**
+ * L'image d'un grain chargé, ou `null`. Pour les appelants qui composent leur propre tuile.
+ *
+ * ⚠️ LE SOL NE PASSE PAS PAR `motifDuGrain3D`, ET C'EST DÉLIBÉRÉ. Ce module met en cache des tuiles
+ * teintées sous une politique d'éviction réglée pour les Bulles : quelques dizaines par Planche,
+ * recomposées au fil des images. Le Sol en veut UNE par matière, gardée pour la durée de la
+ * session dans son propre cache de textures, et il la veut comme canevas et non comme motif de
+ * canevas, puisqu'elle part dans une texture 3D. Lui faire emprunter la file d'éviction des Bulles
+ * ferait évincer la sienne à la première Planche chargée, et recomposer 262 144 pixels pour rien.
+ *
+ * Ce qui EST partagé est la règle de teinte, `appliquerTeinteAuMotif3D`, qui est la décision. Le
+ * cache n'en est pas une.
+ */
+export function grainCharge3D(cle){ return _grains.get(cle) || null; }
+
 export function _viderGrains3D(){
   _grains.clear(); _tuiles.clear(); _signales.clear();
 }

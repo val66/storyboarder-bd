@@ -45,11 +45,15 @@ import {
 
 import {
   applyGroundType, buildGroundTexture, buildGroundModulation3D, _poserSolPourTests3D,
+  _viderTexturesDuSol3D,
 } from '../src/rig3d.js';
 // La mesure de couture du cuiseur de textures, déjà éprouvée par #431a et ses propres tests. En
 // écrire une seconde ici donnerait deux définitions d'un même mot, exactement ce que ce dépôt
 // traque ailleurs. Les fonctions pures de cet outil s'importent sous Node, son en-tête le garantit.
 import { coutureCarrelage3D } from '../tools/bake-textures.mjs';
+import { grainsDuSol3D } from '../src/constants.js';
+import { _setGrain3D, _viderGrains3D } from '../src/bubble-grain.js';
+import { existsSync } from 'node:fs';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const THREE = globalThis.THREE;
@@ -463,5 +467,116 @@ describe('Sol : la couche large doit se raccorder à elle-même', () => {
     }
     assert.ok(coutureCarrelage3D(degrade, cote) > 1.25,
       'un dégradé franc doit être signalé comme non carrelable');
+  });
+});
+
+describe('Sol : la matière photographiée, et le manque qui doit rester un manque', () => {
+  /**
+   * ⚠️ `grain` EST UNE ÉNUMÉRATION TENUE À LA MAIN, donc elle se périmera. C'est la famille de
+   * défaut la plus nommée de ce dépôt, et la parade est la même qu'ailleurs : la confronter à ce
+   * qu'elle prétend décrire. Un `grain` déclaré sans fichier en face ne casse RIEN au démarrage —
+   * le chargement échoue, la matière retombe sur sa recette dessinée, et personne n'apprend que la
+   * photographie n'est jamais arrivée.
+   */
+  test('⚠️ CHAQUE GRAIN DÉCLARÉ PAR UNE MATIÈRE EXISTE VRAIMENT DANS assets/textures/', () => {
+    const manquants = grainsDuSol3D().filter(g =>
+      !existsSync(join(RACINE, 'assets', 'textures', `${g}.png`))
+      && !existsSync(join(RACINE, 'assets', 'textures', `${g}.couleur.png`)));
+    assert.deepEqual(manquants, [],
+      `grains déclarés au registre mais absents du dépôt : ${manquants.join(', ')}`);
+  });
+
+  test('le garde-fou : la liste des grains n’est pas vide, et elle vient du registre', () => {
+    // Un `[].filter` de plus. Si `grainsDuSol3D` rendait la liste vide, le test ci-dessus serait
+    // vrai sans rien observer, et il le resterait le jour où un grain disparaîtrait.
+    const grains = grainsDuSol3D();
+    assert.ok(grains.length >= 2, `${grains.length} grain(s) déclaré(s) : la liste s’est vidée`);
+    for (const g of grains) {
+      assert.ok(GROUND_TYPE_DEFS.some(d => d.grain === g), `${g} ne vient d’aucune matière du registre`);
+    }
+  });
+
+  test('⚠️ UNE MATIÈRE SANS GRAIN GARDE SA RECETTE, et n’emprunte celui de personne', () => {
+    // L'état de transition doit RESTER visible : onze matières attendent encore leur photographie,
+    // et aucune ne doit se rattraper silencieusement sur le grain d'une voisine.
+    const sansGrain = GROUND_TYPE_DEFS.filter(d => !d.grain);
+    assert.ok(sansGrain.length > 5, 'toutes les matières ont un grain : ce test ne regarde plus rien');
+    for (const def of sansGrain) {
+      assert.equal(def.grain, undefined, `${def.id} déclare un grain là où on n’en attendait pas`);
+    }
+  });
+
+  test('⚠️ LE GRAIN, UNE FOIS CHARGÉ, REMPLACE BIEN LA RECETTE DESSINÉE', () => {
+    // Le branchement lui-même : sans ce test, `tuileDuGrainDuSol3D` pourrait rendre sa tuile sans
+    // que `buildGroundTexture` la regarde, et le Sol garderait ses brins dessinés pour toujours.
+    // On pose un faux grain, reconnaissable, et on vérifie que la texture en vient.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const cote = 8;
+    const faux = document.createElement('canvas');
+    faux.width = faux.height = cote;
+    _setGrain3D('herbe', faux);
+    // Le cache des textures du Sol est indexé par type : on interroge une matière encore intouchée
+    // dans ce fichier pour être sûr de traverser vraiment le chemin du grain.
+    const avec = buildGroundTexture('herbe');
+    assert.equal(avec.map.image.width, cote,
+      'la texture de l’herbe ne vient pas du grain chargé : la recette dessinée a gagné');
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+});
+
+describe('Sol : le grain est TEINTÉ, et pas seulement recopié', () => {
+  /**
+   * ⚠️ CE TEST EST NÉ D'UN MUTANT QUI A ÉCHAPPÉ : retirer l'appel à `appliquerTeinteAuMotif3D`
+   * laissait toute la suite au vert. Le grain cuit est GRIS par construction — le cuiseur l'a
+   * classé ainsi parce que la structure des deux herbes vit dans leur relief, pas dans leur
+   * albédo — donc sans teinte le Sol serait gris au lieu d'être vert. Défaut énorme à l'écran,
+   * invisible pour la suite.
+   *
+   * ⚠️ ET IL DEMANDE DE VOIR DES PIXELS, CE QU'UN CANEVAS FACTICE NE DONNE PAS. Le stub rend bien
+   * un `Uint8ClampedArray`, mais neuf à chaque appel : on ne peut pas le relire depuis l'extérieur.
+   * On intercepte donc `document.createElement` le temps du test pour garder la main sur le
+   * tableau. C'est la seule façon d'observer une composition de pixels sous Node, et elle est
+   * préférable à un test textuel, qui se contenterait de vérifier que l'appel est ÉCRIT.
+   */
+  test('⚠️ LA TUILE DU SOL REÇOIT LA COULEUR DE SA MATIÈRE', () => {
+    const def = GROUND_TYPE_DEFS.find(d => d.id === 'herbe');
+    assert.ok(def && def.grain, 'l’herbe ne déclare plus de grain : ce test ne regarde plus rien');
+
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    _setGrain3D(def.grain, { width: 4, height: 4 });
+
+    const vrai = document.createElement;
+    const captures = [];
+    document.createElement = (balise) => {
+      if (balise !== 'canvas') return vrai(balise);
+      return {
+        width: 0, height: 0,
+        getContext: () => ({
+          drawImage(){},
+          putImageData(){},
+          getImageData(){
+            // Le gris neutre du cuiseur : la valeur qu'un grain porte là où la matière est plate.
+            const data = new Uint8ClampedArray([128, 128, 128, 255]);
+            captures.push(data);
+            return { data, width: 1, height: 1 };
+          },
+        }),
+      };
+    };
+    try {
+      buildGroundTexture('herbe');
+    } finally {
+      document.createElement = vrai;
+    }
+
+    assert.equal(captures.length, 1, 'la tuile du Sol n’a pas lu ses pixels : le chemin du grain n’a pas été pris');
+    const [r, v, b] = captures[0];
+    assert.ok(!(r === 128 && v === 128 && b === 128),
+      `le grain ressort à (${r}, ${v}, ${b}) : il n’a pas été teinté, le Sol serait gris`);
+    // Et la teinte est bien CELLE de la matière : un vert, donc un canal vert dominant. Sans cette
+    // seconde moitié, n'importe quelle transformation passerait, y compris une qui noircit.
+    assert.ok(v > r && v > b,
+      `le grain ressort à (${r}, ${v}, ${b}) : ce n’est pas la teinte verte de l’herbe`);
+    _viderGrains3D(); _viderTexturesDuSol3D();
   });
 });
