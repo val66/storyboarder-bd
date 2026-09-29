@@ -298,6 +298,9 @@ const EN_ATTENTE = {
   // les quatre précédents, et même raison : ce sont des CRITÈRES, tenus par tests/ground-3d.test.mjs,
   // et les faire appeler par un rendu pour satisfaire ce détecteur donnerait un appel décoratif.
   netteteAcceptable3D: '#435e — critère de netteté, tenu par la garde, appelé par aucun rendu',
+  // #435f bis — le chaînage des trois échelles du Sol, sans trou entre elles. Même nature que les
+  // précédents : un critère, tenu par tests/ground-3d.test.mjs, et qu'aucun rendu n'a à appeler.
+  echellesSansTrou3D: '#435f — critère de chaînage, tenu par la garde, appelé par aucun rendu',
 };
 
 function exportsSansAppelant(){
@@ -390,7 +393,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 6,
+    assert.equal(Object.keys(EN_ATTENTE).length, 7,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

@@ -856,6 +856,56 @@ export function netteteAcceptable3D(coteGrain, repeat, tailleDuPlan, pixelsParUn
  */
 export const GROUND_MACRO_RATIO_3D = 64;
 
+/**
+ * La SOUS-ÉCHELLE de la couche large : la même image une troisième fois, dans la même texture.
+ *
+ * ⚠️ ELLE EXISTE PARCE QUE DEUX ÉCHELLES LAISSAIENT UN TROU. Signalé à l'usage une fois le mélange
+ * en place : « à longue et proche distance c'est vraiment bien, à moyenne distance on a encore une
+ * impression de flou ». Le calcul le montre sans ambiguïté, en unités monde :
+ *
+ *     couche fine   (tuile 3,75 u)   motifs de 0,01 à 0,23 u
+ *     couche macro  (tuile  240 u)   motifs de 0,94 à 15,0 u
+ *
+ * Entre 0,23 et 0,94, rien ne vit. De près, la fine porte le rendu ; de loin, la macro ; entre les
+ * deux, l'œil cherche une bande qui n'existe pas. La documentation d'Unity le disait d'ailleurs en
+ * toutes lettres — « appliquée trois fois, avec un tiling différent pour chacune » — et je n'en
+ * avais retenu que deux.
+ *
+ * ⚠️ ET LA TROISIÈME N'A PAS BESOIN D'UNE TROISIÈME CARTE. `MeshStandardMaterial` n'offre qu'un seul
+ * second jeu d'UV, partagé par `aoMap` et `lightMap`, donc une échelle de plus demanderait un
+ * shader. On la compose donc DANS la texture macro : le grain y est mélangé avec lui-même répété
+ * seize fois, ce qui donne une période effective de 240/16 = 15 unités, et des motifs de 0,06 à
+ * 0,94 u. Le chaînon manquant, sans un octet de plus.
+ *
+ * ⚠️ SEIZE PARCE QU'IL DIVISE 512, et c'est la leçon de #435c ter payée une fois pour toutes : un
+ * sous-échantillonnage qui ne tombe pas juste sur le bord de la texture ne se raccorde pas, et la
+ * répétition se voit en carrés.
+ */
+export const GROUND_MACRO_SOUS_ECHELLE_3D = 16;
+
+/** Part de la grande échelle dans le mélange. Le reste va à la sous-échelle. */
+export const GROUND_MACRO_POIDS_3D = 0.6;
+
+/**
+ * Les échelles se chaînent-elles sans trou ? Fonction PURE.
+ *
+ * On donne les tuiles en unités monde, de la plus fine à la plus grande. Deux échelles voisines se
+ * touchent si le plus GROS motif de l'une atteint le plus FIN de la suivante — les bandes retenues,
+ * 2 px et 32 px de texture, étant celles où un grain cuit porte encore quelque chose.
+ */
+export const BANDE_FINE_PX_3D = 2, BANDE_GROSSE_PX_3D = 32;
+
+export function echellesSansTrou3D(tuiles, coteTexture = GROUND_MODULATION_TAILLE_3D){
+  const t = (tuiles || []).map(Number);
+  const c = Number(coteTexture);
+  if (!t.length || !t.every(Number.isFinite) || t.some(v => v <= 0) || !Number.isFinite(c) || c <= 0) return false;
+  for (let i = 0; i + 1 < t.length; i++) {
+    if (t[i] >= t[i + 1]) return false;                      // désordonnées : la question n'a pas de sens
+    if (t[i] * BANDE_GROSSE_PX_3D / c < t[i + 1] * BANDE_FINE_PX_3D / c) return false;
+  }
+  return true;
+}
+
 /** La répétition de la couche large d'une matière photographiée. Fonction PURE. */
 export function repeatMacro3D(repeat, rapport = GROUND_MACRO_RATIO_3D){
   const r = Number(repeat), q = Number(rapport);

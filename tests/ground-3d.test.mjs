@@ -38,7 +38,8 @@ import {
   GROUND_TYPE_DEFS, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SIZE_3D, reliefRepresentable3D,
   GROUND_MODULATION_REPEAT_3D, MARGE_MODULATION_3D, modulationAssezLente3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
-  GROUND_MACRO_RATIO_3D, repeatMacro3D,
+  GROUND_MACRO_RATIO_3D, repeatMacro3D, GROUND_MACRO_SOUS_ECHELLE_3D,
+  GROUND_MACRO_POIDS_3D, echellesSansTrou3D,
   PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
   TEXELS_PAR_PIXEL_MAX_3D, texelsParPixel3D, netteteAcceptable3D, WALL_PX_PER_UNIT_3D,
   tailleDeLaPlaque3D, plaqueBienDimensionnee3D,
@@ -721,7 +722,12 @@ describe('Sol : le mélange multi-échelles, la même image deux fois', () => {
     // garder la main sur le tableau, un canevas factice n'en rendant pas de lisible.
     _viderGrains3D(); _viderTexturesDuSol3D();
     const def = GROUND_TYPE_DEFS.find(d => d.grain);
-    _setGrain3D(def.grain, { width: 4, height: 4 });
+    // ⚠️ LES DIMENSIONS DU FAUX GRAIN DOIVENT S'ACCORDER À CELLES DU FAUX `getImageData`, et ma
+    // première version disait 4×4 d'un côté et 2×2 de l'autre. Tant que le code parcourait le
+    // tableau à plat, l'écart ne se voyait pas ; dès qu'il a indexé par (x, y), il est sorti du
+    // tableau et a lu des NaN. Une fixture incohérente ne casse qu'au moment où le code devient
+    // plus précis, c'est-à-dire au pire moment.
+    _setGrain3D(def.grain, { width: 2, height: 2 });
     solDEssai();
 
     // ⚠️ DEUX CANEVAS SONT PEINTS PENDANT CE RENDU, et ma première version attrapait le mauvais.
@@ -764,6 +770,103 @@ describe('Sol : le mélange multi-échelles, la même image deux fois', () => {
     assert.ok(niveaux[0] < niveaux[1] && niveaux[1] < niveaux[2] && niveaux[2] < niveaux[3],
       `niveaux ${niveaux.join(', ')} : l’ordre du grain n’est pas conservé`);
     _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('⚠️ LES TROIS ÉCHELLES SE CHAÎNENT SANS TROU', () => {
+    // ⚠️ DEUX ÉCHELLES EN LAISSAIENT UN, ET IL SE VOYAIT. Signalé une fois le mélange en place :
+    // « à longue et proche distance c'est vraiment bien, à moyenne distance encore du flou ». En
+    // unités monde, la couche fine portait de 0,01 à 0,23 et la macro de 0,94 à 15 : entre les
+    // deux, rien. De près la fine tenait le rendu, de loin la macro, et au milieu l'œil cherchait
+    // une bande qui n'existait pas.
+    for (const def of GROUND_TYPE_DEFS.filter(d => d.grain)) {
+      const macro = GROUND_PLANE_SIZE_3D / repeatMacro3D(def.repeat);
+      const echelles = [GROUND_PLANE_SIZE_3D / def.repeat, macro / GROUND_MACRO_SOUS_ECHELLE_3D, macro];
+      assert.ok(echellesSansTrou3D(echelles),
+        `${def.id} : tuiles de ${echelles.map(t => t.toFixed(2)).join(', ')} u — une bande manque`);
+    }
+  });
+
+  test('⚠️ LE GARDE-FOU QUI COMPTE : SANS LA SOUS-ÉCHELLE, LE CRITÈRE DÉNONCE LE TROU', () => {
+    // Sans ce témoin, le test ci-dessus serait vrai d'un critère qui accepte tout — et il l'aurait
+    // été de la version LIVRÉE, celle que l'utilisateur a jugée floue. C'est le seul moyen de
+    // montrer que la garde distingue vraiment l'avant de l'après.
+    for (const def of GROUND_TYPE_DEFS.filter(d => d.grain)) {
+      const macro = GROUND_PLANE_SIZE_3D / repeatMacro3D(def.repeat);
+      assert.equal(echellesSansTrou3D([GROUND_PLANE_SIZE_3D / def.repeat, macro]), false,
+        `${def.id} : deux échelles seules devraient être dénoncées`);
+    }
+    // Et les entrées absurdes ne passent pas pour des chaînes valides.
+    assert.equal(echellesSansTrou3D([]), false);
+    assert.equal(echellesSansTrou3D([240, 15, 3.75]), false, 'des échelles désordonnées n’ont pas de sens');
+    for (const mauvais of [undefined, null, [NaN], [0], [-2], ['grand']]) {
+      assert.equal(echellesSansTrou3D(mauvais), false, `${JSON.stringify(mauvais)} doit être refusé`);
+    }
+  });
+
+  test('⚠️ LA COPIE SERRÉE EST BIEN SERRÉE : le mélange n’est PAS un remappage pixel à pixel', () => {
+    // ⚠️ CE TEST EST NÉ D'UN MUTANT QUI A ÉCHAPPÉ. Remplacer l'échantillon comprimé par le pixel
+    // courant supprime la troisième échelle et laisse une simple copie — exactement le défaut que
+    // #435f bis existe pour corriger — sans qu'aucune assertion ne bronche : la sortie restait
+    // croissante, bornée à 0 et 255, et l'ordre préservé.
+    //
+    // LE DISCRIMINANT EST L'ORDRE, et il est sûr : aucune transformation pixel à pixel, si tordue
+    // soit-elle, ne peut inverser deux valeurs. Seul un mélange avec une copie DÉPLACÉE le peut.
+    // Mesuré sur la fixture ci-dessous : 133 inversions avec la copie serrée, zéro sans.
+    //
+    // ⚠️ ET LA FIXTURE FAIT 6×6, CE QUI N'EST PAS ARBITRAIRE. Sur toute taille qui divise 16, ou
+    // qui vaut 3 ou 5, l'échantillon comprimé retombe sur le pixel courant et le mutant devient
+    // indiscernable. Une fixture mal dimensionnée aurait rendu ce test vrai pour rien.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const COTE = 6;
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: COTE, height: COTE });
+    solDEssai();
+
+    const rampe = [];
+    for (let k = 0; k < COTE * COTE; k++) rampe.push(100 + k);
+    const vrai = document.createElement;
+    const captures = [];
+    document.createElement = (balise) => {
+      if (balise !== 'canvas') return vrai(balise);
+      return {
+        width: 0, height: 0,
+        getContext: () => ({
+          drawImage(){}, putImageData(){},
+          getImageData(){
+            const data = new Uint8ClampedArray(COTE * COTE * 4);
+            for (let k = 0; k < rampe.length; k++) {
+              data[k * 4] = data[k * 4 + 1] = data[k * 4 + 2] = rampe[k]; data[k * 4 + 3] = 255;
+            }
+            captures.push(data);
+            return { data, width: COTE, height: COTE };
+          },
+        }),
+      };
+    };
+    try {
+      applyGroundType({ groundType: def.id });
+    } finally {
+      document.createElement = vrai;
+    }
+
+    const sortie = captures[captures.length - 1];
+    let inversions = 0;
+    for (let i = 0; i < rampe.length; i++) {
+      for (let j = 0; j < rampe.length; j++) {
+        if (rampe[i] < rampe[j] && sortie[i * 4] >= sortie[j * 4]) inversions++;
+      }
+    }
+    assert.ok(inversions > 20,
+      `${inversions} inversion(s) : la sortie est une fonction croissante de l’entrée, donc la `
+      + 'copie serrée ne l’est pas et la troisième échelle n’existe pas');
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('la sous-échelle divise la texture, et le mélange garde la grande dominante', () => {
+    assert.equal(GROUND_MODULATION_TAILLE_3D % GROUND_MACRO_SOUS_ECHELLE_3D, 0,
+      'la sous-échelle ne tombe pas sur le bord de la texture : elle ne se raccordera pas');
+    assert.ok(GROUND_MACRO_POIDS_3D > 0.5 && GROUND_MACRO_POIDS_3D < 1,
+      'la grande échelle doit rester dominante : c’est elle qui tient la vue de loin, déjà validée');
   });
 
   test('le garde-fou : le rapport macro refuse une entrée absurde et reste entier', () => {

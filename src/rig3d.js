@@ -12,6 +12,7 @@
 import {
   ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D, repeatMacro3D,
+  GROUND_MACRO_SOUS_ECHELLE_3D, GROUND_MACRO_POIDS_3D,
   GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
@@ -632,8 +633,27 @@ function modulationDuSol3D(def) {
   tc.drawImage(img, 0, 0);
   const donnees = tc.getImageData(0, 0, toile.width, toile.height);
   const px = donnees.data;
+  const L = toile.width, H = toile.height;
+
+  // ⚠️ LA TROISIÈME ÉCHELLE EST COMPOSÉE ICI, DANS LA MÊME TEXTURE. Le grain est mélangé avec
+  // lui-même répété seize fois : la copie serrée donne une période effective seize fois plus
+  // courte, et comble la bande de 0,23 à 0,94 unité où deux échelles seules ne laissaient rien.
+  //
+  // ⚠️ EN ARITHMÉTIQUE DE PIXELS, PAS EN `drawImage`. Un second dessin serait plus court à écrire
+  // et invisible à la mesure : le canevas des tests absorbe les dessins et ne rend que des
+  // tableaux. Ce qui se calcule sur le tableau se vérifie.
+  const sous = GROUND_MACRO_SOUS_ECHELLE_3D, poids = GROUND_MACRO_POIDS_3D;
+  const source = new Uint8ClampedArray(L * H);
+  for (let i = 0, j = 0; i < px.length; i += 4, j++) source[j] = px[i];
   let bas = 255, haut = 0;
-  for (let i = 0; i < px.length; i += 4) { if (px[i] < bas) bas = px[i]; if (px[i] > haut) haut = px[i]; }
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < L; x++) {
+      const serre = source[((y * sous) % H) * L + ((x * sous) % L)];
+      const v = poids * source[y * L + x] + (1 - poids) * serre;
+      if (v < bas) bas = v; if (v > haut) haut = v;
+      px[(y * L + x) * 4] = v;
+    }
+  }
   const etendue = haut - bas || 1;
   for (let i = 0; i < px.length; i += 4) {
     const v = Math.round(((px[i] - bas) / etendue) * 255);
