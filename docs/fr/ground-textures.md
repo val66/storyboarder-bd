@@ -111,6 +111,32 @@ catalogue grossit.
 en `LinearMipMapLinear`. Deux classes voisines, deux jeux de défauts, aucun signal. C'est ce qui a
 crénelé le Sol en #435c bis.
 
+## Sourcer une matière : ce qu'il faut prendre, et ce qui piège
+
+Le mode d'emploi pratique vit dans `assets/textures/sources/_LISEZ-MOI.txt`, qui est **hors du
+dépôt** puisque le dossier des sources l'est. Ce qui suit est la partie qui ne doit pas disparaître
+avec lui.
+
+**Trois cartes, et trois seulement** : l'albédo (`Color`, `Diff`, `Albedo`, `BaseColor`), le relief
+(`Displacement`, `Disp`, `Height`) et la normale **en convention OpenGL** (`NormalGL`, `nor_gl`).
+La rugosité, le métal et les paquets ARM ne sont jamais lus. La normale DX inverserait le relief,
+et le cuiseur ne cherche que la GL.
+
+⚠️ **NE PAS PRENDRE L'OCCLUSION AMBIANTE SI LE DÉPLACEMENT EST LÀ.** Les deux portent du relief et
+le cuiseur accepte l'un OU l'autre : Poly Haven ne livre pas toujours de déplacement, et sur un
+tissage l'occlusion est meilleure, puisqu'elle contient l'ombre entre les fils. Les deux ensemble,
+il refuse. Avant #431, `find` rendait la première correspondance dans l'ordre alphabétique, si bien
+que `_ao_` passait devant `_disp_` : le grain sortait de la mauvaise carte, sans message.
+
+⚠️ **LES .EXR SONT IGNORÉS**, le cuiseur ne lit que `.jpg`, `.jpeg` et `.png`. Une normale en EXR
+n'existe pas pour lui, et il refuse en disant qu'elle manque.
+
+**Le 1K suffit, et c'est mesuré.** Tout est ramené à 512² à la cuisson. Sur Paper005, la seule
+source 4K du dépôt, passer par 1K avant d'arriver en 512 change le résultat de 0,21 niveau sur 255
+en moyenne, 1 au maximum, et le contraste local de 0,16 %. Les deux chemins finissent à 512 texels,
+et ce que le 4K porte en plus est sous la limite de résolution de cette sortie. Cette réponse tient
+**tant que `TAILLE_GRAIN` vaut 512** : s'il passait à 1024, un 1K deviendrait du 1:1.
+
 ## Ce qui reste en réserve, avec son déclencheur
 
 **Carte de détail.** Une texture haute fréquence surimposée, qui sert le très gros plan. La réponse

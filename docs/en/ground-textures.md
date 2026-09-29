@@ -108,6 +108,31 @@ catalogue grows.
 born `LinearMipMapLinear`. Two neighbouring classes, two sets of defaults, no signal. That is what
 aliased the Ground in #435c bis.
 
+## Sourcing a material: what to take, and what traps
+
+The practical instructions live in `assets/textures/sources/_LISEZ-MOI.txt`, which is **outside the
+repository** since the sources folder is. What follows is the part that must not disappear with it.
+
+**Three maps, and only three**: albedo (`Color`, `Diff`, `Albedo`, `BaseColor`), height
+(`Displacement`, `Disp`, `Height`) and the normal map **in OpenGL convention** (`NormalGL`,
+`nor_gl`). Roughness, metalness and packed ARM maps are never read. A DX normal would invert the
+relief, and the baker only looks for the GL one.
+
+⚠️ **DO NOT TAKE AMBIENT OCCLUSION IF DISPLACEMENT IS THERE.** Both carry relief and the baker
+accepts one OR the other: Poly Haven does not always ship a displacement map, and on a weave the
+occlusion is better, since it holds the shadow between the threads. Both together, it refuses.
+Before #431, `find` returned the first match in alphabetical order, so `_ao_` came before `_disp_`:
+the grain was baked from the wrong map, with no message.
+
+⚠️ **.EXR FILES ARE IGNORED**, the baker only reads `.jpg`, `.jpeg` and `.png`. A normal map in EXR
+does not exist for it, and it refuses saying the map is missing.
+
+**1K is enough, and it is measured.** Everything is reduced to 512² at bake time. On Paper005, the
+repository's only 4K source, going through 1K before reaching 512 changes the result by 0.21 level
+out of 255 on average, 1 at most, and the local contrast by 0.16 %. Both paths end at 512 texels,
+and what the 4K carries beyond that is below the resolution limit of that output. This answer holds
+**as long as `TAILLE_GRAIN` is 512**: were it raised to 1024, a 1K source would become 1:1.
+
 ## What is held in reserve, with its trigger
 
 **Detail map.** A high-frequency texture overlaid on top, serving the extreme close-up. The
