@@ -44,7 +44,7 @@ const DEHORS = ['main.js', 'preload.js', 'index.html']
 const SEAUX_DE_TEST = [
   '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
   '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
-  '_setImageCacheEntry', 'fermeturesEnregistrees',
+  '_setImageCacheEntry', 'fermeturesEnregistrees', '_poserSolPourTests3D',
   // #431b2 — `bubble-grain.js` garde deux Map de module : les grains chargés et les motifs
   // composés. Sans ces deux seaux, aucun test ne pourrait ni repartir d'un état propre entre deux
   // cas, ni injecter un grain sans réseau — donc aucun ne pourrait tenir l'éviction du cache.
@@ -283,6 +283,10 @@ const EN_ATTENTE = {
   // L'inscrire ici plutôt que de le faire appeler quelque part pour la forme, ce qui donnerait un
   // appel décoratif et un détecteur satisfait par du théâtre.
   reliefRepresentable3D: '#435b — critère de Nyquist, tenu par la garde, appelé par aucun rendu',
+  // #435c — même nature que le précédent, et même raison de ne pas l'appeler pour la forme : il
+  // énonce la condition à laquelle la couche large reste invisible en tant que carrelage, et c'est
+  // tests/ground-3d.test.mjs qui l'exige du réglage livré.
+  modulationAssezLente3D: '#435c — critère de période, tenu par la garde, appelé par aucun rendu',
 };
 
 function exportsSansAppelant(){
@@ -375,7 +379,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 2,
+    assert.equal(Object.keys(EN_ATTENTE).length, 3,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

@@ -10,7 +10,7 @@
  */
 
 import {
-  ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
+  ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
 import {
@@ -531,6 +531,19 @@ export let personaScene3D = null, personaCamera3D = null, personaRenderer3D = nu
 // shown/hidden depending on whether a Panel's combined scene is being rendered (see renderPanelScene3D) or
 // an independent preview of a single Element (see showOnlyFigure3D, which hides it in that case).
 export let groundMesh3D = null;
+
+/**
+ * Pose le Sol depuis un test. Il n'a pas d'appelant dans l'application, par construction.
+ *
+ * ⚠️ IL EXISTE PARCE QU'UN MUTANT A ÉCHAPPÉ. `applyGroundType` était tenue par un test TEXTUEL, qui
+ * vérifiait que `def.plaques` et `aoMapIntensity` APPARAISSENT dans la fonction. Remplacer
+ * l'intensité posée par un 1 en dur laissait les deux chaînes en place, donc le test au vert :
+ * il affirmait qu'un identifiant est PRÉSENT là où il fallait qu'il GOUVERNE, la famille de défaut
+ * que ce dépôt nomme le plus souvent. Le vrai Sol se construit dans `ensurePersonaScene3D`, qui
+ * demande un WebGLRenderer et ne tourne pas sous Node ; ce seau permet d'en poser un faux et
+ * d'observer ce que la fonction écrit vraiment sur le matériau.
+ */
+export function _poserSolPourTests3D(mesh){ groundMesh3D = mesh; }
 // ↳ src/constants.js
 // ↳ src/constants.js
 // ↳ src/constants.js
@@ -545,6 +558,83 @@ const _groundTexCache = {};
 // ════════════════════════════════════════════════════════════
 // 3D : ENVIRONMENT
 // ════════════════════════════════════════════════════════════
+/**
+ * La COUCHE LARGE du Sol : des plaques de teinte, de période bien plus grande que la matière.
+ *
+ * ⚠️ ELLE EXISTE PARCE QUE LA MATIÈRE N'ATTEINT PAS L'ÉCRAN. Une tuile occupe une cinquantaine de
+ * pixels pour une texture de 512 : mesuré sur les quatorze matières et sur deux photographies
+ * d'herbe, au-delà de 64 px de motif il ne reste que 1 % de la variance. Ce que la Case montre est
+ * donc un aplat bruité, et aucune photographie n'y changera rien, parce qu'une texture PBR
+ * carrelable est fabriquée pour être uniforme à grande échelle, sans quoi son carrelage se verrait.
+ * La propriété qui la rend carrelable est celle qui la fait disparaître à distance.
+ *
+ * ⚠️ UNE SEULE TEXTURE POUR LES QUATORZE MATIÈRES, ET L'INTENSITÉ SEULE CHANGE. Le motif de plaques
+ * d'une pelouse et celui d'un sable ne diffèrent pas par leur DESSIN mais par leur ampleur : une
+ * pelouse est inégale, un marbre poli ne l'est pas. Une texture par matière serait treize fois le
+ * même bruit à treize amplitudes, c'est-à-dire treize occasions de diverger. L'amplitude vit dans
+ * le registre (`plaques`) et passe par `aoMapIntensity`.
+ *
+ * ⚠️ ET C'EST UN aoMap, PAS UN SECOND map. `MeshStandardMaterial` n'a qu'une couche diffuse, mais
+ * three.js r128 donne à `aoMap` son PROPRE jeu d'UV et sa propre matrice — vérifié dans le fichier
+ * livré, `n.aoMap ? s = n.aoMap : n.lightMap && (s = n.lightMap)` puis `uv2Transform.copy(s.matrix)`.
+ * Deux périodes indépendantes sans toucher au shader. L'ambiante de ce dépôt vaut 0,75 contre 0,55
+ * pour le soleil, donc l'indirect, seul touché par un aoMap, domine l'éclairage d'une Case.
+ */
+let _modulationSol3D = null;
+
+export function buildGroundModulation3D() {
+  if (_modulationSol3D) return _modulationSol3D;
+  const T = 512;
+
+  // Bruit de valeur lissé, en octaves. Repris de ce qui servait au relief retiré en #435b, à ceci
+  // près qu'il alimente cette fois quelque chose que l'écran voit.
+  let graine = 1337;
+  const alea = () => { graine = (graine * 1664525 + 1013904223) & 0xffffffff; return (graine >>> 0) / 0xffffffff; };
+  const grille = (n) => { const g = new Float32Array(n * n); for (let i = 0; i < g.length; i++) g[i] = alea(); return g; };
+  const bruit = (px, py, g, cw, nc) => {
+    const gx = px / cw, gy = py / cw, ix = Math.floor(gx) | 0, iy = Math.floor(gy) | 0;
+    const fx = gx - ix, fy = gy - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const at = (r, c) => g[((r % nc + nc) % nc) * nc + ((c % nc + nc) % nc)];
+    return at(iy, ix) * (1 - sx) * (1 - sy) + at(iy, ix + 1) * sx * (1 - sy)
+         + at(iy + 1, ix) * (1 - sx) * sy + at(iy + 1, ix + 1) * sx * sy;
+  };
+  // Trois octaves seulement, sur une base large : au-delà, on rajouterait du détail fin, c'est-à-dire
+  // exactement ce que cette couche existe pour ne pas faire.
+  const couches = [];
+  for (let o = 0; o < 3; o++) {
+    const f = 1 << o, nc = Math.ceil(T * f / 160) + 3;
+    couches.push({ f, cw: 160 / f, g: grille(nc), nc });
+  }
+  const fbm = (px, py) => {
+    let v = 0, a = 1, t = 0;
+    for (const l of couches) { v += a * bruit(px * l.f, py * l.f, l.g, l.cw, l.nc); t += a; a *= 0.5; }
+    return v / t;
+  };
+
+  const brut = new Float32Array(T * T);
+  let bas = Infinity, haut = -Infinity;
+  for (let y = 0; y < T; y++) {
+    for (let x = 0; x < T; x++) {
+      const v = fbm(x, y);
+      brut[y * T + x] = v;
+      if (v < bas) bas = v; if (v > haut) haut = v;
+    }
+  }
+  // Étalée sur toute la plage : l'amplitude réelle est décidée par matière, pas ici.
+  const etendue = haut - bas || 1;
+  const data = new Uint8Array(T * T * 4);
+  for (let i = 0; i < brut.length; i++) {
+    const v = Math.round(((brut[i] - bas) / etendue) * 255);
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255;
+  }
+  const texture = new THREE.DataTexture(data, T, T, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(GROUND_MODULATION_REPEAT_3D, GROUND_MODULATION_REPEAT_3D);
+  texture.needsUpdate = true;
+  _modulationSol3D = texture;
+  return texture;
+}
+
 export function buildGroundTexture(type) {
   if (_groundTexCache[type]) return _groundTexCache[type];
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
@@ -834,8 +924,14 @@ export function applyGroundType(panel) {
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
   const mat = groundMesh3D.material;
   const { map } = buildGroundTexture(type);
+  const plaques = buildGroundModulation3D();
   let dirty = false;
   if (mat.map !== map)                                 { mat.map = map; dirty = true; }
+  if (mat.aoMap !== plaques)                           { mat.aoMap = plaques; dirty = true; }
+  // `plaques` vaut 0 pour le Sol neutre, qui est un aplat volontaire : l'intensité l'éteint sans
+  // qu'il faille retirer la carte, donc sans recompiler le shader à chaque changement de matière.
+  const ampleur = Number.isFinite(def.plaques) ? def.plaques : 0;
+  if (mat.aoMapIntensity !== ampleur)                  { mat.aoMapIntensity = ampleur; dirty = true; }
   if (mat.roughness !== def.roughness)                 { mat.roughness = def.roughness;          dirty = true; }
   if (mat.metalness !== def.metalness)                 { mat.metalness = def.metalness;          dirty = true; }
   mat.color.set(0xffffff);
@@ -1310,8 +1406,16 @@ export function ensurePersonaScene3D(){
   personaRenderer3D.setClearColor(0x000000, 0);
   // Default ground (see the groundMesh3D declaration above): a single shared mesh, hidden by
   // default (visible=true only during a Panel's combined render, see renderPanelScene3D).
+  const geoSol = new THREE.PlaneGeometry(
+    GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SEGMENTS_3D);
+  // ⚠️ SANS uv2, UN aoMap NE LIT RIEN. Le shader de three.js échantillonne la couche large par
+  // l'attribut `uv2` ; absent, WebGL rend zéro pour tous les sommets, donc tous lisent le MÊME
+  // texel et la modulation devient un assombrissement uniforme. C'est mot pour mot le défaut de
+  // #435b sous un autre nom : une carte branchée, une donnée qui n'arrive pas, et rien qui le dise.
+  // tests/ground-3d.test.mjs l'exige.
+  geoSol.setAttribute('uv2', geoSol.attributes.uv);
   groundMesh3D = new THREE.Mesh(
-    new THREE.PlaneGeometry(GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SEGMENTS_3D),
+    geoSol,
     new THREE.MeshStandardMaterial({ color: GROUND_COLOR_DEFAULT_3D, roughness: 0.95, metalness: 0, side: THREE.DoubleSide })
   );
   // ⚠️ LE SOL REÇOIT, ET IL NE PROJETTE PAS (#422c). Il reçoit parce que c'est lui qui rend une

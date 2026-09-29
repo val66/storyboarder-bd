@@ -738,6 +738,49 @@ export function reliefRepresentable3D(repeat, segments){
   return 2 * r <= s;
 }
 
+/**
+ * Répétition de la COUCHE LARGE du Sol, celle qui porte les plaques de teinte.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ POURQUOI UNE SECONDE COUCHE, ET POURQUOI SA PÉRIODE EST TOUT L'ENJEU
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Une tuile de matière occupe une cinquantaine de pixels à l'écran pour une texture de 512 : le
+ * détail fin est moyenné dix contre un avant d'atteindre l'œil. Mesuré sur les quatorze matières
+ * et sur deux photographies d'herbe, au-delà de 64 px de motif il ne reste que 1 % de la variance.
+ * Une Case montre donc un aplat bruité, que la matière soit dessinée ou photographiée.
+ *
+ * Ce qui SURVIT à la minification est le motif grossier : un damier à gros carreaux garde 90 % de
+ * sa variation à la même réduction. D'où une couche à part, de période bien plus grande, qui porte
+ * ce que l'écran peut réellement résoudre.
+ *
+ * ⚠️ ET SA PÉRIODE NE DOIT SURTOUT PAS ÊTRE CELLE DE LA TUILE. La Neige l'a démontré avant qu'on
+ * l'écrive : c'est la seule matière actuelle à porter du gros motif (14 % de sa variance au-delà de
+ * 64 px), et c'est la seule dont le carrelage se voit franchement, en pois réguliers. Ce qui
+ * traverse la minification est aussi ce qui trahit la répétition. La couche large doit donc se
+ * répéter BEAUCOUP plus lentement que la portion de Sol visible dans une Case, faute de quoi on
+ * aura échangé un aplat contre un papier peint.
+ *
+ * 40 sur un plan de 12 000 unités donne une tuile de 300 unités, soit dix fois la trentaine
+ * d'unités qu'une Case montre au cadrage par défaut : le raccord tombe hors champ, et une plaque
+ * de dix unités occupe environ 400 px à l'écran, largement au-dessus du seuil de résolution.
+ */
+export const GROUND_MODULATION_REPEAT_3D = 40;
+
+/**
+ * La couche large est-elle assez lente pour que son raccord reste hors d'une Case ? Fonction pure.
+ *
+ * Le critère est un rapport, et non un seuil choisi : la tuile de modulation doit couvrir au moins
+ * `MARGE_MODULATION` fois la largeur de Sol visible. En deçà, la répétition entre dans le cadre.
+ */
+export const MARGE_MODULATION_3D = 4;
+
+export function modulationAssezLente3D(repeat, tailleDuPlan, largeurVisible){
+  const r = Number(repeat), t = Number(tailleDuPlan), v = Number(largeurVisible);
+  if (![r, t, v].every(Number.isFinite) || r <= 0 || t <= 0 || v <= 0) return false;
+  return (t / r) >= MARGE_MODULATION_3D * v;
+}
+
 export const GROUND_TYPE_DEFS = [
   // repeat: GROUND_PLANE_SIZE_3D=12000u → repeat=9600 gives a tile≈1.25u, repeat=1200 gives a tile≈10u.
   // The previous values (20-160) gave 75-600u tiles, hence the blurry look that was observed.
@@ -745,20 +788,20 @@ export const GROUND_TYPE_DEFS = [
   // ⚠️ PLUS DE dispScale ICI, cf. reliefRepresentable3D ci-dessus : il ne gouvernait rien de ce
   // qu'il annonçait, et ce qu'il faisait à la place était de décaler le Sol entier jusqu'à 0,84
   // unité sous les pieds des personnages.
-  { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600 },
-  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200 },
-  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 },
-  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 },
-  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800 },
-  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600 },
-  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800 },
-  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000 },
-  { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000 },
-  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400 },
-  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800 },
-  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200 },
-  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800 },
+  { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 , plaques: 0 },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600 , plaques: 0.3 },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200 , plaques: 0.16 },
+  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 , plaques: 0.34 },
+  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 , plaques: 0.22 },
+  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800 , plaques: 0.24 },
+  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3600 , plaques: 0.14 },
+  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 1800 , plaques: 0.12 },
+  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 6000 , plaques: 0.18 },
+  { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000 , plaques: 0.1 },
+  { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 2400 , plaques: 0.05 },
+  { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 4800 , plaques: 0.06 },
+  { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 1200 , plaques: 0.04 },
+  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 4800 , plaques: 0.08 },
 ];
 
 
