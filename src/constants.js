@@ -906,6 +906,47 @@ export function echellesSansTrou3D(tuiles, coteTexture = GROUND_MODULATION_TAILL
   return true;
 }
 
+/**
+ * Le format de la couche large, qui est une image en NIVEAUX DE GRIS. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ TROIS QUARTS DE SA MÉMOIRE NE SERVAIENT À RIEN
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Ses trois canaux portent la même valeur, et le rendu ne lit que le rouge, puisqu'elle sert de
+ * carte d'occlusion. Stockée en RGBA, elle occupait quatre octets par texel pour en employer un.
+ *
+ * ⚠️ ET UN PNG NE PÈSE PAS SON POIDS DE FICHIER EN MÉMOIRE GRAPHIQUE. Le disque le voit compressé,
+ * le GPU le reçoit DÉCODÉ : 248 Ko deviennent 1,33 Mo de VRAM une fois les mipmaps posées. C'est
+ * ce chiffre-là qui décide, pas celui de l'explorateur de fichiers.
+ *
+ * ⚠️ LE FORMAT DÉPEND DE LA VERSION DE WebGL, ET C'EST TOUTE LA DIFFICULTÉ. `RedFormat` demande
+ * WebGL 2 ; `LuminanceFormat` n'existe qu'en WebGL 1, où il est le seul à un canal. Choisir à
+ * l'aveugle donnerait une texture invalide chez quelqu'un dont la machine n'a pas la même version
+ * que la nôtre, et le défaut n'apparaîtrait pas ici.
+ *
+ * ⚠️ QUAND ON NE SAIT PAS, ON PREND RGBA. C'est le seul format valide partout : le repli coûte de
+ * la mémoire, jamais un rendu faux. Il est DÉCLARÉ plutôt que subi, et la garde exige que les trois
+ * branches existent — un repli qu'aucun test n'atteint est un repli dont on ignore s'il marche.
+ */
+export function formatCoucheMacro3D(webgl2){
+  if (webgl2 === true) return 'rouge';
+  if (webgl2 === false) return 'luminance';
+  return 'rgba';
+}
+
+/** Octets par texel selon le format. Fonction PURE. */
+export function canauxDuFormat3D(format){
+  return format === 'rouge' || format === 'luminance' ? 1 : 4;
+}
+
+/** La taille du tampon à allouer pour une image de ce format. Fonction PURE. */
+export function tailleDuTampon3D(format, largeur, hauteur){
+  const l = Number(largeur), h = Number(hauteur);
+  if (![l, h].every(Number.isFinite) || l <= 0 || h <= 0) return 0;
+  return Math.floor(l) * Math.floor(h) * canauxDuFormat3D(format);
+}
+
 /** La répétition de la couche large d'une matière photographiée. Fonction PURE. */
 export function repeatMacro3D(repeat, rapport = GROUND_MACRO_RATIO_3D){
   const r = Number(repeat), q = Number(rapport);

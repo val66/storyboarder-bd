@@ -40,6 +40,7 @@ import {
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
   GROUND_MACRO_RATIO_3D, repeatMacro3D, GROUND_MACRO_SOUS_ECHELLE_3D,
   GROUND_MACRO_POIDS_3D, echellesSansTrou3D,
+  formatCoucheMacro3D, canauxDuFormat3D, tailleDuTampon3D,
   PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
   TEXELS_PAR_PIXEL_MAX_3D, texelsParPixel3D, netteteAcceptable3D, WALL_PX_PER_UNIT_3D,
   tailleDeLaPlaque3D, plaqueBienDimensionnee3D,
@@ -48,7 +49,7 @@ import {
 
 import {
   applyGroundType, buildGroundTexture, buildGroundModulation3D, _poserSolPourTests3D,
-  _viderTexturesDuSol3D,
+  _viderTexturesDuSol3D, _poserWebGL2PourTests3D,
 } from '../src/rig3d.js';
 // La mesure de couture du cuiseur de textures, déjà éprouvée par #431a et ses propres tests. En
 // écrire une seconde ici donnerait deux définitions d'un même mot, exactement ce que ce dépôt
@@ -884,5 +885,101 @@ describe('Sol : le mélange multi-échelles, la même image deux fois', () => {
     }
     assert.equal(repeatMacro3D(3200, 64), 50);
     assert.equal(repeatMacro3D(1, 64), 1, 'jamais zéro : une période nulle ne veut rien dire');
+  });
+});
+
+describe('Sol : les couches larges n’occupent qu’un canal', () => {
+  /**
+   * ⚠️ TROIS QUARTS DE LEUR MÉMOIRE NE SERVAIENT À RIEN. Une couche large est une image en niveaux
+   * de gris dont le rendu ne lit que le rouge, puisqu'elle sert de carte d'occlusion. Stockée en
+   * RGBA, elle occupait quatre octets par texel pour en employer un, et un PNG ne pèse pas son
+   * poids de fichier en mémoire graphique : 248 Ko sur disque, 1,33 Mo de VRAM mipmaps comprises.
+   *
+   * Aucun changement à l'écran, donc aucun test de rendu ne peut le voir. Ce qui se vérifie est le
+   * FORMAT choisi et la TAILLE du tampon alloué.
+   */
+  test('⚠️ LE FORMAT SUIT LA VERSION DE WebGL, ET LE REPLI EXISTE VRAIMENT', () => {
+    // Les trois branches sont éprouvées, y compris le repli : un repli qu'aucun test n'atteint est
+    // un repli dont on ignore s'il marche. `RedFormat` demande WebGL 2, `LuminanceFormat` n'existe
+    // qu'en WebGL 1, et RGBA est le seul valide partout.
+    assert.equal(formatCoucheMacro3D(true), 'rouge');
+    assert.equal(formatCoucheMacro3D(false), 'luminance');
+    for (const inconnu of [undefined, null, NaN, 0, 1, 'oui']) {
+      assert.equal(formatCoucheMacro3D(inconnu), 'rgba',
+        `${String(inconnu)} ne dit pas la version de WebGL : le repli doit s’appliquer`);
+    }
+  });
+
+  test('⚠️ ET LE TAMPON EST ALLOUÉ À LA TAILLE DU FORMAT, pas à celle d’hier', () => {
+    // La faute qui guette ici est l'oubli d'un des deux : un format à un canal avec un tampon RGBA
+    // gaspille toujours, un format RGBA avec un tampon à un canal rend une texture tronquée.
+    assert.equal(canauxDuFormat3D('rouge'), 1);
+    assert.equal(canauxDuFormat3D('luminance'), 1);
+    assert.equal(canauxDuFormat3D('rgba'), 4);
+    assert.equal(tailleDuTampon3D('rouge', 512, 512), 512 * 512);
+    assert.equal(tailleDuTampon3D('rgba', 512, 512), 512 * 512 * 4);
+    // Le gain annoncé dans docs/*/ground-textures.md, tenu par un test plutôt que par un souvenir.
+    assert.equal(tailleDuTampon3D('rgba', 512, 512) / tailleDuTampon3D('rouge', 512, 512), 4);
+    for (const mauvais of [undefined, null, NaN, 0, -8, 'grand']) {
+      assert.equal(tailleDuTampon3D('rouge', mauvais, 512), 0);
+      assert.equal(tailleDuTampon3D('rouge', 512, mauvais), 0);
+    }
+  });
+
+  test('⚠️ LA COUCHE LARGE PRODUITE PORTE BIEN LE TAMPON DE SON FORMAT', () => {
+    // Le lien entre la décision pure et la texture réelle. Sous Node il n'y a pas de renderer,
+    // donc c'est le repli RGBA qui s'applique — et le vérifier prouve au passage que le repli est
+    // le chemin réellement pris ici, et non une branche morte.
+    const t = buildGroundModulation3D();
+    const { width, height, data } = t.image;
+    assert.equal(data.length, tailleDuTampon3D(formatCoucheMacro3D(undefined), width, height),
+      'le tampon ne correspond pas au format choisi : texture tronquée ou mémoire gaspillée');
+    assert.equal(t.format, THREE.RGBAFormat, 'sans renderer, le repli valide partout doit s’appliquer');
+  });
+
+  test('⚠️ SOUS WebGL 2, LES DEUX COUCHES N’ALLOUENT QU’UN OCTET PAR TEXEL', () => {
+    // ⚠️ CE TEST EST NÉ D'UN MUTANT QUI A ÉCHAPPÉ, ET LE MUTANT ÉTAIT INSTRUCTIF. Figer le tampon
+    // de la couche procédurale à quatre octets ne rendait rien rouge : sous Node il n'y a pas de
+    // renderer, donc c'est le repli RGBA qui s'applique et le tampon figé lui correspond PAR
+    // ACCIDENT. Le gaspillage n'apparaissait qu'en WebGL 2, c'est-à-dire chez tout le monde sauf
+    // ici. Un test qui ne peut pas atteindre la branche qu'il garde ne garde rien.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    _poserWebGL2PourTests3D(true);
+    try {
+      const procedurale = buildGroundModulation3D();
+      assert.equal(procedurale.format, THREE.RedFormat, 'la couche procédurale n’est pas passée en un canal');
+      assert.equal(procedurale.image.data.length, procedurale.image.width * procedurale.image.height,
+        'tampon de la couche procédurale : quatre octets par texel là où un suffit');
+
+      const mesh = solDEssai();
+      const def = GROUND_TYPE_DEFS.find(d => d.grain);
+      _setGrain3D(def.grain, { width: 8, height: 8 });
+      applyGroundType({ groundType: def.id });
+      const macro = mesh.material.aoMap;
+      assert.equal(macro.format, THREE.RedFormat, 'la couche photographiée n’est pas passée en un canal');
+      assert.equal(macro.image.data.length, macro.image.width * macro.image.height,
+        'tampon de la couche photographiée : quatre octets par texel là où un suffit');
+    } finally {
+      // ⚠️ RENDRE LA MAIN, SANS QUOI LE RESTE DU FICHIER TESTE UNE MACHINE QUI N'EXISTE PAS. Un
+      // état de module posé par un test et jamais repris est la dépendance d'ordre la plus sournoise.
+      _poserWebGL2PourTests3D(null);
+      _viderGrains3D(); _viderTexturesDuSol3D();
+    }
+  });
+
+  test('⚠️ ET ELLE GARDE SON FILTRAGE ET SES MIPMAPS EN CHANGEANT DE CLASSE', () => {
+    // Le passage de CanvasTexture à DataTexture rejoue exactement le piège de #435c bis : les deux
+    // classes n'ont pas les mêmes défauts, et la seconde naît en « nearest » sans mipmap.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const mesh = solDEssai();
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: 8, height: 8 });
+    applyGroundType({ groundType: def.id });
+    for (const [nom, t] of [['procédurale', buildGroundModulation3D()], ['photographiée', mesh.material.aoMap]]) {
+      assert.equal(t.magFilter, THREE.LinearFilter, `couche ${nom} : grossie au plus proche voisin`);
+      assert.equal(t.minFilter, THREE.LinearMipMapLinearFilter, `couche ${nom} : réduite sans mipmap`);
+      assert.equal(t.generateMipmaps, true, `couche ${nom} : mipmaps désactivées`);
+    }
+    _viderGrains3D(); _viderTexturesDuSol3D();
   });
 });

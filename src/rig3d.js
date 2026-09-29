@@ -13,6 +13,7 @@ import {
   ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D, repeatMacro3D,
   GROUND_MACRO_SOUS_ECHELLE_3D, GROUND_MACRO_POIDS_3D,
+  formatCoucheMacro3D, canauxDuFormat3D, tailleDuTampon3D,
   GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
@@ -560,9 +561,27 @@ export function _poserSolPourTests3D(mesh){ groundMesh3D = mesh; }
  * chemin qu'il prétend vérifier. Un cache de module est un état partagé entre tous les tests d'un
  * fichier, et l'ordre d'exécution devient alors une dépendance que personne n'a écrite.
  */
+/**
+ * Force la version de WebGL vue par les couches larges. Sans appelant dans l'application.
+ *
+ * ⚠️ IL EXISTE PARCE QU'UN MUTANT A ÉCHAPPÉ, ET LE MUTANT ÉTAIT INSTRUCTIF. Figer le tampon de la
+ * couche procédurale à quatre octets par texel ne rendait RIEN rouge : sous Node il n'y a pas de
+ * renderer, donc le format retenu est le repli RGBA, et le tampon figé lui correspond par accident.
+ * Le gaspillage n'apparaissait que sur une vraie machine en WebGL 2, c'est-à-dire chez tout le
+ * monde sauf ici. Un test qui ne peut pas atteindre la branche qu'il garde ne garde rien.
+ *
+ * `null` rend la main au renderer, ce qui est l'état de l'application.
+ */
+export function _poserWebGL2PourTests3D(valeur){ _webgl2PourTests = valeur; }
+
 export function _viderTexturesDuSol3D(){
   for (const k of Object.keys(_groundTexCache)) delete _groundTexCache[k];
   for (const k of Object.keys(_macroSol3D)) delete _macroSol3D[k];
+  // ⚠️ ET LA COUCHE PROCÉDURALE AUSSI, qu'un premier oubli avait laissée dehors. Elle vit dans une
+  // variable simple et non dans un objet, donc elle échappait à la boucle sans que ça se voie : le
+  // test suivant retrouvait la texture du précédent, avec le format de l'ancienne machine. Un
+  // vidage partiel est plus trompeur qu'aucun vidage, parce qu'il inspire confiance.
+  _modulationSol3D = null;
 }
 // ↳ src/constants.js
 // ↳ src/constants.js
@@ -601,6 +620,36 @@ const _groundTexCache = {};
  * pour le soleil, donc l'indirect, seul touché par un aoMap, domine l'éclairage d'une Case.
  */
 let _modulationSol3D = null;
+
+/**
+ * Le format à un canal des couches larges, décidé une fois d'après le renderer.
+ *
+ * ⚠️ ON LIT LE RENDERER SANS LE CONSTRUIRE. `ensurePersonaScene3D` en fabrique un ; l'appeler ici
+ * le ferait naître au premier Sol dessiné, ce qui a déjà cassé vingt et un tests en #435e. Tant
+ * qu'il n'existe pas, `formatCoucheMacro3D` rend le repli RGBA, valide partout.
+ */
+let _webgl2PourTests = null;
+
+function formatDesCouchesLarges3D(){
+  const caps = personaRenderer3D && personaRenderer3D.capabilities;
+  const vu = _webgl2PourTests !== null ? _webgl2PourTests : (caps ? !!caps.isWebGL2 : undefined);
+  const nom = formatCoucheMacro3D(vu);
+  return { nom, format: { rouge: THREE.RedFormat, luminance: THREE.LuminanceFormat }[nom] || THREE.RGBAFormat };
+}
+
+/** Pose sur une texture les réglages que les deux couches larges partagent. */
+function reglerCoucheLarge3D(texture, repetition){
+  // ⚠️ UNE DataTexture NAÎT EN « NEAREST » SANS MIPMAP, là où une CanvasTexture naît en
+  // LinearMipMapLinear. Deux classes voisines, deux jeux de défauts, aucun signal : c'est ce qui a
+  // crénelé le Sol en #435c bis. 512 est une puissance de deux, donc les mipmaps sont légales.
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipMapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repetition, repetition);
+  texture.needsUpdate = true;
+  return texture;
+}
 const _macroSol3D = {};
 
 /**
@@ -661,11 +710,18 @@ function modulationDuSol3D(def) {
   }
   tc.putImageData(donnees, 0, 0);
 
-  const texture = new THREE.CanvasTexture(toile);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  const rep = repeatMacro3D(def.repeat);
-  texture.repeat.set(rep, rep);
-  texture.needsUpdate = true;
+  // ⚠️ ELLE SORT EN DataTexture, PLUS EN CanvasTexture, et c'est tout l'objet de ce passage : une
+  // CanvasTexture est forcément RGBA, donc quatre octets par texel pour une image dont un seul
+  // canal est lu. Le canevas ne sert plus qu'à COMPOSER ; ce qui part au GPU est le tampon.
+  const { format, nom } = formatDesCouchesLarges3D();
+  const canaux = canauxDuFormat3D(nom);
+  const data = new Uint8Array(tailleDuTampon3D(nom, L, H));
+  for (let i = 0, j = 0; j < L * H; i += 4, j++) {
+    if (canaux === 1) data[j] = px[i];
+    else { data[j * 4] = data[j * 4 + 1] = data[j * 4 + 2] = px[i]; data[j * 4 + 3] = 255; }
+  }
+  const texture = reglerCoucheLarge3D(
+    new THREE.DataTexture(data, L, H, format, THREE.UnsignedByteType), repeatMacro3D(def.repeat));
   _macroSol3D[def.id] = texture;
   return texture;
 }
@@ -723,23 +779,16 @@ export function buildGroundModulation3D() {
   }
   // Étalée sur toute la plage : l'amplitude réelle est décidée par matière, pas ici.
   const etendue = haut - bas || 1;
-  const data = new Uint8Array(T * T * 4);
+  const { format, nom } = formatDesCouchesLarges3D();
+  const canaux = canauxDuFormat3D(nom);
+  const data = new Uint8Array(tailleDuTampon3D(nom, T, T));
   for (let i = 0; i < brut.length; i++) {
     const v = Math.round(((brut[i] - bas) / etendue) * 255);
-    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255;
+    if (canaux === 1) data[i] = v;
+    else { data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255; }
   }
-  const texture = new THREE.DataTexture(data, T, T, THREE.RGBAFormat, THREE.UnsignedByteType);
-  // ⚠️ UNE DataTexture NAÎT EN FILTRAGE « NEAREST », SANS MIPMAP. Une CanvasTexture, elle, naît en
-  // LinearMipMapLinear : les deux classes n'ont pas les mêmes défauts, et j'ai pris ceux de la
-  // seconde pour acquis. Sur un plan qui fuit vers l'horizon, du plus proche voisin sans mipmap
-  // crénèle franchement, ce que l'utilisateur a vu tout de suite. 512 est une puissance de deux,
-  // donc les mipmaps sont légales en WebGL 1.
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipMapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(GROUND_MODULATION_REPEAT_3D, GROUND_MODULATION_REPEAT_3D);
-  texture.needsUpdate = true;
+  const texture = new THREE.DataTexture(data, T, T, format, THREE.UnsignedByteType);
+  reglerCoucheLarge3D(texture, GROUND_MODULATION_REPEAT_3D);
   _modulationSol3D = texture;
   return texture;
 }
