@@ -766,8 +766,28 @@ describe('⚠️ LA NATURE VOYAGE DANS LE NOM DU FICHIER', () => {
 });
 
 describe('nomDuGrain3D — un identifiant devient un fichier', () => {
+  test('⚠️ UN IDENTIFIANT ACCENTUÉ PERD SON ACCENT, IL NE GAGNE PAS UN TIRET', () => {
+    // ⚠️ TROUVÉ SUR UNE VRAIE CUISSON, PAS PAR UN TEST. `[^a-z0-9]+` traitait le « é » comme
+    // n'importe quel caractère interdit : « béton » sortait en `b-ton.png`, quand le registre
+    // demandait `beton.png`. Le chargement échouait alors en silence et la matière restait sur sa
+    // recette dessinée. Aucune des matières des Bulles n'ayant d'accent, rien ne l'avait révélé.
+    assert.equal(nomDuGrain3D('béton'), 'beton.png');
+    assert.equal(nomDuGrain3D('béton', 'couleur'), 'beton.couleur.png');
+    assert.equal(nomDuGrain3D('Forêt'), 'foret.png');
+    assert.equal(nomDuGrain3D('nuit étoilée'), 'nuit-etoilee.png');
+    // Ce qui n'est pas une lettre accentuée reste remplacé par un tiret : on retire le SIGNE, pas
+    // la séparation. Sans cette moitié, « vieux papier » deviendrait « vieuxpapier ».
+    assert.equal(nomDuGrain3D('vieux papier'), 'vieux-papier.png');
+  });
+
   test('minuscules, tirets, extension', () => {
-    assert.equal(nomDuGrain3D('Papier Froissé'), 'papier-froiss.png');
+    // ⚠️ CE TEST ÉPINGLAIT LE DÉFAUT. Il attendait `papier-froiss.png`, sans le « e » final : le
+    // « é » devenait un tiret, puis le tiret de queue était retiré, et la dernière lettre
+    // disparaissait avec lui. Écrit en regardant ce que la fonction FAISAIT plutôt que ce qu'on en
+    // attend, il a rendu le défaut officiel pendant tout ce temps. Le fichier livré s'appelle bien
+    // `papier-froisse.png`, parce que sa clé est écrite à la main dans le registre des Bulles et
+    // n'est jamais passée par cette fonction : rien ne les confrontait.
+    assert.equal(nomDuGrain3D('Papier Froissé'), 'papier-froisse.png');
     assert.equal(nomDuGrain3D('Paper005'), 'paper005.png');
   });
 

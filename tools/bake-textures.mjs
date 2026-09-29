@@ -535,7 +535,17 @@ export function natureDeLaTexture3D(contrasteAlbedo, contrasteRelief){
  * noms ; il n'en relit aucun.
  */
 export function nomDuGrain3D(id, nature = 'gris'){
-  const base = String(id).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  // ⚠️ LES ACCENTS SE DÉCOMPOSENT AVANT D'ÊTRE RETIRÉS, ET C'EST UNE CORRECTION. Sans cette
+  // normalisation, `[^a-z0-9]+` traitait le « é » comme n'importe quel caractère interdit et le
+  // remplaçait par un TIRET : la matière « béton » sortait en `b-ton.png`. Le registre, lui, aurait
+  // demandé `beton.png`, et le chargement aurait échoué en laissant la matière sur sa recette
+  // dessinée. Trouvé sur la première cuisson réelle d'un identifiant accentué, pas par un test.
+  //
+  // NFD sépare la lettre de son signe diacritique, la plage \u0300-\u036f les supprime, et « béton »
+  // devient « beton ». C'est ce qu'on attend d'un nom de fichier dérivé d'un mot français.
+  const base = String(id).trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return nature === 'couleur' ? base + '.couleur.png' : base + '.png';
 }
 
