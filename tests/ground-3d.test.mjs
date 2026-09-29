@@ -38,6 +38,7 @@ import {
   GROUND_TYPE_DEFS, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SIZE_3D, reliefRepresentable3D,
   GROUND_MODULATION_REPEAT_3D, MARGE_MODULATION_3D, modulationAssezLente3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
+  GROUND_MACRO_RATIO_3D, repeatMacro3D,
   PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
   TEXELS_PAR_PIXEL_MAX_3D, texelsParPixel3D, netteteAcceptable3D, WALL_PX_PER_UNIT_3D,
   tailleDeLaPlaque3D, plaqueBienDimensionnee3D,
@@ -58,6 +59,18 @@ import { existsSync } from 'node:fs';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const THREE = globalThis.THREE;
+
+/**
+ * Un faux Sol, de la même forme que le vrai. Celui de l'application naît dans
+ * `ensurePersonaScene3D`, qui construit un WebGLRenderer et ne tourne pas sous Node.
+ */
+const solDEssai = () => {
+  const geo = new THREE.PlaneGeometry(GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, 4, 4);
+  geo.setAttribute('uv2', geo.attributes.uv);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial());
+  _poserSolPourTests3D(mesh);
+  return mesh;
+};
 
 describe('Sol : un relief annoncé doit pouvoir exister', () => {
   test('⚠️ AUCUNE MATIÈRE NE DÉCLARE UN RELIEF QUE LE MAILLAGE NE PEUT PAS PORTER', () => {
@@ -244,13 +257,6 @@ describe('Sol : ce qu’applyGroundType écrit VRAIMENT sur le matériau', () =>
    * Le vrai Sol naît dans `ensurePersonaScene3D`, qui construit un WebGLRenderer et ne tourne pas
    * sous Node. On en pose donc un faux, de la même forme, et on lit ce que la fonction y écrit.
    */
-  const solDEssai = () => {
-    const geo = new THREE.PlaneGeometry(GROUND_PLANE_SIZE_3D, GROUND_PLANE_SIZE_3D, 4, 4);
-    geo.setAttribute('uv2', geo.attributes.uv);
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial());
-    _poserSolPourTests3D(mesh);
-    return mesh;
-  };
 
   test('⚠️ L’AMPLEUR DES PLAQUES POSÉE SUR LE MATÉRIAU EST CELLE DU REGISTRE, matière par matière', () => {
     const mesh = solDEssai();
@@ -266,10 +272,15 @@ describe('Sol : ce qu’applyGroundType écrit VRAIMENT sur le matériau', () =>
     assert.ok(vues.size >= 5, `${vues.size} intensités distinctes seulement : elles ne suivent pas la matière`);
   });
 
-  test('⚠️ LA COUCHE LARGE EST BIEN POSÉE, ET C’EST LA MÊME POUR TOUTES LES MATIÈRES', () => {
+  test('⚠️ LA COUCHE LARGE EST BIEN POSÉE, ET LES MATIÈRES DESSINÉES PARTAGENT LA MÊME', () => {
+    // ⚠️ « LA MÊME POUR TOUTES » N'EST PLUS VRAI DEPUIS #435f, et ce test disait donc le contraire
+    // de l'intention. Une matière PHOTOGRAPHIÉE porte désormais son propre grain très ralenti, pour
+    // que ce qui survit à la distance ressemble à ce qu'il représente. Seules les matières encore
+    // dessinées partagent le bruit abstrait, faute d'image à réemployer.
+    _viderGrains3D(); _viderTexturesDuSol3D();
     const mesh = solDEssai();
     const partagee = buildGroundModulation3D();
-    for (const def of GROUND_TYPE_DEFS) {
+    for (const def of GROUND_TYPE_DEFS.filter(d => !d.grain)) {
       applyGroundType({ groundType: def.id });
       assert.equal(mesh.material.aoMap, partagee,
         `${def.id} : la couche large n’est pas celle du module`);
@@ -627,5 +638,148 @@ describe('Sol : une matière photographiée doit pouvoir être VUE', () => {
     // Les deux côtés du critère sont atteignables, sans quoi une borne écrite ne garderait rien.
     assert.equal(netteteAcceptable3D(COTE_GRAIN, 3200, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), true);
     assert.equal(netteteAcceptable3D(COTE_GRAIN, 600, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), false);
+  });
+});
+
+describe('Sol : le mélange multi-échelles, la même image deux fois', () => {
+  const LARGEUR_VISIBLE_MACRO = PANEL_CAM_DEFAULT_DIST_3D;
+  /**
+   * ⚠️ CE BLOC TIENT LA TECHNIQUE QUE L'UTILISATEUR A SUGGÉRÉ D'ALLER CHERCHER. Macro/micro
+   * variation : la même texture échantillonnée à deux échelles très éloignées, la petite pour le
+   * détail de près, la grande pour ce que l'écran résout à distance. Ce qui la distingue d'un bruit
+   * abstrait est que les deux se RESSEMBLENT, puisqu'elles viennent de la même photographie.
+   */
+  test('⚠️ UNE MATIÈRE PHOTOGRAPHIÉE PORTE SON PROPRE GRAIN EN COUCHE LARGE, pas le bruit', () => {
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const mesh = solDEssai();
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: 16, height: 16 });
+    applyGroundType({ groundType: def.id });
+    assert.notEqual(mesh.material.aoMap, buildGroundModulation3D(),
+      `${def.id} porte encore le bruit abstrait : le mélange multi-échelles n’a pas eu lieu`);
+    assert.ok(mesh.material.aoMap, 'aucune couche large posée du tout');
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('⚠️ ET ELLE EST BEAUCOUP PLUS LENTE QUE SA PROPRE MATIÈRE', () => {
+    // Sans cela, les deux échelles se confondraient et il n'y aurait plus qu'une couche.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const mesh = solDEssai();
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: 16, height: 16 });
+    applyGroundType({ groundType: def.id });
+    assert.equal(mesh.material.aoMap.repeat.x, repeatMacro3D(def.repeat),
+      'la couche large ne prend pas la période macro déduite du registre');
+    assert.ok(mesh.material.aoMap.repeat.x * 8 < def.repeat,
+      `couche large à ${mesh.material.aoMap.repeat.x} contre ${def.repeat} pour la matière : `
+      + 'les deux échelles sont trop proches pour se distinguer');
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('⚠️ LA BANDE QUI SURVIT TOMBE DANS LA FENÊTRE DES PLAQUES', () => {
+    // Le grain cuit a son motif dominant à 2 px de texture : viser CETTE échelle demanderait une
+    // tuile de 1 800 unités, soixante fois le champ visible, où l'on ne verrait qu'un fragment
+    // informe. C'est sa bande des 16 px qu'on amène dans la fenêtre, et ce test le tient.
+    const BANDE_PX = 16;
+    for (const def of GROUND_TYPE_DEFS.filter(d => d.grain)) {
+      const tuile = GROUND_PLANE_SIZE_3D / repeatMacro3D(def.repeat);
+      const paquet = tuile * BANDE_PX / GROUND_MODULATION_TAILLE_3D;
+      assert.ok(plaqueBienDimensionnee3D(paquet, LARGEUR_VISIBLE_MACRO),
+        `${def.id} : paquets de ${paquet.toFixed(1)} u, hors de la fenêtre des plaques`);
+    }
+  });
+
+  test('⚠️ ELLE EST COMPOSÉE UNE FOIS, PAS À CHAQUE RENDU DE CASE', () => {
+    // ⚠️ CE TEST TIENT UNE PERFORMANCE, ET C'EST ASSUMÉ. Composer la couche large parcourt 262 144
+    // pixels ; `applyGroundType` s'exécute à chaque rendu de Case. Sans cache, une Planche de
+    // quarante Cases en referait quarante par image. Le même défaut a déjà été introduit puis
+    // corrigé dans ce chantier pour la tuile teintée, sans qu'aucun test ne le retienne — un mutant
+    // a montré que rien ne l'empêchait de revenir.
+    //
+    // L'identité de l'objet est la seule trace observable d'un cache depuis l'extérieur : deux
+    // textures égales en contenu mais distinctes prouveraient qu'on a recomposé.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const mesh = solDEssai();
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: 16, height: 16 });
+    applyGroundType({ groundType: def.id });
+    const premiere = mesh.material.aoMap;
+    applyGroundType({ groundType: def.id });
+    assert.equal(mesh.material.aoMap, premiere,
+      'la couche large est recomposée à chaque rendu : 262 144 pixels par Case et par image');
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('⚠️ LE GRAIN MACRO EST ÉTIRÉ SUR TOUTE LA PLAGE, sinon il ne module presque rien', () => {
+    // ⚠️ SANS CE TEST, LA COUCHE LARGE D'UNE MATIÈRE PHOTOGRAPHIÉE SERAIT PRESQUE INOPÉRANTE. Le
+    // cuiseur centre son grain sur 128 avec une amplitude serrée : relevé 103 à 148 sur les deux
+    // herbes, soit 18 % de la plage. Employé tel quel comme aoMap, il assombrirait uniformément
+    // d'un demi et ne modulerait à peu près rien. Étiré, il occupe la plage du bruit qu'il
+    // remplace, donc `plaques` garde le sens qu'il avait dans le registre.
+    //
+    // Comme pour la teinte, il faut VOIR les pixels : on intercepte `document.createElement` pour
+    // garder la main sur le tableau, un canevas factice n'en rendant pas de lisible.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: 4, height: 4 });
+    solDEssai();
+
+    // ⚠️ DEUX CANEVAS SONT PEINTS PENDANT CE RENDU, et ma première version attrapait le mauvais.
+    // `applyGroundType` construit d'abord la tuile TEINTÉE de la matière, puis la couche large : en
+    // gardant la première capture, le test lisait le résultat de la teinte et voyait 49 là où il
+    // attendait 0. On garde donc toutes les captures et on lit la dernière, qui est la couche large.
+    const vrai = document.createElement;
+    const captures = [];
+    document.createElement = (balise) => {
+      if (balise !== 'canvas') return vrai(balise);
+      return {
+        width: 0, height: 0,
+        getContext: () => ({
+          drawImage(){}, putImageData(){},
+          getImageData(){
+            // La plage réelle d'un grain cuit, resserrée autour du gris neutre.
+            const data = new Uint8ClampedArray([
+              103, 103, 103, 255, 125, 125, 125, 255, 132, 132, 132, 255, 148, 148, 148, 255,
+            ]);
+            captures.push(data);
+            return { data, width: 2, height: 2 };
+          },
+        }),
+      };
+    };
+    try {
+      applyGroundType({ groundType: def.id });
+    } finally {
+      document.createElement = vrai;
+    }
+
+    assert.equal(captures.length, 2,
+      `${captures.length} canevas peints : on en attend deux, la tuile teintée et la couche large`);
+    const vus = captures[captures.length - 1];
+    const niveaux = [vus[0], vus[4], vus[8], vus[12]];
+    assert.equal(niveaux[0], 0, `le plus sombre ressort à ${niveaux[0]} au lieu de 0 : pas d’étirement`);
+    assert.equal(niveaux[3], 255, `le plus clair ressort à ${niveaux[3]} au lieu de 255`);
+    // Et l'ordre est préservé : un étirement qui inverserait ou écraserait le milieu donnerait une
+    // modulation qui ne suit plus la matière.
+    assert.ok(niveaux[0] < niveaux[1] && niveaux[1] < niveaux[2] && niveaux[2] < niveaux[3],
+      `niveaux ${niveaux.join(', ')} : l’ordre du grain n’est pas conservé`);
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('le garde-fou : le rapport macro refuse une entrée absurde et reste entier', () => {
+    assert.ok(GROUND_MACRO_RATIO_3D > 8, 'un rapport trop petit confondrait les deux échelles');
+    for (const mauvais of [undefined, null, NaN, 0, -4, 'soixante']) {
+      assert.equal(repeatMacro3D(mauvais), 0, `${String(mauvais)} comme repeat doit être refusé`);
+    }
+    // ⚠️ `undefined` EST À PART SUR LE SECOND ARGUMENT, et mon premier test l'avait oublié : il
+    // déclenche le paramètre par défaut, donc il rend le rapport du registre et non un refus. C'est
+    // le comportement voulu — un appelant qui ne précise rien prend la valeur commune — mais il ne
+    // se devine pas, d'où cette ligne séparée plutôt qu'un cas noyé dans la boucle.
+    assert.equal(repeatMacro3D(3200, undefined), repeatMacro3D(3200));
+    for (const mauvais of [null, NaN, 0, -4, 'soixante']) {
+      assert.equal(repeatMacro3D(3200, mauvais), 0, `${String(mauvais)} comme rapport doit être refusé`);
+    }
+    assert.equal(repeatMacro3D(3200, 64), 50);
+    assert.equal(repeatMacro3D(1, 64), 1, 'jamais zéro : une période nulle ne veut rien dire');
   });
 });

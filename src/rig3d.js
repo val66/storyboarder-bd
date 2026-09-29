@@ -11,7 +11,7 @@
 
 import {
   ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D,
-  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
+  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D, repeatMacro3D,
   GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
@@ -559,7 +559,10 @@ export function _poserSolPourTests3D(mesh){ groundMesh3D = mesh; }
  * chemin qu'il prétend vérifier. Un cache de module est un état partagé entre tous les tests d'un
  * fichier, et l'ordre d'exécution devient alors une dépendance que personne n'a écrite.
  */
-export function _viderTexturesDuSol3D(){ for (const k of Object.keys(_groundTexCache)) delete _groundTexCache[k]; }
+export function _viderTexturesDuSol3D(){
+  for (const k of Object.keys(_groundTexCache)) delete _groundTexCache[k];
+  for (const k of Object.keys(_macroSol3D)) delete _macroSol3D[k];
+}
 // ↳ src/constants.js
 // ↳ src/constants.js
 // ↳ src/constants.js
@@ -597,6 +600,55 @@ const _groundTexCache = {};
  * pour le soleil, donc l'indirect, seul touché par un aoMap, domine l'éclairage d'une Case.
  */
 let _modulationSol3D = null;
+const _macroSol3D = {};
+
+/**
+ * La couche large D'UNE MATIÈRE : son propre grain, très ralenti, ou le bruit abstrait à défaut.
+ *
+ * ⚠️ C'EST LE MÉLANGE MULTI-ÉCHELLES DU JEU VIDÉO, et la couche large le faisait à moitié. La même
+ * image échantillonnée à deux échelles très différentes : la petite porte le détail de près, la
+ * grande porte ce que l'écran résout à distance, et les deux se ressemblent puisqu'elles viennent
+ * de la même photographie. Un bruit abstrait, lui, posait des nappes en forme de nuages sur une
+ * matière qui est de l'herbe.
+ *
+ * ⚠️ LE GRAIN EST ÉTIRÉ SUR TOUTE LA PLAGE, et ce n'est pas cosmétique. Le cuiseur le centre sur
+ * 128 avec une amplitude serrée — relevé 103 à 148 sur les deux herbes, soit 18 % de la plage.
+ * Employé tel quel comme aoMap, il assombrirait uniformément d'un demi et ne moduleraient presque
+ * rien. Étiré, il occupe la même plage que le bruit qu'il remplace, donc `plaques` garde le sens
+ * qu'il avait et les réglages du registre n'ont pas à être repris.
+ *
+ * Les matières encore dessinées gardent le bruit : elles n'ont pas de photographie à ralentir, et
+ * leur recette n'est pas une image qu'on peut réemployer à une autre échelle.
+ */
+function modulationDuSol3D(def) {
+  if (!def.grain) return _modulationSol3D || buildGroundModulation3D();
+  const img = grainCharge3D(def.grain);
+  if (!img) return buildGroundModulation3D();
+  if (_macroSol3D[def.id]) return _macroSol3D[def.id];
+
+  const toile = document.createElement('canvas');
+  toile.width = img.width; toile.height = img.height;
+  const tc = toile.getContext('2d');
+  tc.drawImage(img, 0, 0);
+  const donnees = tc.getImageData(0, 0, toile.width, toile.height);
+  const px = donnees.data;
+  let bas = 255, haut = 0;
+  for (let i = 0; i < px.length; i += 4) { if (px[i] < bas) bas = px[i]; if (px[i] > haut) haut = px[i]; }
+  const etendue = haut - bas || 1;
+  for (let i = 0; i < px.length; i += 4) {
+    const v = Math.round(((px[i] - bas) / etendue) * 255);
+    px[i] = px[i + 1] = px[i + 2] = v; px[i + 3] = 255;
+  }
+  tc.putImageData(donnees, 0, 0);
+
+  const texture = new THREE.CanvasTexture(toile);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  const rep = repeatMacro3D(def.repeat);
+  texture.repeat.set(rep, rep);
+  texture.needsUpdate = true;
+  _macroSol3D[def.id] = texture;
+  return texture;
+}
 
 export function buildGroundModulation3D() {
   if (_modulationSol3D) return _modulationSol3D;
@@ -1022,7 +1074,7 @@ export function applyGroundType(panel) {
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
   const mat = groundMesh3D.material;
   const { map } = buildGroundTexture(type);
-  const plaques = buildGroundModulation3D();
+  const plaques = modulationDuSol3D(def);
   // ⚠️ LE SOL EST LA SURFACE LA PLUS RASANTE DE L'APPLICATION, et c'est le cas d'école du filtrage
   // anisotrope : la même note existe depuis #? dans model-cache.js pour les modèles importés, et le
   // Sol ne l'avait jamais reçu. Posé ici plutôt qu'à la construction des textures, parce que le

@@ -830,6 +830,39 @@ export function netteteAcceptable3D(coteGrain, repeat, tailleDuPlan, pixelsParUn
   return tx >= 1 && tx <= TEXELS_PAR_PIXEL_MAX_3D;
 }
 
+/**
+ * Combien de fois la couche large est plus LENTE que la matière, quand elle vient du même grain.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ LE MÉLANGE MULTI-ÉCHELLES, CE QUE FAIT L'INDUSTRIE ET CE QUE JE FAISAIS À MOITIÉ
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Suggéré par l'utilisateur : « as-tu cherché du côté du jeu vidéo ». La technique porte un nom,
+ * macro/micro variation ou multi-UV mixing : on échantillonne LA MÊME texture à deux échelles très
+ * différentes et on fond les deux. La grande porte ce que l'écran résout à distance, la petite le
+ * détail de près, et les deux se ressemblent puisqu'elles viennent de la même image.
+ *
+ * La couche large existait déjà ici, mais remplie d'un bruit ABSTRAIT. D'où des nappes en forme de
+ * nuages sur une matière qui est de l'herbe : la structure qui survivait à la distance ne
+ * ressemblait pas à ce qu'elle représentait.
+ *
+ * ⚠️ ET LE RAPPORT NE SE CHOISIT PAS AU JUGÉ. Le grain cuit a son motif dominant à 2 px de texture
+ * et une plage de 103 à 148 seulement : c'est un grain FIN par construction, le cuiseur normalisant
+ * son contraste à petite échelle. Viser son échelle dominante demanderait une tuile de 1 800
+ * unités, soit soixante fois le champ visible, où l'on ne verrait qu'un fragment informe. C'est sa
+ * bande des 16 px qu'il faut amener dans la fenêtre des plaques, 3,75 à 10 unités, ce qui donne un
+ * rapport de l'ordre de 64 : l'herbe à 3200 rend une couche large à 50, soit une tuile de 240
+ * unités pour 30 visibles.
+ */
+export const GROUND_MACRO_RATIO_3D = 64;
+
+/** La répétition de la couche large d'une matière photographiée. Fonction PURE. */
+export function repeatMacro3D(repeat, rapport = GROUND_MACRO_RATIO_3D){
+  const r = Number(repeat), q = Number(rapport);
+  if (![r, q].every(Number.isFinite) || r <= 0 || q <= 0) return 0;
+  return Math.max(1, Math.round(r / q));
+}
+
 /** Côté d'une cellule du bruit de la couche large, en pixels de sa texture de 512. */
 // ⚠️ ELLE DOIT DIVISER GROUND_MODULATION_TAILLE_3D, ET SES QUATRE OCTAVES AUSSI. La grille du bruit
 // boucle tous les `taille / cellule` pas : si ce compte n'est pas entier, le motif ne se raccorde
