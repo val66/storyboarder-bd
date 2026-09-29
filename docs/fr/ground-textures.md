@@ -1,0 +1,139 @@
+# Les textures du Sol
+
+*[English version](../en/ground-textures.md)*
+
+> Écrite après le chantier #435, sur demande : « fais une passe de recherche pour voir comment sont
+> gérées les textures dans le jeu vidéo, l'animation et les logiciels 3D ». Ce qu'elle rapporte a
+> surtout servi à nommer ce qu'on avait reconstruit à tâtons, et à trouver une dette qu'on ne
+> cherchait pas.
+
+## La densité de texels, l'unité qui manquait
+
+L'industrie mesure en **px/m** : combien de pixels de texture couvrent un mètre de surface. C'est
+exactement la grandeur que #435e avait reconstruite sous le nom de « texels par pixel d'écran »,
+en partant du flou observé plutôt que d'un vocabulaire.
+
+Repères courants, tous types de jeux confondus : 1024 px/m pour une arme en vue subjective, 512
+pour un personnage, 256 à 512 pour du décor, **64 à 128 pour de l'arrière-plan lointain**. Les jeux
+en vue de dessus descendent naturellement plus bas que les jeux en vue subjective : ce n'est pas
+une question de qualité, mais de distance d'observation.
+
+⚠️ **CE QUI SE VOIT N'EST PAS LA DENSITÉ, C'EST SON INCOHÉRENCE.** Toutes les sources le répètent :
+une surface nette à côté d'une surface floue se remarque immédiatement, alors qu'un décor entier à
+128 px/m se lit très bien. C'est la conséquence pratique la plus utile de cette note.
+
+## Ce que notre registre annonce, en px/m
+
+Une unité monde vaut un mètre : un personnage fait 1,75 unité pour 1,75 m. Relevé sur
+`GROUND_TYPE_DEFS` au moment d'écrire, avec un grain cuit en 512² :
+
+| matière | px/m | matière | px/m |
+|---|---|---|---|
+| sable | **410** | plancher, moquette, gravier | 205 |
+| terre, neige | 256 | bitume | 154 |
+| herbe | 137 | eau | 128 |
+| gazon, carrelage | 102 | béton | 77 |
+| | | marbre | **51** |
+
+**Un facteur huit entre les extrêmes.** Ces `repeat` ont été posés un par un, à l'œil, sans repère
+commun, et le commentaire d'origine raconte d'ailleurs qu'ils venaient d'être corrigés en bloc
+parce que les valeurs précédentes rendaient un résultat flou. On est passé d'un excès à l'autre.
+
+C'est la dette principale de ce registre, et elle est chiffrable : viser une cible unique
+supprimerait l'incohérence que l'industrie désigne comme le défaut le plus visible. La
+contrepartie est qu'un `repeat` encode aussi la taille RÉELLE d'un motif dessiné, une dalle de
+carrelage ou une lame de plancher, que la netteté n'a pas à renégocier. L'harmonisation ne peut donc
+pas être mécanique.
+
+## Le Sol ne rejoindra jamais la netteté des modèles
+
+Signalé à l'usage : « le sol paraît flou, c'est flagrant à côté de la netteté des modèles ». La
+cause est structurelle et non réglable : **les modèles sont en aplats de couleur, sans aucune
+texture**. Leur densité de texels est infinie, ils restent nets à toute distance par construction.
+
+Un sol photographique ne peut pas les rejoindre. Ce n'est pas un réglage à trouver, c'est un écart
+de registre visuel entre une surface échantillonnée et une surface calculée.
+
+L'autre voie existe et porte un nom, le **rendu non photoréaliste** : quantifier l'éclairage du Sol
+en quelques valeurs franches pour qu'il rejoigne le style des modèles, plutôt que l'inverse. Elle
+est cohérente avec un outil de storyboard, et elle n'a pas été essayée.
+
+## Les trois échelles, et le trou qu'en laissent deux
+
+La technique standard s'appelle **macro/micro variation**, ou multi-UV mixing : on échantillonne la
+même texture à plusieurs échelles très éloignées et on fond les résultats. La grande porte ce que
+l'écran résout à distance, la petite le détail de près, et surtout les deux se ressemblent
+puisqu'elles viennent de la même image.
+
+⚠️ **TROIS, PAS DEUX, ET LA DOCUMENTATION LE DISAIT.** #435f a livré deux échelles, et le trou s'est
+vu immédiatement à moyenne distance. En unités monde : la couche fine portait de 0,01 à 0,23, la
+macro de 0,94 à 15. Entre les deux, rien. La source que j'avais citée disait « appliquée trois
+fois, avec un tiling différent pour chacune » ; je n'en avais retenu que deux.
+
+`echellesSansTrou3D` écrit désormais le critère : deux échelles voisines se touchent si le plus
+gros motif de l'une atteint le plus fin de la suivante.
+
+## Ce qu'une photographie carrelable ne peut pas porter
+
+⚠️ **UNE TEXTURE PBR CARRELABLE EST FABRIQUÉE UNIFORME À GRANDE ÉCHELLE.** On lui retire ses
+dégradés et son éclairage propre, sans quoi son carrelage se verrait en plaques. Mesuré sur les
+deux herbes du dépôt : au-delà de 64 px de motif, il reste **1 %** de leur variance. La propriété
+qui les rend carrelables est celle qui les fait disparaître à distance.
+
+Conséquence directe : aucune photographie ne réglera le rendu lointain à elle seule. C'est ce qui a
+imposé la couche large.
+
+Et le grain CUIT l'est encore plus : le cuiseur normalise son contraste à petite échelle, si bien
+que son motif dominant tombe à 2 px de texture pour une plage de 103 à 148 seulement. C'est un
+grain, pas un albédo de terrain.
+
+⚠️ **LA LIGNE `tuile` DU RAPPORT DE CUISSON EST UN CRITÈRE DE CHOIX.** Elle donne la part du
+contraste qui vit à l'échelle de la tuile, donc précisément celle qui survit à la distance. Relevé :
+0,044 pour l'herbe, 0,076 pour le gazon, et c'est l'herbe qui a été jugée la plus floue. Sous 0,05,
+une photographie se moyennera en aplat quoi qu'on fasse ensuite. Cette mesure existait pour les
+Bulles, où elle sert à détecter un motif qui se répète ; personne ne l'avait formulée ainsi.
+
+## La mémoire du GPU n'est pas le poids du fichier
+
+Un PNG est compressé sur disque et **décodé** en mémoire graphique. Nos grains pèsent 248 Ko sur
+disque et **1,33 Mo de VRAM** chacun, mipmaps comprises : 512 × 512 × 4 octets, plus un tiers.
+Treize matières à deux couches feraient 34,7 Mo.
+
+⚠️ **NOTRE COUCHE MACRO EST EN NIVEAUX DE GRIS, STOCKÉE SUR QUATRE CANAUX.** Elle ne sert que de
+carte d'occlusion, donc seul le rouge est lu. En un seul canal, **13 Mo** seraient économisés sans
+rien changer au rendu. C'est le gain le moins cher de cette note.
+
+Le format KTX2/Basis reste compressé jusque dans la VRAM et divise par 4 à 8, mais il demande un
+transcodeur et une étape de build. Disproportionné pour treize textures ; à reconsidérer si le
+catalogue grossit.
+
+⚠️ **ET UNE DataTexture NAÎT EN FILTRAGE « NEAREST » SANS MIPMAP**, là où une `CanvasTexture` naît
+en `LinearMipMapLinear`. Deux classes voisines, deux jeux de défauts, aucun signal. C'est ce qui a
+crénelé le Sol en #435c bis.
+
+## Ce qui reste en réserve, avec son déclencheur
+
+**Carte de détail.** Une texture haute fréquence surimposée, qui sert le très gros plan. La réponse
+de l'industrie au compromis écarté en #435e : **une seule texture partagée par toutes les
+matières**, pas treize cuissons en 1024². Déclencheur : si le gros plan redevient un cas d'usage.
+
+**Anti-répétition.** Randomisation d'UV, carrelage hexagonal, texturage stochastique de Heitz et
+Neyret. Déclencheur : le jour où l'on dézoome assez pour voir la tuile se répéter. La couche large
+est aujourd'hui dix fois plus grande que le champ visible, donc le cas ne se présente pas.
+
+**Décalques.** Taches, fissures, flaques, feuilles. La réponse standard à la monotonie d'un grand
+sol, et la seule qui ajoute de l'intention plutôt que de la matière. Déclencheur : une demande de
+composition, pas de rendu.
+
+## Sources
+
+- [Texel Density, Beyond Extent](https://www.beyondextent.com/deep-dives/deepdive-texeldensity)
+- [Cibles px/m par type d'asset](https://bitsoulhosting.com/marketplace/blog/texel-density-game-assets-texture-resolution-guide)
+- [Texel Density Importance in 3D Game Asset creation, ArtStation](https://www.artstation.com/blogs/bendvfx/G1nB/texel-density-importance-in-3d-game-asset-creation)
+- [Problems and Solutions, Unity Shader Graph Terrain](https://docs.unity3d.com/Packages/com.unity.shadergraph@17.7/manual/Shader-Graph-Sample-Terrain-Solutions.html)
+- [Macro/micro variation sur un Landscape UE4](https://www.worldofleveldesign.com/categories/ue4/landscape-macro-tiling-variation.php)
+- [Stochastic Texturing, Jason Booth](https://medium.com/@jasonbooth_86226/stochastic-texturing-3c2e58d76a14)
+- [Choosing texture formats for WebGL and WebGPU, Don McCurdy](https://www.donmccurdy.com/2024/02/11/web-texture-formats/)
+- [Compressed textures et mémoire, forum three.js](https://discourse.threejs.org/t/compressed-textures-using-more-memory-than-uncompressed-textures/30077)
+- [Réduire la répétition d'un sol, Blender](https://3dskillup.art/reduce-ground-texture-repetition-blender/)
+- [Cel shading, Wikipedia](https://en.wikipedia.org/wiki/Cel_shading)

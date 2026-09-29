@@ -25,6 +25,7 @@ down.
 | [testing-method.md](testing-method.md) | Mutation testing, extracting to make things testable, what is out of reach. |
 | [pose-library.md](pose-library.md) | Poses: where they live, saving, deleting, restoring, merging on open. |
 | [rendering-performance.md](rendering-performance.md) | Measured cost of the drawing path, what the audit got wrong, how to re-measure. |
+| [ground-textures.md](ground-textures.md) | Texel density, the Ground's three scales, what a tileable photograph cannot carry, and GPU memory. |
 
 ## Procedures
 

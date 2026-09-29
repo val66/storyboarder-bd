@@ -25,6 +25,7 @@ régression difficile à retrouver.
 | [testing-method.md](testing-method.md) | Test par mutation, extraction pour rendre testable, ce qui est hors de portée. |
 | [pose-library.md](pose-library.md) | Poses : où elles vivent, enregistrer, supprimer, restaurer, fusion à l'ouverture. |
 | [rendering-performance.md](rendering-performance.md) | Coût mesuré du chemin de dessin, ce que l'audit avait faux, comment refaire la mesure. |
+| [ground-textures.md](ground-textures.md) | Densité de texels, les trois échelles du Sol, ce qu'une photographie carrelable ne peut pas porter, et la mémoire GPU. |
 
 ## Procédures
 
