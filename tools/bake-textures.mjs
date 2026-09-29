@@ -370,13 +370,45 @@ export function teinteDominante3D(albedoRgba){
  * `_Displacement`, `_NormalGL` ; Poly Haven écrit `denmin_fabric_02_diff_4k`, `_ao_`, `_nor_gl_`.
  * On reconnaît donc par MOTIF, en acceptant les deux — et on rend `null` plutôt que de deviner.
  */
+/** Les deux familles de relief, séparées : elles ne disent pas la même chose. */
+const MOTIFS_DEPLACEMENT = [/_displacement/i, /_disp[_.]/i, /_height/i];
+const MOTIFS_OCCLUSION = [/_ao[_.]/i, /_ambientocclusion/i];
+
 export function classerCartes3D(noms){
   const trouve = (motifs) => noms.find(f => motifs.some(m => m.test(f))) || null;
   return {
-    relief: trouve([/_displacement/i, /_disp[_.]/i, /_height/i, /_ao[_.]/i, /_ambientocclusion/i]),
+    relief: trouve([...MOTIFS_DEPLACEMENT, ...MOTIFS_OCCLUSION]),
     normale: trouve([/_normalgl/i, /_nor_gl/i, /_normal_gl/i]),
     albedo: trouve([/_color/i, /_diff[_.]/i, /_albedo/i, /_basecolor/i]),
   };
+}
+
+/**
+ * Un déplacement ET une occlusion dans le même dossier ? Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ QUAND LES DEUX SONT LÀ, C'EST L'ORDRE ALPHABÉTIQUE QUI TRANCHAIT
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Les deux familles portent du relief, et le cuiseur accepte l'une OU l'autre pour une bonne
+ * raison, écrite plus haut : Poly Haven ne livre pas toujours de déplacement, et sur un tissage
+ * l'occlusion est même MEILLEURE, puisqu'elle contient l'ombre entre les fils.
+ *
+ * Mais `find` rend la PREMIÈRE correspondance, et les fichiers arrivent triés par nom. Un dossier
+ * contenant `..._ao_1k.jpg` et `..._disp_1k.png` donnait donc le relief à l'occlusion, par le seul
+ * fait que « ao » précède « disp » dans l'alphabet. Aucune décision derrière, aucun message, et un
+ * grain plausible tiré de la mauvaise carte.
+ *
+ * ⚠️ ON REFUSE PLUTÔT QUE DE CHOISIR À LA PLACE DE L'UTILISATEUR, comme partout ailleurs dans cet
+ * outil. Poser une priorité fixe serait contredit par le cas du tissage ; imprimer un avertissement
+ * le noierait dans un rapport qu'on lit en diagonale — c'est exactement ce qui est arrivé à la
+ * ligne « tuile », lue pendant des semaines sans être entendue. Le refus, lui, ne se rate pas.
+ */
+export function reliefAmbigu3D(noms){
+  const liste = noms || [];
+  const deplacement = liste.find(f => MOTIFS_DEPLACEMENT.some(m => m.test(f))) || null;
+  const occlusion = liste.find(f => MOTIFS_OCCLUSION.some(m => m.test(f))) || null;
+  return deplacement && occlusion ? { deplacement, occlusion } : null;
 }
 
 /**
@@ -404,6 +436,15 @@ export function classerCartes3D(noms){
  */
 export function regimeDeCuisson3D(fichiers){
   const cartes = classerCartes3D(fichiers);
+  // ⚠️ L'AMBIGUÏTÉ SE TRANCHE AVANT TOUT LE RESTE. Un dossier qui porte les deux sources de relief
+  // ne manque de rien : il en a trop, et personne n'a dit laquelle compte.
+  const ambigu = reliefAmbigu3D(fichiers);
+  if (ambigu) {
+    return { regime: null, ...cartes,
+      refus: `deux sources de relief dans le même dossier, ${ambigu.deplacement} et `
+        + `${ambigu.occlusion}. N'en gardez qu'une : le déplacement convient à presque tout, `
+        + "l'occlusion est préférable pour un tissage, dont elle porte l'ombre entre les fils" };
+  }
   if (cartes.relief && cartes.normale) {
     return { regime: 'matiere', ...cartes, refus: null };
   }

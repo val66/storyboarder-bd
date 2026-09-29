@@ -64,7 +64,7 @@ import {
   PART_TUILE_SUSPECTE, BLOCS_ECHELLE_TUILE, COUTURE_SUSPECTE,
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
-  classerCartes3D, regimeDeCuisson3D, nomDuGrain3D,
+  classerCartes3D, regimeDeCuisson3D, reliefAmbigu3D, nomDuGrain3D,
   natureDeLaTexture3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
 import { natureDuNom3D } from '../src/bubble-texture.js';
@@ -496,6 +496,57 @@ describe('classerCartes3D — deux banques, deux nommages', () => {
   test('la rugosité n\'est jamais prise pour du relief', () => {
     const r = classerCartes3D(['Paper005_4K_Roughness.jpg', 'Paper005_4K_Displacement.jpg']);
     assert.equal(r.relief, 'Paper005_4K_Displacement.jpg');
+  });
+});
+
+describe('Deux sources de relief dans un dossier : on refuse, on ne tire pas au sort', () => {
+  /**
+   * ⚠️ CE BLOC EXISTE PARCE QUE L'ORDRE ALPHABÉTIQUE TRANCHAIT À NOTRE PLACE. Déplacement et
+   * occlusion portent tous deux du relief, et le cuiseur accepte l'un OU l'autre pour une raison
+   * écrite en tête de l'outil : Poly Haven ne livre pas toujours de déplacement, et sur un tissage
+   * l'occlusion est MEILLEURE, puisqu'elle contient l'ombre entre les fils.
+   *
+   * Mais `find` rend la PREMIÈRE correspondance et les fichiers arrivent triés par nom : un dossier
+   * contenant `..._ao_1k.jpg` et `..._disp_1k.png` donnait le relief à l'occlusion parce que « ao »
+   * précède « disp » dans l'alphabet. Aucune décision derrière, aucun message, et un grain
+   * plausible tiré de la mauvaise carte. Trouvé en préparant un téléchargement, pas par un test.
+   */
+  test('⚠️ UN DOSSIER QUI PORTE LES DEUX EST REFUSÉ, ET LE MESSAGE LES NOMME', () => {
+    const r = regimeDeCuisson3D([
+      'ground_grey_ao_1k.jpg', 'ground_grey_diff_1k.jpg',
+      'ground_grey_disp_1k.png', 'ground_grey_nor_gl_1k.png',
+    ]);
+    assert.equal(r.regime, null, 'une ambiguïté ne doit produire aucun régime');
+    // Les deux fichiers sont nommés : un refus qui ne dit pas QUOI supprimer fait chercher.
+    assert.match(r.refus, /ground_grey_disp_1k\.png/);
+    assert.match(r.refus, /ground_grey_ao_1k\.jpg/);
+  });
+
+  test('⚠️ MAIS CHACUNE SEULE RESTE ACCEPTÉE, et c’est tout l’enjeu', () => {
+    // Refuser l'occlusion en général casserait le cas du tissage, qui est la raison d'être de son
+    // acceptation. Ce test tient la frontière : c'est la COEXISTENCE qui est refusée, pas l'une
+    // des deux.
+    const avecDeplacement = regimeDeCuisson3D([
+      'x_diff_1k.jpg', 'x_disp_1k.png', 'x_nor_gl_1k.png']);
+    assert.equal(avecDeplacement.regime, 'matiere');
+    assert.equal(avecDeplacement.relief, 'x_disp_1k.png');
+    const avecOcclusion = regimeDeCuisson3D([
+      'denim_fabric_02_ao_4k.jpg', 'denim_fabric_02_diff_4k.jpg', 'denim_fabric_02_nor_gl_4k.png']);
+    assert.equal(avecOcclusion.regime, 'matiere');
+    assert.equal(avecOcclusion.relief, 'denim_fabric_02_ao_4k.jpg');
+  });
+
+  test('le garde-fou : le détecteur d’ambiguïté ne voit pas double', () => {
+    // `[].filter` et compagnie se satisfont du vide ; ici le risque est l'inverse, un détecteur qui
+    // crierait à l'ambiguïté sur un dossier sain et bloquerait toutes les cuissons.
+    assert.equal(reliefAmbigu3D(['a_disp_1k.png', 'a_nor_gl_1k.png']), null);
+    assert.equal(reliefAmbigu3D(['a_ao_1k.jpg', 'a_nor_gl_1k.png']), null);
+    assert.equal(reliefAmbigu3D([]), null);
+    assert.equal(reliefAmbigu3D(undefined), null);
+    assert.equal(reliefAmbigu3D(null), null);
+    const vu = reliefAmbigu3D(['a_ao_1k.jpg', 'a_height_1k.png']);
+    assert.deepEqual(vu, { deplacement: 'a_height_1k.png', occlusion: 'a_ao_1k.jpg' },
+      'la famille de chaque fichier doit être identifiée, pas seulement le fait qu’il y en a deux');
   });
 });
 
