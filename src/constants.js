@@ -782,7 +782,12 @@ export function modulationAssezLente3D(repeat, tailleDuPlan, largeurVisible){
 }
 
 /** Côté d'une cellule du bruit de la couche large, en pixels de sa texture de 512. */
-export const GROUND_PLAQUE_CELLULE_PX_3D = 12;
+// ⚠️ ELLE DOIT DIVISER GROUND_MODULATION_TAILLE_3D, ET SES QUATRE OCTAVES AUSSI. La grille du bruit
+// boucle tous les `taille / cellule` pas : si ce compte n'est pas entier, le motif ne se raccorde
+// pas à lui-même et la répétition se voit en carrés. 16 sur 512 donne 32, 64, 128 et 256, tous
+// entiers. La garde de tests/ground-3d.test.mjs l'exige, et mesure la couture en plus.
+export const GROUND_PLAQUE_CELLULE_PX_3D = 16;
+export const GROUND_PLAQUE_OCTAVES_3D = 4;
 export const GROUND_MODULATION_TAILLE_3D = 512;
 
 /** Le côté d'une plaque, en unités monde. Fonction pure. */

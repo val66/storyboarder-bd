@@ -37,7 +37,7 @@ import { dirname, join } from 'node:path';
 import {
   GROUND_TYPE_DEFS, GROUND_PLANE_SEGMENTS_3D, GROUND_PLANE_SIZE_3D, reliefRepresentable3D,
   GROUND_MODULATION_REPEAT_3D, MARGE_MODULATION_3D, modulationAssezLente3D,
-  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D,
+  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
   PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
   tailleDeLaPlaque3D, plaqueBienDimensionnee3D,
   PANEL_CAM_DEFAULT_DIST_3D,
@@ -46,6 +46,10 @@ import {
 import {
   applyGroundType, buildGroundTexture, buildGroundModulation3D, _poserSolPourTests3D,
 } from '../src/rig3d.js';
+// La mesure de couture du cuiseur de textures, déjà éprouvée par #431a et ses propres tests. En
+// écrire une seconde ici donnerait deux définitions d'un même mot, exactement ce que ce dépôt
+// traque ailleurs. Les fonctions pures de cet outil s'importent sous Node, son en-tête le garantit.
+import { coutureCarrelage3D } from '../tools/bake-textures.mjs';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const THREE = globalThis.THREE;
@@ -360,5 +364,104 @@ describe('Sol : la couche large porte-t-elle vraiment ce que la matière ne port
     }
     assert.ok(varianceAuBloc(damier, 64) / varianceAuBloc(damier, 1) > 0.9,
       'un damier à gros carreaux doit traverser la réduction : la mesure ne voit pas le gros motif');
+  });
+});
+
+describe('Sol : la couche large doit se raccorder à elle-même', () => {
+  /**
+   * ⚠️ CE BLOC EXISTE PARCE QUE L'UTILISATEUR A VU « LES DÉLIMITATIONS DES CARRÉS DE TEXTURE ».
+   *
+   * Le bruit se construit sur une grille qui boucle tous les `taille / cellule` pas. Pour que la
+   * tuile se raccorde, ce bouclage doit tomber EXACTEMENT sur son bord. Ma première version prenait
+   * `Math.ceil(T * f / base) + 3` : périodes de 552, 267 et 130,5 px sur une texture de 512, dont
+   * aucune ne divise 512. La tuile ne se raccordait donc à rien, et la répétition se voyait.
+   *
+   * Deux gardes plutôt qu'une, parce qu'elles échouent pour des raisons différentes : l'une dit que
+   * l'arithmétique est juste, l'autre MESURE le résultat. La première seule laisserait passer un
+   * bruit qui boucle mais dont les bords ne coïncident pas ; la seconde seule ne dirait pas pourquoi.
+   */
+  test('⚠️ CHAQUE OCTAVE BOUCLE SUR UN NOMBRE ENTIER DE CELLULES', () => {
+    for (let o = 0; o < GROUND_PLAQUE_OCTAVES_3D; o++) {
+      const cellule = GROUND_PLAQUE_CELLULE_PX_3D / (1 << o);
+      const grille = GROUND_MODULATION_TAILLE_3D / cellule;
+      assert.ok(Number.isInteger(grille) && grille > 0,
+        `octave ${o} : cellule de ${cellule} px sur ${GROUND_MODULATION_TAILLE_3D}, `
+        + `soit ${grille} pas — le motif ne se raccordera pas`);
+    }
+  });
+
+  test('⚠️ ET LA COUTURE EST MESURÉE, PAS DÉDUITE DE L’ARITHMÉTIQUE', () => {
+    const t = buildGroundModulation3D();
+    const { data, width } = t.image;
+    const gris = new Float64Array(width * width);
+    for (let i = 0; i < gris.length; i++) gris[i] = data[i * 4];
+    const couture = coutureCarrelage3D(gris, width);
+    // 1,0 = le raccord ne se distingue pas du reste de l'image. Le cuiseur relève 0,99 à 1,10 sur
+    // les matières retenues, et tient 1,25 pour suspecte : on prend le même seuil, puisque c'est
+    // la même mesure et le même usage.
+    assert.ok(couture > 0 && couture < 1.25,
+      `couture ${couture.toFixed(2)} : le raccord de la couche large se voit`);
+  });
+
+  test('⚠️ AUCUNE OCTAVE NE DESCEND SOUS LE PIXEL DE TEXTURE', () => {
+    // Une octave dont la cellule fait moins d'un texel ne peut RIEN porter : elle consomme une
+    // grille et du temps pour un bruit que la texture est incapable de représenter. C'est la borne
+    // basse naturelle du découpage en octaves, et elle manquait.
+    const plusFine = GROUND_PLAQUE_CELLULE_PX_3D / (1 << (GROUND_PLAQUE_OCTAVES_3D - 1));
+    assert.ok(plusFine >= 1,
+      `la dernière octave a une cellule de ${plusFine} px : sous le texel, elle ne porte rien`);
+  });
+
+  test('⚠️ L’ÉCHELLE RÉELLEMENT PRODUITE EST CELLE QUE LA CONSTANTE ANNONCE', () => {
+    // ⚠️ SANS CE TEST, LE CRITÈRE DE TAILLE MENTIRAIT SANS LE SAVOIR. `tailleDeLaPlaque3D` calcule
+    // depuis `GROUND_PLAQUE_CELLULE_PX_3D` ; rien ne garantissait que le générateur produise cette
+    // échelle-là. Doubler la fréquence à l'appel du bruit laissait la constante inchangée, donc le
+    // critère satisfait, et la texture deux fois plus fine. Deux exemplaires d'une même décision
+    // qui ne s'accordent qu'aujourd'hui : la famille de défaut la plus nommée de ce dépôt.
+    //
+    // On MESURE donc l'échelle : le bloc à partir duquel la variance tombe sous la moitié du total.
+    const t = buildGroundModulation3D();
+    const { data, width } = t.image;
+    const gris = new Float64Array(width * width);
+    for (let i = 0; i < gris.length; i++) gris[i] = data[i * 4];
+    const varianceAu = (bloc) => {
+      const n = Math.floor(width / bloc);
+      const moy = new Float64Array(n * n);
+      for (let by = 0; by < n; by++) {
+        for (let bx = 0; bx < n; bx++) {
+          let somme = 0;
+          for (let y = 0; y < bloc; y++) for (let x = 0; x < bloc; x++) somme += gris[(by * bloc + y) * width + bx * bloc + x];
+          moy[by * n + bx] = somme / (bloc * bloc);
+        }
+      }
+      const m = moy.reduce((a, b) => a + b, 0) / moy.length;
+      return moy.reduce((a, b) => a + (b - m) * (b - m), 0) / moy.length;
+    };
+    const total = varianceAu(1);
+    let echelle = width;
+    for (let bloc = 1; bloc <= width; bloc *= 2) {
+      if (varianceAu(bloc) < total / 2) { echelle = bloc; break; }
+    }
+    // ⚠️ LA TOLÉRANCE A ÉTÉ RESSERRÉE APRÈS COUP, et le relevé le justifie. Avec deux octaves de
+    // marge de chaque côté, doubler la fréquence à l'appel du bruit faisait passer l'échelle de 16
+    // à 8 px et le test restait vert : il tolérait exactement la divergence qu'il existe pour
+    // interdire. Les blocs étant des puissances de deux et la cellule aussi, une octave de marge
+    // vers le haut suffit, et rien vers le bas.
+    const bas = GROUND_PLAQUE_CELLULE_PX_3D, haut = GROUND_PLAQUE_CELLULE_PX_3D * 2;
+    assert.ok(echelle >= bas && echelle <= haut,
+      `échelle mesurée ${echelle} px, constante annoncée ${GROUND_PLAQUE_CELLULE_PX_3D} px : `
+      + `le générateur et le critère ne parlent plus de la même texture`);
+  });
+
+  test('le garde-fou : la mesure de couture sait DÉNONCER une tuile qui ne boucle pas', () => {
+    // Sans ce témoin, le test ci-dessus serait vrai d'une mesure qui rend toujours une petite
+    // valeur. On lui donne un dégradé, qui par construction a des bords opposés très différents.
+    const cote = 64;
+    const degrade = new Float64Array(cote * cote);
+    for (let y = 0; y < cote; y++) {
+      for (let x = 0; x < cote; x++) degrade[y * cote + x] = (x / (cote - 1)) * 255;
+    }
+    assert.ok(coutureCarrelage3D(degrade, cote) > 1.25,
+      'un dégradé franc doit être signalé comme non carrelable');
   });
 });

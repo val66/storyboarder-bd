@@ -11,7 +11,8 @@
 
 import {
   ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D,
-  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
+  GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
+  GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
 } from './constants.js';
 import {
@@ -601,15 +602,27 @@ export function buildGroundModulation3D() {
   };
   // Trois octaves seulement, sur une base large : au-delà, on rajouterait du détail fin, c'est-à-dire
   // exactement ce que cette couche existe pour ne pas faire.
+  // ⚠️ LA CELLULE DIVISE LA TEXTURE, ET CE N'EST PAS UN DÉTAIL DE PROPRETÉ. La grille du bruit boucle
+  // tous les `nc` pas ; pour que le motif se raccorde, il faut que ce bouclage tombe EXACTEMENT sur
+  // le bord de la texture. Ma première version prenait `Math.ceil(T * f / base) + 3`, ce qui donnait
+  // des périodes de 552, 267 et 130,5 px sur une texture de 512 : aucune ne divise 512, donc la
+  // tuile ne se raccordait à rien. L'utilisateur a vu « les délimitations des carrés de texture »,
+  // et c'était exactement cela. tests/ground-3d.test.mjs mesure désormais la couture.
+  //
+  // ⚠️ ET LES OCTAVES MONTAIENT EN ×1, ×4, ×16. L'appel passait `px * f` à une fonction qui divisait
+  // déjà par `base / f` : la fréquence était donc multipliée par f DEUX FOIS. Trois octaves censées
+  // couvrir un rapport de 4 en couvraient un de 16, d'où deux échelles isolées, une grosse et une
+  // très fine, et rien entre les deux. C'est le « patchwork » signalé : des taches, au lieu d'une
+  // matière. Le bruit reçoit maintenant `px` tel quel, et la cellule seule porte la fréquence.
   const couches = [];
   const base = GROUND_PLAQUE_CELLULE_PX_3D;
-  for (let o = 0; o < 3; o++) {
-    const f = 1 << o, nc = Math.ceil(T * f / base) + 3;
-    couches.push({ f, cw: base / f, g: grille(nc), nc });
+  for (let o = 0; o < GROUND_PLAQUE_OCTAVES_3D; o++) {
+    const cellule = base / (1 << o);
+    couches.push({ cellule, nc: T / cellule, g: grille(T / cellule) });
   }
   const fbm = (px, py) => {
     let v = 0, a = 1, t = 0;
-    for (const l of couches) { v += a * bruit(px * l.f, py * l.f, l.g, l.cw, l.nc); t += a; a *= 0.5; }
+    for (const l of couches) { v += a * bruit(px, py, l.g, l.cellule, l.nc); t += a; a *= 0.5; }
     return v / t;
   };
 
