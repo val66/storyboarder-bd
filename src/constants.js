@@ -781,6 +781,55 @@ export function modulationAssezLente3D(repeat, tailleDuPlan, largeurVisible){
   return (t / r) >= MARGE_MODULATION_3D * v;
 }
 
+/**
+ * Combien de texels de la matière tombent dans un pixel d'écran. Fonction PURE.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * ⚠️ AU-DELÀ DE UN, LE DÉTAIL N'EXISTE PLUS : C'EST DE L'OPTIQUE, PAS UN RÉGLAGE
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Signalé à l'usage : « de loin le sol paraît flou, c'est flagrant à côté de la netteté des
+ * modèles ». C'est exact, et ce n'était pas un ratage de filtrage. À `repeat` 9600, une tuile
+ * d'herbe faisait 1,25 unité pour une texture de 512 px : un pixel d'écran couvrait 2,5 cm de
+ * terrain quand un brin en fait 6 mm. Dix texels par pixel, donc du détail plus fin que la grille
+ * d'affichage, qui ne peut que se moyenner. Le mipmap fait son travail ; c'est la demande qui était
+ * impossible.
+ *
+ * ⚠️ ET IL N'EXISTE AUCUNE VALEUR À LA FOIS NETTE ET À L'ÉCHELLE. Descendre à 960 donnerait un
+ * texel par pixel, donc un Sol net, au prix d'une photographie grossie douze fois : des brins de
+ * 6 cm. C'est un ÉCHANGE, pas un optimum, et l'arbitrage appartient à l'utilisateur. Arrêté avec
+ * lui à 3200 pour l'herbe et 2400 pour le gazon, où l'herbe reste lisible comme de l'herbe et la
+ * netteté triple.
+ *
+ * ⚠️ ET LA BORNE NE LIE QUE LES MATIÈRES PHOTOGRAPHIÉES, ce qui n'est pas une facilité. Pour un
+ * carrelage ou un plancher, le `repeat` encode la taille RÉELLE d'une dalle ou d'une lame : un
+ * motif dessiné porte une échelle que la netteté n'a pas à renégocier. Une photographie de sol
+ * n'a, elle, aucune taille canonique dans l'application. Les matières dessinées qui dépassent la
+ * borne sont consignées et se régleront quand elles seront sourcées à leur tour.
+ */
+export const TEXELS_PAR_PIXEL_MAX_3D = 4;
+
+export function texelsParPixel3D(coteGrain, repeat, tailleDuPlan, pixelsParUnite){
+  const g = Number(coteGrain), r = Number(repeat);
+  const p = Number(tailleDuPlan), u = Number(pixelsParUnite);
+  if (![g, r, p, u].every(Number.isFinite) || g <= 0 || r <= 0 || p <= 0 || u <= 0) return Infinity;
+  return g / ((p / r) * u);
+}
+
+/**
+ * Le critère complet, À DEUX CÔTÉS comme celui des plaques, et pour la même raison apprise ici.
+ *
+ * AU-DESSUS de la borne, le détail est plus fin qu'un pixel et se moyenne : c'est le flou signalé.
+ * EN DESSOUS DE UN, on grossit la photographie au-delà de son 1:1 et il n'y a plus rien à montrer.
+ *
+ * Réuni en une seule fonction plutôt qu'une mesure et une constante côte à côte : un critère qui
+ * s'exporte en deux morceaux se cite en un seul, et le second finit par diverger.
+ */
+export function netteteAcceptable3D(coteGrain, repeat, tailleDuPlan, pixelsParUnite){
+  const tx = texelsParPixel3D(coteGrain, repeat, tailleDuPlan, pixelsParUnite);
+  return tx >= 1 && tx <= TEXELS_PAR_PIXEL_MAX_3D;
+}
+
 /** Côté d'une cellule du bruit de la couche large, en pixels de sa texture de 512. */
 // ⚠️ ELLE DOIT DIVISER GROUND_MODULATION_TAILLE_3D, ET SES QUATRE OCTAVES AUSSI. La grille du bruit
 // boucle tous les `taille / cellule` pas : si ce compte n'est pas entier, le motif ne se raccorde
@@ -838,8 +887,8 @@ export const GROUND_TYPE_DEFS = [
   // que devinée d'un fichier présent ou non : un grain manquant doit se voir comme un manque, pas
   // se rattraper tout seul. tests/ground-3d.test.mjs exige que chaque grain déclaré existe.
   { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 , plaques: 0 },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 9600 , plaques: 0.3 , grain: 'herbe' },
-  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 7200 , plaques: 0.16 , grain: 'gazon' },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 3200, plaques: 0.3 , grain: 'herbe' },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 2400, plaques: 0.16 , grain: 'gazon' },
   { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 , plaques: 0.34 },
   { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 , plaques: 0.22 },
   { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 4800 , plaques: 0.24 },

@@ -39,6 +39,7 @@ import {
   GROUND_MODULATION_REPEAT_3D, MARGE_MODULATION_3D, modulationAssezLente3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
   PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
+  TEXELS_PAR_PIXEL_MAX_3D, texelsParPixel3D, netteteAcceptable3D, WALL_PX_PER_UNIT_3D,
   tailleDeLaPlaque3D, plaqueBienDimensionnee3D,
   PANEL_CAM_DEFAULT_DIST_3D,
 } from '../src/constants.js';
@@ -578,5 +579,53 @@ describe('Sol : le grain est TEINTÉ, et pas seulement recopié', () => {
     assert.ok(v > r && v > b,
       `le grain ressort à (${r}, ${v}, ${b}) : ce n’est pas la teinte verte de l’herbe`);
     _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+});
+
+describe('Sol : une matière photographiée doit pouvoir être VUE', () => {
+  /** Le côté du grain cuit, cf. TAILLE_GRAIN de tools/bake-textures.mjs. */
+  const COTE_GRAIN = 512;
+
+  test('⚠️ AUCUNE MATIÈRE PHOTOGRAPHIÉE NE SE RÉPÈTE PLUS VITE QUE L’ÉCRAN NE RÉSOUT', () => {
+    // Le défaut signalé : à repeat 9600, dix texels tombaient dans un pixel d'écran. Le détail
+    // était donc plus fin que la grille d'affichage, et le mipmap ne pouvait que le moyenner.
+    // Ce n'était pas un filtrage raté, c'était une demande impossible.
+    const floues = GROUND_TYPE_DEFS.filter(d => d.grain)
+      .map(d => ({ id: d.id, tx: texelsParPixel3D(COTE_GRAIN, d.repeat, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D) }))
+      .filter(x => x.tx > TEXELS_PAR_PIXEL_MAX_3D);
+    // Et par le critère complet, pour que ce soit LUI qui gouverne et non une copie du seuil.
+    assert.ok(GROUND_TYPE_DEFS.filter(d => d.grain).every(d =>
+      netteteAcceptable3D(COTE_GRAIN, d.repeat, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D)));
+    assert.deepEqual(floues.map(x => x.id), [],
+      'matières photographiées trop répétées pour être vues : '
+      + floues.map(x => `${x.id} à ${x.tx.toFixed(1)} texels par pixel`).join(', '));
+  });
+
+  test('⚠️ ET AUCUNE N’EST ÉTIRÉE AU POINT DE SE PIXELLISER', () => {
+    // L'autre côté, et il manquait à la première version de ce critère. Sous un texel par pixel, on
+    // grossit la photographie au-delà de son 1:1 : il n'y a plus rien à montrer et le rendu se
+    // pixellise. Un critère à un seul côté a déjà coûté une livraison dans ce chantier.
+    const etirees = GROUND_TYPE_DEFS.filter(d => d.grain)
+      .map(d => ({ id: d.id, repeat: d.repeat, tx: texelsParPixel3D(COTE_GRAIN, d.repeat, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D) }))
+      .filter(x => !netteteAcceptable3D(COTE_GRAIN, x.repeat, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D) && x.tx < 1);
+    assert.deepEqual(etirees.map(x => x.id), [], 'matières photographiées étirées sous leur 1:1');
+  });
+
+  test('le garde-fou : la mesure DÉNONCE bien les valeurs qui ont causé le défaut', () => {
+    // 9600 et 7200 sont les valeurs livrées, celles que l'utilisateur a vues floues.
+    for (const repeat of [9600, 7200, 6000, 4800]) {
+      assert.ok(texelsParPixel3D(COTE_GRAIN, repeat, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D) > TEXELS_PAR_PIXEL_MAX_3D,
+        `repeat ${repeat} devrait être dénoncé : c'est l'ordre de grandeur du défaut signalé`);
+    }
+    assert.ok(GROUND_TYPE_DEFS.filter(d => d.grain).length >= 2,
+      'moins de deux matières photographiées : les deux tests ci-dessus ne regardent plus rien');
+    for (const mauvais of [undefined, null, NaN, 0, -1, 'beaucoup']) {
+      assert.equal(texelsParPixel3D(mauvais, 3200, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), Infinity);
+      assert.equal(texelsParPixel3D(COTE_GRAIN, mauvais, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), Infinity);
+      assert.equal(netteteAcceptable3D(COTE_GRAIN, mauvais, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), false);
+    }
+    // Les deux côtés du critère sont atteignables, sans quoi une borne écrite ne garderait rien.
+    assert.equal(netteteAcceptable3D(COTE_GRAIN, 3200, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), true);
+    assert.equal(netteteAcceptable3D(COTE_GRAIN, 600, GROUND_PLANE_SIZE_3D, WALL_PX_PER_UNIT_3D), false);
   });
 });

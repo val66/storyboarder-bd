@@ -294,6 +294,10 @@ const EN_ATTENTE = {
   // qu'une Case : le critère mérite d'exister nommément plutôt que d'être un seuil enfoui.
   tailleDeLaPlaque3D: '#435c — taille d\'une plaque, tenue par la garde, appelée par aucun rendu',
   plaqueBienDimensionnee3D: '#435c — critère à deux côtés, tenu par la garde, appelé par aucun rendu',
+  // #435e — la netteté d'une matière photographiée, en texels par pixel d'écran. Même nature que
+  // les quatre précédents, et même raison : ce sont des CRITÈRES, tenus par tests/ground-3d.test.mjs,
+  // et les faire appeler par un rendu pour satisfaire ce détecteur donnerait un appel décoratif.
+  netteteAcceptable3D: '#435e — critère de netteté, tenu par la garde, appelé par aucun rendu',
 };
 
 function exportsSansAppelant(){
@@ -386,7 +390,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 5,
+    assert.equal(Object.keys(EN_ATTENTE).length, 6,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });
