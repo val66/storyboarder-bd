@@ -887,7 +887,7 @@ export const GROUND_TYPE_DEFS = [
   // que devinée d'un fichier présent ou non : un grain manquant doit se voir comme un manque, pas
   // se rattraper tout seul. tests/ground-3d.test.mjs exige que chaque grain déclaré existe.
   { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 , plaques: 0 },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#3E8446', roughness: 0.95, metalness: 0,    repeat: 3200, plaques: 0.16, grain: 'herbe' },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 3200, plaques: 0.16, grain: 'herbe' },
   { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 2400, plaques: 0.16 , grain: 'gazon' },
   { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 6000 , plaques: 0.34 },
   { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 9600 , plaques: 0.22 },
