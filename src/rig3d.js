@@ -12,7 +12,7 @@
 import {
   ANIMAL_TYPES, BUILD_WALL_THICKNESS_RATIO_3D, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, PERSONA_3D_H, PERSONA_3D_W, POSE_3D, GROUND_COLOR_DEFAULT_3D, GROUND_TYPE_DEFS, GROUND_PLANE_SIZE_3D, GROUND_PLANE_SEGMENTS_3D, GROUND_MODULATION_REPEAT_3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D, repeatMacro3D,
-  GROUND_MACRO_SOUS_ECHELLE_3D, GROUND_MACRO_POIDS_3D,
+  GROUND_MACRO_SOUS_ECHELLE_3D, GROUND_MACRO_POIDS_3D, repeatSelonLaCase3D,
   formatCoucheMacro3D, canauxDuFormat3D, tailleDuTampon3D,
   GROUND_Y_DEFAULT_3D, STYLES_3D, TRAVERSANT_TYPES, WALL_PX_PER_UNIT_3D, WALL_TYPES,
   OBJECT_3D_W, OBJECT_3D_H, WALL_OPENING_MARGIN_FRAC, PERSONA_SKELETON_3D
@@ -1144,6 +1144,29 @@ export function applyGroundType(panel) {
   const mat = groundMesh3D.material;
   const { map } = buildGroundTexture(type);
   const plaques = modulationDuSol3D(def);
+
+  // ⚠️ LA DENSITÉ SUIT LA CASE, ET C'EST POSSIBLE PARCE QU'UNE CASE EST UNE IMAGE FIXE. Les moteurs
+  // fondent deux échelles dans un shader parce que leur caméra bouge pendant qu'une image se
+  // compose ; ici la distance est déjà connue, dans `panel.camDist`. Une valeur unique ne peut pas
+  // servir le près et le loin — elle arbitre entre les deux — alors qu'une valeur par plan n'a pas
+  // à arbitrer. Cf. repeatSelonLaCase3D pour les bornes et la référence.
+  //
+  // ⚠️ ON POSE LA RÉPÉTITION SUR LA TEXTURE PARTAGÉE, PAS SUR UNE COPIE. Deux Cases de distances
+  // différentes emploient le même objet ; c'est légitime parce qu'une seule est rendue à la fois,
+  // et que la répétition est relue à chaque rendu, comme `mat.map` l'est déjà.
+  const rep = repeatSelonLaCase3D(panel.camDist, def.repeat);
+  if (map.repeat.x !== rep) map.repeat.set(rep, rep);
+
+  // ⚠️ LA COUCHE LARGE SUIT PAR UN FACTEUR, ELLE NE SE RECALCULE PAS. Les deux couches larges n'ont
+  // pas la même origine : celle d'une matière photographiée dérive de sa période par le rapport
+  // macro, celle des matières dessinées a sa propre valeur, déduite du critère de taille des
+  // plaques et indépendante de toute matière. Les recalculer de la même façon écrasait la seconde,
+  // et un test l'a dit. On applique donc à chacune l'écart que la Case impose, ce qui laisse les
+  // deux à leur valeur validée quand la Case est à la distance de référence.
+  const facteur = def.repeat > 0 ? rep / def.repeat : 1;
+  const basePlaques = def.grain ? repeatMacro3D(def.repeat) : GROUND_MODULATION_REPEAT_3D;
+  const repPlaques = Math.max(1, Math.round(basePlaques * facteur));
+  if (plaques.repeat.x !== repPlaques) plaques.repeat.set(repPlaques, repPlaques);
   // ⚠️ LE SOL EST LA SURFACE LA PLUS RASANTE DE L'APPLICATION, et c'est le cas d'école du filtrage
   // anisotrope : la même note existe depuis #? dans model-cache.js pour les modèles importés, et le
   // Sol ne l'avait jamais reçu. Posé ici plutôt qu'à la construction des textures, parce que le

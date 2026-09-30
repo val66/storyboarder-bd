@@ -39,6 +39,7 @@ import {
   GROUND_MODULATION_REPEAT_3D, MARGE_MODULATION_3D, modulationAssezLente3D,
   GROUND_MODULATION_TAILLE_3D, GROUND_PLAQUE_CELLULE_PX_3D, GROUND_PLAQUE_OCTAVES_3D,
   GROUND_MACRO_RATIO_3D, repeatMacro3D, GROUND_MACRO_SOUS_ECHELLE_3D,
+  repeatSelonLaCase3D, REPEAT_SOL_MIN_3D, REPEAT_SOL_MAX_3D,
   GROUND_MACRO_POIDS_3D, echellesSansTrou3D,
   formatCoucheMacro3D, canauxDuFormat3D, tailleDuTampon3D,
   PLAQUES_PAR_CASE_MIN_3D, PLAQUES_PAR_CASE_MAX_3D,
@@ -991,6 +992,101 @@ describe('Sol : les couches larges n’occupent qu’un canal', () => {
       assert.equal(t.magFilter, THREE.LinearFilter, `couche ${nom} : grossie au plus proche voisin`);
       assert.equal(t.minFilter, THREE.LinearMipMapLinearFilter, `couche ${nom} : réduite sans mipmap`);
       assert.equal(t.generateMipmaps, true, `couche ${nom} : mipmaps désactivées`);
+    }
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+});
+
+describe('Sol : la densité suit la Case, parce qu’une Case est une image fixe', () => {
+  /**
+   * ⚠️ UNE VALEUR UNIQUE NE PEUT PAS SERVIR LE PRÈS ET LE LOIN. La densité arbitre entre les deux :
+   * beaucoup de px/m donne du net de près et du bruit moyenné de loin, peu donne l'inverse.
+   * Harmoniser tout le registre à 128 px/m a réglé l'incohérence entre matières et rendu le premier
+   * plan flou, le sable passant de 410 à 128. Signalé à l'usage.
+   *
+   * Les moteurs fondent deux échelles dans un shader parce que leur caméra bouge pendant qu'une
+   * image se compose. Une Case est une IMAGE FIXE dont la distance est connue : on choisit donc la
+   * densité au moment de poser la matière, sans shader.
+   */
+  test('⚠️ À LA DISTANCE DE RÉFÉRENCE, LA VALEUR DU REGISTRE EST RENDUE INTACTE', () => {
+    // C'est la propriété qui protège ce qui a déjà été validé à l'écran : la fonction ne fait que
+    // s'ÉCARTER d'un point jugé bon, elle ne le recalcule pas. Sans cela, brancher l'adaptation
+    // aurait changé toutes les Cases existantes d'un coup.
+    for (const def of GROUND_TYPE_DEFS.filter(d => d.repeat > 1)) {
+      assert.equal(repeatSelonLaCase3D(PANEL_CAM_DEFAULT_DIST_3D, def.repeat), def.repeat,
+        `${def.id} : la distance par défaut doit rendre la valeur du registre`);
+    }
+    // Et une Case sans caméra déclarée, ce qui est le cas de toutes les Cases existantes.
+    assert.equal(repeatSelonLaCase3D(undefined, 3000), 3000);
+    assert.equal(repeatSelonLaCase3D(null, 3000), 3000);
+    assert.equal(repeatSelonLaCase3D(NaN, 3000), 3000);
+  });
+
+  test('⚠️ ET ELLE VA DANS LE BON SENS : plus près, plus dense', () => {
+    // Le sens est tout l'enjeu et il se trompe d'un signe. Plus la caméra est proche, plus un mètre
+    // de sol occupe de pixels, donc plus il faut de texels pour le couvrir : la tuile RÉTRÉCIT.
+    const proche = repeatSelonLaCase3D(PANEL_CAM_DEFAULT_DIST_3D / 2, 3000);
+    const loin = repeatSelonLaCase3D(PANEL_CAM_DEFAULT_DIST_3D * 2, 3000);
+    assert.ok(proche > 3000, `caméra rapprochée : ${proche} devrait dépasser 3000`);
+    assert.ok(loin < 3000, `caméra reculée : ${loin} devrait rester sous 3000`);
+  });
+
+  test('⚠️ LES BORNES TIENNENT LA VRAISEMBLANCE PHYSIQUE, et elles sont atteignables', () => {
+    // Une photographie d'un mètre carré étirée sur seize mètres cesse de ressembler à ce qu'elle
+    // représente. Au-delà d'un facteur deux, la netteté gagnée ne vaut plus ce qu'elle coûte.
+    // Une borne jamais atteinte ne garde rien : on vérifie les deux.
+    assert.equal(repeatSelonLaCase3D(0.5, 3000), REPEAT_SOL_MAX_3D, 'caméra collée au sol : borne haute');
+    assert.equal(repeatSelonLaCase3D(10000, 3000), REPEAT_SOL_MIN_3D, 'caméra très reculée : borne basse');
+    assert.ok(REPEAT_SOL_MIN_3D < REPEAT_SOL_MAX_3D);
+    // Et la référence du registre tient DANS les bornes, sans quoi la distance par défaut elle-même
+    // serait écrêtée et le test précédent deviendrait faux sans prévenir.
+    for (const def of GROUND_TYPE_DEFS.filter(d => d.repeat > 1)) {
+      assert.ok(def.repeat >= REPEAT_SOL_MIN_3D && def.repeat <= REPEAT_SOL_MAX_3D,
+        `${def.id} : sa référence ${def.repeat} sort des bornes d’adaptation`);
+    }
+  });
+
+  test('⚠️ LA COUCHE LARGE SUIT LE MÊME ÉCART, chacune depuis SA propre base', () => {
+    // Les deux couches larges n'ont pas la même origine : celle d'une matière photographiée dérive
+    // de sa période par le rapport macro, celle des matières dessinées a sa propre valeur déduite
+    // du critère des plaques. Les recalculer de la même façon écrasait la seconde, et c'est un test
+    // qui l'a dit avant que ça n'arrive à l'écran.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const mesh = solDEssai();
+    const dessinee = GROUND_TYPE_DEFS.find(d => !d.grain && d.repeat > 1);
+    applyGroundType({ groundType: dessinee.id, camDist: PANEL_CAM_DEFAULT_DIST_3D });
+    assert.equal(mesh.material.aoMap.repeat.x, GROUND_MODULATION_REPEAT_3D,
+      'une matière dessinée doit garder la période déduite du critère des plaques');
+    const photo = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(photo.grain, { width: 8, height: 8 });
+    applyGroundType({ groundType: photo.id, camDist: PANEL_CAM_DEFAULT_DIST_3D });
+    assert.equal(mesh.material.aoMap.repeat.x, repeatMacro3D(photo.repeat),
+      'une matière photographiée doit garder sa période macro');
+
+    // ⚠️ ET HORS DE LA RÉFÉRENCE, ELLE DOIT BOUGER. Un mutant a échappé en figeant le facteur à un :
+    // les deux assertions ci-dessus restaient vraies, puisqu'elles interrogent précisément la
+    // distance où le facteur VAUT un. Une garde qui n'observe que le point neutre ne voit aucun
+    // écart, quel qu'il soit. Les deux couches doivent suivre le plan, pas seulement la matière.
+    const auRepos = mesh.material.aoMap.repeat.x;
+    applyGroundType({ groundType: photo.id, camDist: PANEL_CAM_DEFAULT_DIST_3D / 2 });
+    assert.ok(mesh.material.aoMap.repeat.x > auRepos,
+      `couche large figée à ${auRepos} malgré une caméra deux fois plus proche`);
+    applyGroundType({ groundType: photo.id, camDist: PANEL_CAM_DEFAULT_DIST_3D * 2 });
+    assert.ok(mesh.material.aoMap.repeat.x < auRepos,
+      'couche large figée malgré une caméra deux fois plus reculée');
+    _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+
+  test('⚠️ ET LA MATIÈRE POSÉE PORTE BIEN LA RÉPÉTITION DE LA CASE', () => {
+    // Le branchement : sans ce test, `repeatSelonLaCase3D` pourrait être parfaite et n'atteindre
+    // jamais la texture. C'est la faute du #420c M19, un étage pur juste et jamais appelé.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const mesh = solDEssai();
+    const def = GROUND_TYPE_DEFS.find(d => !d.grain && d.repeat > 1);
+    for (const dist of [PANEL_CAM_DEFAULT_DIST_3D / 2, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_DEFAULT_DIST_3D * 2]) {
+      applyGroundType({ groundType: def.id, camDist: dist });
+      assert.equal(mesh.material.map.repeat.x, repeatSelonLaCase3D(dist, def.repeat),
+        `à camDist ${dist}, la matière ne porte pas la répétition calculée`);
     }
     _viderGrains3D(); _viderTexturesDuSol3D();
   });
