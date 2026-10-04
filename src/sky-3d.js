@@ -126,6 +126,11 @@ export const NUAGES = {
   bord: 0.04,        // largeur de la transition du bord : plus petit, plus net (0,07 avant #436f)
   pas: 0.07,         // pas des échantillons de lumière vers le soleil
   absorption: 0.55,  // assombrissement par l'épaisseur traversée (Beer-Lambert)
+  // La forme (#436h) : choisie sur planche parmi trois, « arrondis déformés ».
+  deformation: 0.7,  // déformation du domaine : plus grand, moins rond
+  zone: 0.60,        // poids de la zone de fond, irrégulière
+  bosses: 0.48,      // poids des bosses rondes
+  erosion: 0.18,     // bruit fin retiré sur les bords : plus grand, plus déchiqueté
 };
 
 /** Le sommet : la sphère suit la caméra et se dessine au plan lointain, quelle que soit sa taille. */
@@ -188,6 +193,11 @@ float cielFbm5( vec2 p, float e ) {
   return s / 0.96875;
 }
 // La distance au point le plus proche d'un semis aléatoire : 1 − elle fait des bosses RONDES.
+float cielFbm4( vec2 p, float e ) {
+  float s = 0.0, a = 0.5, fr = 1.0;
+  for ( int i = 0; i < 4; i++ ) { float w = cielPoids( fr, e ); s += a * mix( 0.5, cielBruit( p ), w ); p = cielRot * p + vec2( 17.1, 3.7 ); a *= 0.5; fr *= 2.0; }
+  return s / 0.9375;
+}
 float cielWorley( vec2 p ) {
   vec2 i = floor( p ), f = fract( p );
   float m = 9.0;
@@ -204,14 +214,17 @@ float cielWorley( vec2 p ) {
 // ⚠️ DES BOSSES RONDES, PAS UN BRUIT DÉFORMÉ (#436g). La forme précédente, un bruit fractal étiré,
 // donnait des nuages « carrés », aux côtés plats. Un cumulus est une grappe de dômes : trois semis
 // de bosses à trois échelles, regroupés par une zone de fond qui décide où il y a des nuages.
+// ⚠️ MAIS PAS DES BOULES (#436h) : purement ronds, ils « manquaient de naturel ». Les bosses sont
+// donc déformées, pèsent moins face à la zone de fond, et un bruit fin ronge leurs bords.
 float cielNuage( vec2 q, float e ) {
   vec2 w = vec2( cielFbm3( q * 0.5 + vec2( 5.2, 1.3 ), e * 0.5 ), cielFbm3( q * 0.5 + vec2( 1.7, 9.2 ), e * 0.5 ) ) - 0.5;
-  vec2 q2 = q + w * 0.25;
+  vec2 q2 = q + w * ${f4(NUAGES.deformation)};
   float zone = cielFbm3( q2 * 0.45 + vec2( 3.3, 8.1 ), e * 0.45 );
   float p1 = 1.0 - cielWorley( q2 * 0.8 );
   float p2 = mix( 0.45, 1.0 - cielWorley( q2 * 2.3 + vec2( 7.1, 2.9 ) ), cielPoids( 2.3, e ) );
   float p3 = mix( 0.45, 1.0 - cielWorley( q2 * 5.0 + vec2( 1.3, 5.5 ) ), cielPoids( 5.0, e ) );
-  return zone * 0.55 + ( p1 * 0.55 + p2 * 0.30 + p3 * 0.15 ) * 0.55 - 0.08;
+  float erosion = cielFbm4( q2 * 6.0 + vec2( 4.4, 0.6 ), e * 6.0 ) - 0.5;
+  return zone * ${f4(NUAGES.zone)} + ( p1 * 0.55 + p2 * 0.30 + p3 * 0.15 ) * ${f4(NUAGES.bosses)} - 0.08 - ${f4(NUAGES.erosion)} * erosion;
 }
 
 // La direction du ciel, l'horizon abaissé jusqu'au bord du Sol : voir abaissementDeLHorizon3D.

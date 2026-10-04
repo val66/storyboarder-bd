@@ -141,7 +141,7 @@ describe('Ciel : le GLSL', () => {
     assert.ok(GLSL_CIEL_FRAGMENT.includes('return clamp( ( 1.0 / ( freq * e ) - 3.0 ) / 3.0, 0.0, 1.0 );'));
     assert.ok(GLSL_CIEL_FRAGMENT.includes('float e = max( length( dFdx( p ) ), length( dFdy( p ) ) ) + 1e-5;'));
     // Toutes les familles de bruit passent par ce poids.
-    for (const f of ['cielFbm3', 'cielFbm5']) {
+    for (const f of ['cielFbm3', 'cielFbm4', 'cielFbm5']) {
       const corps = GLSL_CIEL_FRAGMENT.slice(GLSL_CIEL_FRAGMENT.indexOf('float ' + f + '('));
       assert.ok(corps.slice(0, corps.indexOf('return')).includes('cielPoids( fr, e )'), f);
     }
@@ -156,6 +156,8 @@ describe('Ciel : le GLSL', () => {
     assert.ok(GLSL_CIEL_FRAGMENT.includes(`smoothstep( seuil, seuil + ${f4(NUAGES.bord)}, n )`));
     assert.ok(GLSL_CIEL_FRAGMENT.includes(`exp( -opt * ${f4(NUAGES.absorption)} )`));
     assert.ok(GLSL_CIEL_FRAGMENT.includes(`vs * ${f4(NUAGES.pas)} * float( j )`));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes(`vec2 q2 = q + w * ${f4(NUAGES.deformation)};`));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes(`zone * ${f4(NUAGES.zone)} + ( p1 * 0.55 + p2 * 0.30 + p3 * 0.15 ) * ${f4(NUAGES.bosses)} - 0.08 - ${f4(NUAGES.erosion)} * erosion`));
   });
 
   test('⚠️ LA COULEUR DE LA LUMIÈRE TEINTE LES NUAGES, ombre comprise (#436f)', () => {
@@ -175,6 +177,9 @@ describe('Ciel : le GLSL', () => {
     assert.ok(GLSL_CIEL_FRAGMENT.includes('float cielWorley( vec2 p ) {'));
     assert.ok(GLSL_CIEL_FRAGMENT.includes('float p1 = 1.0 - cielWorley( q2 * 0.8 );'));
     assert.ok(!GLSL_CIEL_FRAGMENT.includes('cielVolutes'), 'l’ancienne forme étirée est revenue');
+    // Mais pas des boules (#436h) : déformées, et rongées sur les bords.
+    assert.ok(NUAGES.deformation >= 0.5 && NUAGES.erosion > 0);
+    assert.ok(NUAGES.bosses < NUAGES.zone, 'les bosses dominent : les nuages redeviennent des boules');
   });
 
   test('les étoiles ne brillent que la nuit, et pas à travers les nuages', () => {
