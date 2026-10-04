@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 import { TRACÉ_DEFAULTS, TRACÉ_TEXTURES, grainsDesTraces3D, couleurDeTrace3D } from '../src/constants.js';
 import {
   installerPlaquageMonde3D, materiauDeTrace3D, textureDeTrace3D, grainDeTracePret3D,
-  GLSL_PLAQUAGE_FRAGMENT, GLSL_PLAQUAGE_TRACE, _viderTexturesDesTraces3D,
+  GLSL_PLAQUAGE_FRAGMENT, GLSL_PLAQUAGE_TRACE, _viderTexturesDesTraces3D, libererMateriauDeTrace3D,
 } from '../src/trace-textures-3d.js';
 import { _setGrain3D, _viderGrains3D } from '../src/bubble-grain.js';
 
@@ -173,5 +173,39 @@ describe('Traces : chaque Trace est branchée', () => {
     assert.ok(scene.includes('world: o.world, g: grainDeTracePret3D(o.tracéType) }))'));
     const events = readFileSync(join(RACINE, 'src', 'events.js'), 'utf8');
     assert.ok(events.includes('...grainsDesTraces3D()'), 'les grains des Traces ne sont pas préchargés');
+  });
+});
+
+describe('Traces : les programmes ne se recompilent pas à chaque glissé (#437c)', () => {
+  test('⚠️ UN MÊME RÉGLAGE REND LE MÊME MATÉRIAU, ET IL N’EST JAMAIS LIBÉRÉ', () => {
+    // Libérer le dernier matériau d'un programme libère le programme : 8,7 ms de recompilation à
+    // chaque reconstruction, mesurés, au lieu de 0,7 ms de rendu.
+    _viderGrains3D(); _viderTexturesDesTraces3D();
+    _setGrain3D('muret.couleur', { width: 4, height: 4 });
+    const opts = { couleurAplat: '#606060', plaquage: 'trace', roughness: 0.95, metalness: 0, side: THREE.DoubleSide };
+    const a = materiauDeTrace3D('muret', '#606060', opts);
+    const b = materiauDeTrace3D('muret', '#606060', { ...opts });
+    assert.equal(a, b, 'deux reconstructions ont créé deux matériaux');
+    assert.notEqual(a, materiauDeTrace3D('muret', '#FF0000', opts), 'deux couleurs partagent un matériau');
+    assert.notEqual(a, materiauDeTrace3D('muret', '#606060', { ...opts, ombre: 0.7 }));
+    let libere = false;
+    a.addEventListener('dispose', () => { libere = true; });
+    libererMateriauDeTrace3D(a);
+    assert.equal(libere, false, 'le matériau partagé a été libéré');
+    _viderGrains3D(); _viderTexturesDesTraces3D();
+  });
+
+  test('un aplat, lui, se libère normalement', () => {
+    _viderGrains3D(); _viderTexturesDesTraces3D();
+    const m = materiauDeTrace3D('route', '#888888', { couleurAplat: '#888888' });
+    let libere = false;
+    m.addEventListener('dispose', () => { libere = true; });
+    libererMateriauDeTrace3D(m);
+    assert.equal(libere, true);
+  });
+
+  test('⚠️ LES DEUX LIBÉRATIONS DE TRACES DE scene3d PASSENT PAR LA GARDE', () => {
+    const scene = readFileSync(join(RACINE, 'src', 'scene3d.js'), 'utf8');
+    assert.equal(scene.split('libererMateriauDeTrace3D(ch.material)').length - 1, 2);
   });
 });

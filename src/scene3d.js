@@ -11,7 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
-import { materiauDeTrace3D, grainDeTracePret3D } from './trace-textures-3d.js';
+import { materiauDeTrace3D, grainDeTracePret3D, libererMateriauDeTrace3D } from './trace-textures-3d.js';
 import { poserCiel3D, retirerCiel3D, abaissementDeLHorizon3D } from './sky-3d.js';
 import {
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D, PERSONA_REAL_HEIGHT_M,
@@ -2652,7 +2652,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     if (!entry || entry.sigKey !== sigKey) {
       // Release the old group if present.
       if (entry) {
-        entry.group.traverse(ch => { if (ch.isMesh) { ch.geometry.dispose(); ch.material.dispose(); } });
+        entry.group.traverse(ch => { if (ch.isMesh) { ch.geometry.dispose(); libererMateriauDeTrace3D(ch.material); } });
         personaScene3D.remove(entry.group);
       }
       const group = new THREE.Group();
@@ -3501,7 +3501,7 @@ export function disposeAllRigs3D(){
   });
   wallJunctionMeshCache3D.clear();
   tracéMeshCache3D.forEach(e => {
-    e.group.traverse(ch => { if (ch.isMesh && ch.geometry) { ch.geometry.dispose(); if (ch.material) ch.material.dispose(); } });
+    e.group.traverse(ch => { if (ch.isMesh && ch.geometry) { ch.geometry.dispose(); libererMateriauDeTrace3D(ch.material); } });
     if (personaScene3D) personaScene3D.remove(e.group);
   });
   tracéMeshCache3D.clear();

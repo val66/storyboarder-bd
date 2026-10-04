@@ -126,6 +126,17 @@ export function grainDeTracePret3D(type){
  * `ombre` assombrit une couche (l'intérieur d'une haie, la base d'une barrière) sans changer la
  * couleur choisie : elle multiplie la texture.
  */
+/**
+ * ⚠️ LES MATÉRIAUX TEXTURÉS SONT PARTAGÉS, ET JAMAIS LIBÉRÉS (#437c). Mesuré dans un vrai WebGL
+ * (ANGLE, Direct3D 11) : libérer le dernier matériau d'un programme LIBÈRE LE PROGRAMME, et le
+ * suivant le recompile, 8,7 ms au lieu de 0,7 pour un rendu ordinaire (51,6 ms la toute première
+ * fois). Or une Trace se reconstruit à chaque pas d'un glissé, et libérait ses matériaux : un muret
+ * seul dans sa Case recompilait son programme à chaque image. Avant #437, ses aplats partageaient
+ * le programme standard de tous les modèles, qui ne mourait jamais ; le plaquage, lui, a sa propre
+ * clé. On garde donc une instance par réglage, marquée `partage`, que les libérations sautent.
+ */
+const _materiaux = new Map();
+
 export function materiauDeTrace3D(type, couleur, options = {}){
   const THREE = globalThis.THREE;
   const { ombre = 1, couleurAplat, plaquage = 'monde', ...reste } = options;
@@ -133,9 +144,19 @@ export function materiauDeTrace3D(type, couleur, options = {}){
   if (!carte) {
     return new THREE.MeshStandardMaterial({ color: new THREE.Color(couleurAplat || couleur), ...reste });
   }
+  const cle = [type, couleurDeTrace3D(type, couleur), ombre, plaquage, JSON.stringify(reste)].join('|');
+  if (_materiaux.has(cle)) return _materiaux.get(cle);
   const mat = new THREE.MeshStandardMaterial({ map: carte, color: new THREE.Color(ombre, ombre, ombre), ...reste });
-  return installerPlaquageMonde3D(mat, TRACÉ_TEXTURES[type].tuile, plaquage);
+  installerPlaquageMonde3D(mat, TRACÉ_TEXTURES[type].tuile, plaquage);
+  mat.userData.partage = true;
+  _materiaux.set(cle, mat);
+  return mat;
+}
+
+/** Libère un matériau de Trace, sauf s'il est partagé. Voir `materiauDeTrace3D`. */
+export function libererMateriauDeTrace3D(materiau){
+  if (materiau && !(materiau.userData && materiau.userData.partage)) materiau.dispose();
 }
 
 /** Pour les tests : oublier les textures. */
-export function _viderTexturesDesTraces3D(){ _textures.clear(); }
+export function _viderTexturesDesTraces3D(){ _textures.clear(); _materiaux.clear(); }
