@@ -301,6 +301,13 @@ const EN_ATTENTE = {
   // #435f bis — le chaînage des trois échelles du Sol, sans trou entre elles. Même nature que les
   // précédents : un critère, tenu par tests/ground-3d.test.mjs, et qu'aucun rendu n'a à appeler.
   echellesSansTrou3D: '#435f — critère de chaînage, tenu par la garde, appelé par aucun rendu',
+  // #435l — le MODÈLE du shader de pavage. Le GLSL ne s'exécute pas sous Node ; ces trois
+  // fonctions décrivent en JavaScript ce qu'il calcule, avec les mêmes constantes, pour que
+  // tests/ground-3d.test.mjs puisse en éprouver les propriétés (poids continus, variance
+  // préservée). Les appeler depuis le rendu n'aurait aucun sens : c'est le shader qui calcule.
+  grilleTriangulaire3D: '#435l — modèle JS du GLSL de pavage, éprouvé par les tests',
+  poidsAiguises3D: '#435l — modèle JS du GLSL de pavage, éprouvé par les tests',
+  melangePreservant3D: '#435l — modèle JS du GLSL de pavage, éprouvé par les tests',
 };
 
 function exportsSansAppelant(){
@@ -393,7 +400,7 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 7,
+    assert.equal(Object.keys(EN_ATTENTE).length, 10,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

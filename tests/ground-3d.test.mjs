@@ -55,6 +55,10 @@ import {
 // écrire une seconde ici donnerait deux définitions d'un même mot, exactement ce que ce dépôt
 // traque ailleurs. Les fonctions pures de cet outil s'importent sous Node, son en-tête le garantit.
 import { coutureCarrelage3D } from '../tools/bake-textures.mjs';
+import {
+  grilleTriangulaire3D, poidsAiguises3D, melangePreservant3D, installerPavage3D,
+  GLSL_PAVAGE, GLSL_MAP_FRAGMENT, PAVAGE_ECHELLE, PAVAGE_NETTETE, PAVAGE_ROTATION,
+} from '../src/ground-tiling-3d.js';
 import { grainsDuSol3D } from '../src/constants.js';
 import { _setGrain3D, _viderGrains3D } from '../src/bubble-grain.js';
 import { existsSync } from 'node:fs';
@@ -1046,5 +1050,202 @@ describe('Sol : la couche macro reste en 512, même quand le grain passe en 1024
       'les pixels lus ne sont pas ceux de la couche réduite');
     // Et la tuile de la matière, elle, garde la pleine taille : c'est elle qui sert le gros plan.
     assert.equal(toiles[0].width, 1024, 'la tuile de la matière a perdu la résolution du grain');
+  });
+});
+
+describe('Sol : le pavage anti-répétition, ce qui se calcule sans GPU', () => {
+  /**
+   * Le shader ne s'exécute pas sous Node. Ce bloc éprouve son MODÈLE en JavaScript, écrit avec les
+   * mêmes constantes, et vérifie que le GLSL en est bien généré. Ce qu'il produit à l'écran se juge
+   * sur tools/banc-pavage.mjs, qui a déjà fait retirer la rotation.
+   */
+  test('⚠️ LE MÉLANGE EST CONTINU À TRAVERS LES ARÊTES, là où une rupture se verrait', () => {
+    // ⚠️ CE TEST REMPLACE UNE PREMIÈRE VERSION QUI NE TRAVERSAIT AUCUNE ARÊTE. Elle comparait des
+    // points voisins de 10⁻⁶, qui tombent presque toujours DANS le même triangle : elle éprouvait la
+    // continuité là où elle est garantie, et jamais là où elle compte. Un mutant qui échangeait deux
+    // sommets du second triangle l'a traversée sans bruit.
+    //
+    // On construit donc les paires DE PART ET D'AUTRE de chaque sorte d'arête — la diagonale du
+    // losange et ses deux côtés — dans le repère incliné, puis on compare un CHAMP mélangé : chaque
+    // sommet porte une valeur pseudo-aléatoire, et le mélange doit varier continûment.
+    const valeur = ([x, y]) => { const t = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return t - Math.floor(t); };
+    const champ = (u, v) => {
+      const { poids, sommets } = grilleTriangulaire3D(u, v);
+      const p = poidsAiguises3D(poids);
+      return sommets.reduce((a, s, i) => a + p[i] * valeur(s), 0);
+    };
+    // Du repère incliné vers celui de la texture, inverse de celui de grilleTriangulaire3D.
+    const versUV = (sx, sy) => [sx / PAVAGE_ECHELLE, (sy + 0.57735027 * sx) / 1.15470054 / PAVAGE_ECHELLE];
+    const eps = 1e-7;
+    let pire = 0, paires = 0;
+    for (let bx = -3; bx <= 3; bx++) {
+      for (let by = -3; by <= 3; by++) {
+        for (const t of [0.13, 0.37, 0.61, 0.88]) {
+          const traversees = [
+            [[bx + t, by + 1 - t - eps], [bx + t, by + 1 - t + eps]],   // la diagonale fx + fy = 1
+            [[bx + t, by - eps], [bx + t, by + eps]],                   // le côté fy = 0
+            [[bx - eps, by + t], [bx + eps, by + t]],                   // le côté fx = 0
+          ];
+          for (const [a, b] of traversees) {
+            const d = Math.abs(champ(...versUV(...a)) - champ(...versUV(...b)));
+            pire = Math.max(pire, d); paires++;
+          }
+        }
+      }
+    }
+    assert.ok(paires > 500, 'trop peu de traversées : le test ne regarde presque rien');
+    assert.ok(pire < 1e-4, `saut de ${pire.toFixed(5)} en traversant une arête : la grille se verrait`);
+  });
+
+  test('⚠️ LE GLSL ET LE MODÈLE ATTRIBUENT LES MÊMES POIDS AUX MÊMES SOMMETS', () => {
+    // Les constantes sont générées, mais l'ordre des sommets est écrit DEUX fois, en JavaScript et
+    // en GLSL. Un échange dans l'un seulement donnerait un modèle juste et un shader faux, et les
+    // tests ci-dessus resteraient verts puisqu'ils n'éprouvent que le modèle. On confronte donc le
+    // texte du GLSL aux sommets que le modèle rend pour chacun des deux triangles.
+    const bas = grilleTriangulaire3D(0.1 / PAVAGE_ECHELLE, 0.05 / PAVAGE_ECHELLE);    // fx + fy < 1
+    const haut = grilleTriangulaire3D(0.9 / PAVAGE_ECHELLE, 0.9 / PAVAGE_ECHELLE);    // fx + fy > 1
+    const vec = ([x, y], [bx, by]) => {
+      const dx = x - bx, dy = y - by;
+      return dx === 0 && dy === 0 ? 'b' : dx === dy ? `b + vec2( ${dx}.0 )` : `b + vec2( ${dx}.0, ${dy}.0 )`;
+    };
+    const attendu = (g) => g.sommets.map(s => vec(s, g.sommets.reduce((m, t) =>
+      [Math.min(m[0], t[0]), Math.min(m[1], t[1])], [Infinity, Infinity])));
+    const [b1, b2, b3] = attendu(bas), [h1, h2, h3] = attendu(haut);
+    assert.ok(GLSL_PAVAGE.includes(`s1 = ${b1}; s2 = ${b2}; s3 = ${b3};`), 'premier triangle : sommets divergents');
+    assert.ok(GLSL_PAVAGE.includes(`s1 = ${h1}; s2 = ${h2}; s3 = ${h3};`), 'second triangle : sommets divergents');
+  });
+
+  test('les poids aiguisés restent positifs et somment à un', () => {
+    for (let i = 0; i < 200; i++) {
+      const { poids } = grilleTriangulaire3D(0.71 * i, 1.93 * i);
+      const p = poidsAiguises3D(poids);
+      assert.ok(p.every(w => w >= 0));
+      assert.ok(Math.abs(p.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+    }
+  });
+
+  test('⚠️ LE MÉLANGE PRÉSERVE LA VARIANCE, là où une moyenne simple la perdrait', () => {
+    // Le risque nommé avant d'écrire une ligne : fondre trois échantillons indépendants réduit leur
+    // écart-type, d'un facteur √3 au centre d'un triangle, et reprend au premier plan la netteté
+    // gagnée par le grain en 1024. On tire des échantillons indépendants et on compare.
+    let s = 3; const alea = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const poids = [1 / 3, 1 / 3, 1 / 3];
+    const preserves = [], simples = [];
+    for (let i = 0; i < 20000; i++) {
+      const e = [alea(), alea(), alea()];
+      preserves.push(melangePreservant3D(e, poids, 0.5));
+      simples.push(e.reduce((a, x, k) => a + x * poids[k], 0));
+    }
+    const ecart = (t) => { const m = t.reduce((a, b) => a + b, 0) / t.length;
+      return Math.sqrt(t.reduce((a, b) => a + (b - m) ** 2, 0) / t.length); };
+    const reference = 1 / Math.sqrt(12);          // l'écart-type d'une uniforme sur [0, 1]
+    assert.ok(Math.abs(ecart(preserves) / reference - 1) < 0.03,
+      `variance non préservée : ${ecart(preserves).toFixed(3)} pour ${reference.toFixed(3)}`);
+    // Le témoin : sans la correction, la perte doit bien être là, sinon ce test ne prouve rien.
+    assert.ok(ecart(simples) / reference < 0.65, 'la moyenne simple ne perd pas de variance : témoin muet');
+  });
+
+  test('à un sommet, le mélange rend exactement l’échantillon de ce sommet', () => {
+    assert.equal(melangePreservant3D([0.8, 0.1, 0.3], [1, 0, 0], 0.5), 0.8);
+  });
+
+  test('⚠️ LE GLSL EST GÉNÉRÉ DEPUIS LES CONSTANTES DU MODÈLE, et la rotation y est nulle', () => {
+    // Deux exemplaires d'une même décision qui ne s'accordent qu'aujourd'hui : c'est ce que la
+    // génération empêche. Et la rotation est retirée parce que le banc a montré qu'elle tournait
+    // aussi la lumière cuite dans le grain.
+    assert.equal(PAVAGE_ROTATION, 0, 'la rotation tourne la lumière cuite dans le grain, cf. le banc');
+    assert.ok(GLSL_PAVAGE.includes(PAVAGE_ECHELLE.toFixed(4)));
+    assert.ok(GLSL_PAVAGE.includes(PAVAGE_NETTETE.toFixed(4)));
+    assert.ok(GLSL_PAVAGE.includes('* ' + PAVAGE_ROTATION.toFixed(4)));
+    assert.ok(GLSL_PAVAGE.includes('texture2DGradEXT'),
+      'sans dérivées explicites, chaque frontière de cellule tirerait un niveau de mipmap grossier');
+  });
+});
+
+describe('Sol : le pavage s’insère dans le VRAI shader de three.js', () => {
+  /**
+   * ⚠️ LE TEST QUI ATTRAPE LA PANNE LA PLUS SILENCIEUSE. `String.replace` sur une ancre absente ne
+   * fait RIEN et ne dit rien : si une version de three.js renommait un chunk, le pavage cesserait
+   * d'exister sans une erreur. On l'applique donc au shader réel du matériau standard, tel que
+   * `onBeforeCompile` le reçoit, et on vérifie que les deux remplacements ont eu lieu.
+   */
+  const shaderApres = () => {
+    const uniformes = { uPavage: { value: 0 }, uPavageMoyenne: { value: new THREE.Vector3() } };
+    const mat = new THREE.MeshStandardMaterial();
+    installerPavage3D(mat, uniformes);
+    const shader = { uniforms: {}, fragmentShader: THREE.ShaderLib.physical.fragmentShader };
+    mat.onBeforeCompile(shader);
+    return { shader, uniformes, mat };
+  };
+
+  test('⚠️ LES DEUX ANCRES EXISTENT DANS LE SHADER RÉEL, ET LES DEUX REMPLACEMENTS ONT LIEU', () => {
+    const brut = THREE.ShaderLib.physical.fragmentShader;
+    assert.equal(brut.split('#include <map_pars_fragment>').length, 2, 'ancre des déclarations absente');
+    assert.equal(brut.split('#include <map_fragment>').length, 2, 'ancre de l’échantillonnage absente');
+    const { shader } = shaderApres();
+    assert.ok(shader.fragmentShader.includes('pavageMap'), 'le GLSL du pavage n’a pas été inséré');
+    assert.ok(!shader.fragmentShader.includes('#include <map_fragment>'), 'l’échantillonnage d’origine est resté');
+  });
+
+  test('⚠️ LES FONCTIONS SONT INSÉRÉES APRÈS LA DÉCLARATION DE `map`, PAS AVANT', () => {
+    // Vérifié dans la source de three r128 avant d'écrire : `map` est déclaré par
+    // `map_pars_fragment`, qui vient APRÈS `common`. Insérées après `common`, les fonctions
+    // auraient référencé une variable pas encore déclarée, et le shader n'aurait pas compilé.
+    const { shader } = shaderApres();
+    const f = shader.fragmentShader;
+    assert.ok(f.indexOf('#include <map_pars_fragment>') < f.indexOf('vec4 pavageMap'),
+      'le pavage est déclaré avant l’échantillonneur qu’il lit');
+  });
+
+  test('⚠️ CHAQUE RECOMPILATION SE RACCROCHE AUX MÊMES UNIFORMES', () => {
+    // three.js rappelle `onBeforeCompile` avec un shader neuf à chaque recompilation. Des uniformes
+    // recréés là se détacheraient de ce que le rendu d'une Case y écrit.
+    const uniformes = { uPavage: { value: 0 }, uPavageMoyenne: { value: new THREE.Vector3() } };
+    const mat = new THREE.MeshStandardMaterial();
+    installerPavage3D(mat, uniformes);
+    const a = { uniforms: {}, fragmentShader: THREE.ShaderLib.physical.fragmentShader };
+    const b = { uniforms: {}, fragmentShader: THREE.ShaderLib.physical.fragmentShader };
+    mat.onBeforeCompile(a); mat.onBeforeCompile(b);
+    assert.equal(a.uniforms.uPavage, uniformes.uPavage);
+    assert.equal(b.uniforms.uPavage, uniformes.uPavage);
+    assert.equal(b.uniforms.uPavageMoyenne, uniformes.uPavageMoyenne);
+  });
+
+  test('⚠️ DÉSACTIVÉ, LE PAVAGE REND EXACTEMENT LE CHEMIN D’ORIGINE DE three.js', () => {
+    // C'est ce qui permet de réserver le pavage à certaines matières sans dupliquer le matériau du
+    // Sol : pour le plancher ou le carrelage, `uPavage` vaut zéro et rien ne doit changer. On
+    // vérifie que la branche « sinon » reprend mot pour mot l'échantillonnage du chunk d'origine.
+    const origine = THREE.ShaderChunk.map_fragment;
+    assert.ok(origine.includes('texture2D( map, vUv )') && origine.includes('mapTexelToLinear( texelColor )'),
+      'le chunk d’origine a changé : cette comparaison ne regarde plus la bonne chose');
+    const branche = GLSL_MAP_FRAGMENT.slice(GLSL_MAP_FRAGMENT.indexOf('} else {'));
+    assert.ok(branche.includes('mapTexelToLinear( texture2D( map, vUv ) )'),
+      'sans pavage, l’échantillonnage n’est plus celui de three.js');
+    assert.ok(GLSL_MAP_FRAGMENT.includes('diffuseColor *= texelColor;'));
+  });
+
+  test('les dérivées sont demandées, sans quoi WebGL 1 ne compilerait pas le pavage', () => {
+    const { mat } = shaderApres();
+    assert.equal(mat.extensions.derivatives, true);
+    assert.equal(mat.extensions.shaderTextureLOD, true);
+  });
+});
+
+describe('Sol : qui se pave, et quand', () => {
+  test('⚠️ AUCUNE MATIÈRE À MOTIF RÉGULIER NE SE PAVE', () => {
+    // Chaque cellule échantillonne une région décalée : des lames ou des joints y seraient coupés
+    // et désalignés à chaque frontière.
+    for (const id of ['carrelage', 'plancher', 'marbre']) {
+      const def = GROUND_TYPE_DEFS.find(d => d.id === id);
+      assert.ok(!def.pavage, `${id} ne doit pas se paver`);
+    }
+  });
+
+  test('⚠️ SEULE UNE MATIÈRE PHOTOGRAPHIÉE PEUT SE PAVER', () => {
+    // Le pavage a besoin de la moyenne de la tuile, calculée sur le grain. Une recette dessinée
+    // n'en a pas, et on ne pave pas un dessin.
+    const fautives = GROUND_TYPE_DEFS.filter(d => d.pavage && !d.grain).map(d => d.id);
+    assert.deepEqual(fautives, []);
+    assert.ok(GROUND_TYPE_DEFS.filter(d => d.pavage).length >= 3, 'presque plus rien ne se pave');
   });
 });

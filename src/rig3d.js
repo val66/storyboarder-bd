@@ -25,6 +25,7 @@ import { S, currentVolume, tr } from './state.js';
 // que c'est la même question. Voir tuileDuGrainDuSol3D pour ce qui n'est délibérément PAS partagé.
 import { appliquerTeinteAuMotif3D, natureDuNom3D, rvbDeCouleur3D } from './bubble-texture.js';
 import { grainCharge3D } from './bubble-grain.js';
+import { installerPavage3D } from './ground-tiling-3d.js';
 // ⚠️ LES INTENSITÉS DE RÉFÉRENCE VIENNENT DE LÀ, ET C'EST #415 QUI L'A IMPOSÉ. Elles étaient
 // écrites en clair ici ET dans lighting-3d.js, soit deux exemplaires de la même promesse : « Jour
 // vaut exactement l'éclairage d'origine » (cf. docs/en/lighting.md). Une mutation l'a montré, en
@@ -622,6 +623,16 @@ const _groundTexCache = {};
 let _modulationSol3D = null;
 
 /**
+ * Les uniformes du pavage, créés UNE fois. three.js recompile le programme du Sol quand l'aoMap
+ * apparaît ou que les ombres basculent ; chaque recompilation doit se raccrocher à ces objets-ci,
+ * sans quoi ce que `applyGroundType` y écrit n'atteindrait plus le shader.
+ */
+const _uniformesPavage = {
+  uPavage: { value: 0 },
+  uPavageMoyenne: { value: null },
+};
+
+/**
  * Le format à un canal des couches larges, décidé une fois d'après le renderer.
  *
  * ⚠️ ON LIT LE RENDERER SANS LE CONSTRUIRE. `ensurePersonaScene3D` en fabrique un ; l'appeler ici
@@ -831,6 +842,14 @@ function tuileDuGrainDuSol3D(def) {
   const donnees = tc.getImageData(0, 0, tuile.width, tuile.height);
   appliquerTeinteAuMotif3D(donnees.data, rvb, natureDuNom3D(def.grain));
   tc.putImageData(donnees, 0, 0);
+  // La couleur moyenne de la tuile, dont le pavage a besoin pour préserver la variance de son
+  // mélange. Calculée ici parce que les pixels y sont déjà parcourus : la lire ailleurs demanderait
+  // un second getImageData sur 1024², ou le plus haut niveau de mipmap, que WebGL 1 n'offre pas.
+  const px = donnees.data;
+  let r = 0, v = 0, b = 0;
+  for (let i = 0; i < px.length; i += 4) { r += px[i]; v += px[i + 1]; b += px[i + 2]; }
+  const n = Math.max(1, px.length / 4);
+  tuile.moyenne = [r / n / 255, v / n / 255, b / n / 255];
   return tuile;
 }
 
@@ -855,7 +874,7 @@ export function buildGroundTexture(type) {
       carte.wrapS = carte.wrapT = THREE.RepeatWrapping;
       carte.repeat.set(def.repeat || 60, def.repeat || 60);
       carte.needsUpdate = true;
-      const entree = { map: carte, enAttenteDeGrain: false };
+      const entree = { map: carte, enAttenteDeGrain: false, moyenne: tuile.moyenne || null };
       _groundTexCache[type] = entree;
       return entree;
     }
@@ -1149,8 +1168,18 @@ export function applyGroundType(panel) {
   const type = panel.groundType || 'herbe';
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
   const mat = groundMesh3D.material;
-  const { map } = buildGroundTexture(type);
+  const entreeSol = buildGroundTexture(type);
+  const { map } = entreeSol;
   const plaques = modulationDuSol3D(def);
+  // Le pavage n'agit que si la matière l'autorise ET que sa moyenne est connue : sans elle, le
+  // mélange ne saurait pas autour de quoi préserver la variance. La recette dessinée d'une matière
+  // en attente de son grain n'a pas de moyenne, et c'est voulu : on ne pave pas un dessin.
+  const pave = !!(def.pavage && entreeSol.moyenne);
+  _uniformesPavage.uPavage.value = pave ? 1 : 0;
+  if (pave) {
+    if (!_uniformesPavage.uPavageMoyenne.value) _uniformesPavage.uPavageMoyenne.value = new THREE.Vector3();
+    _uniformesPavage.uPavageMoyenne.value.set(...entreeSol.moyenne);
+  }
   // ⚠️ LE SOL EST LA SURFACE LA PLUS RASANTE DE L'APPLICATION, et c'est le cas d'école du filtrage
   // anisotrope : la même note existe depuis #? dans model-cache.js pour les modèles importés, et le
   // Sol ne l'avait jamais reçu. Posé ici plutôt qu'à la construction des textures, parce que le
@@ -1670,6 +1699,13 @@ export function ensurePersonaScene3D(){
   // partout. Relevé : 1,49 % de pixels changés, dont 0,000 % LOIN du projeteur. Aucune acné, et le
   // nombre de segments du plan n'y change rien — recevoir se décide par fragment.
   groundMesh3D.receiveShadow = true;
+  // ⚠️ LE PAVAGE EST INSTALLÉ UNE FOIS, SUR LE MATÉRIAU PARTAGÉ, et c'est l'uniforme `uPavage` qui
+  // l'active Case par Case. Le désactiver rend exactement le chemin d'origine de three.js : c'est
+  // ce qui permet de le réserver aux matières qui le supportent sans dupliquer le matériau.
+  // L'uniforme de moyenne reçoit un vecteur dès l'installation : un uniforme `null` au moment de la
+  // première compilation ferait échouer son téléversement.
+  _uniformesPavage.uPavageMoyenne.value = new THREE.Vector3(0.5, 0.5, 0.5);
+  installerPavage3D(groundMesh3D.material, _uniformesPavage);
   groundMesh3D.rotation.x = -Math.PI / 2; // perpendicular to the Y axis (XZ plane, horizontal)
   groundMesh3D.position.set(0, GROUND_Y_DEFAULT_3D, 0);
   groundMesh3D.visible = false;

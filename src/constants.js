@@ -1005,25 +1005,31 @@ export const GROUND_TYPE_DEFS = [
   // qu'il annonçait, et ce qu'il faisait à la place était de décaler le Sol entier jusqu'à 0,84
   // unité sous les pieds des personnages.
   //
+  // ⚠️ `pavage` AUTORISE L'ANTI-RÉPÉTITION, cf. src/ground-tiling-3d.js. Seulement pour les
+  // matières photographiées SANS MOTIF RÉGULIER : chaque cellule y échantillonne une région décalée,
+  // ce qui couperait et désalignerait les lames d'un plancher ou les joints d'un carrelage. Le
+  // marbre en est écarté aussi : ses veines sont de longues structures continues qu'une frontière
+  // de cellule interromprait net.
+  //
   // ⚠️ `grain` NOMME UN FICHIER CUIT, et son absence est un ÉTAT DE TRANSITION ASSUMÉ, pas un repli
   // silencieux. Les matières qui en portent un affichent une photographie ; les autres gardent leur
   // recette dessinée au canevas, en attendant d'être sourcées. La distinction est DÉCLARÉE plutôt
   // que devinée d'un fichier présent ou non : un grain manquant doit se voir comme un manque, pas
   // se rattraper tout seul. tests/ground-3d.test.mjs exige que chaque grain déclaré existe.
   { id: 'neutre',    label: 'Neutre', labelEn: 'Neutral',        icon: '⬜', swatch: '#B8A890', roughness: 0.85, metalness: 0,    repeat: 1 , plaques: 0 },
-  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 3000, plaques: 0.16, grain: 'herbe' },
-  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 3000, plaques: 0.16 , grain: 'gazon' },
-  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 3000 , plaques: 0.34 , grain: 'terre.couleur' },
-  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 3000 , plaques: 0.22 , grain: 'sable' },
-  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 3000 , plaques: 0.24 , grain: 'gravier.couleur' },
-  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3000 , plaques: 0.14 , grain: 'bitume' },
-  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 3000 , plaques: 0.12 , grain: 'beton' },
-  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 3000 , plaques: 0.18 , grain: 'neige' },
+  { id: 'herbe',     label: 'Herbe', labelEn: 'Grass',         icon: '🌿', swatch: '#4a9c52', roughness: 0.95, metalness: 0,    repeat: 3000, plaques: 0.16, grain: 'herbe' , pavage: true },
+  { id: 'gazon',     label: 'Gazon', labelEn: 'Lawn',         icon: '⛳', swatch: '#2D7A36', roughness: 0.92, metalness: 0,    repeat: 3000, plaques: 0.16 , grain: 'gazon' , pavage: true },
+  { id: 'terre',     label: 'Terre', labelEn: 'Dirt',         icon: '🟤', swatch: '#7B5230', roughness: 0.99, metalness: 0,    repeat: 3000 , plaques: 0.34 , grain: 'terre.couleur' , pavage: true },
+  { id: 'sable',     label: 'Sable', labelEn: 'Sand',         icon: '🏖️', swatch: '#C4A060', roughness: 0.98, metalness: 0,    repeat: 3000 , plaques: 0.22 , grain: 'sable' , pavage: true },
+  { id: 'gravier',   label: 'Gravier', labelEn: 'Gravel',       icon: '🪨', swatch: '#8A8A8A', roughness: 0.9,  metalness: 0,    repeat: 3000 , plaques: 0.24 , grain: 'gravier.couleur' , pavage: true },
+  { id: 'bitume',    label: 'Bitume', labelEn: 'Asphalt',        icon: '🛣️', swatch: '#282828', roughness: 0.85, metalness: 0.05, repeat: 3000 , plaques: 0.14 , grain: 'bitume' , pavage: true },
+  { id: 'béton',     label: 'Béton', labelEn: 'Concrete',         icon: '🏗️', swatch: '#969696', roughness: 0.9,  metalness: 0,    repeat: 3000 , plaques: 0.12 , grain: 'beton' , pavage: true },
+  { id: 'neige',     label: 'Neige', labelEn: 'Snow',         icon: '❄️', swatch: '#E8EFFA', roughness: 0.98, metalness: 0,    repeat: 3000 , plaques: 0.18 , grain: 'neige' , pavage: true },
   { id: 'eau',       label: 'Eau', labelEn: 'Water',           icon: '💧', swatch: '#1A6090', roughness: 0.08, metalness: 0.5,  repeat: 3000 , plaques: 0.1 },
   { id: 'carrelage', label: 'Carrelage', labelEn: 'Tiles',     icon: '🔲', swatch: '#D8D8D8', roughness: 0.3,  metalness: 0.05, repeat: 3000 , plaques: 0.05 , grain: 'carrelage.couleur' },
   { id: 'plancher',  label: 'Plancher bois', labelEn: 'Wood floor', icon: '🪵', swatch: '#8B5E3C', roughness: 0.85, metalness: 0,    repeat: 3000 , plaques: 0.06 },
   { id: 'marbre',    label: 'Marbre', labelEn: 'Marble',        icon: '🏛️', swatch: '#F0EBE0', roughness: 0.18, metalness: 0.12, repeat: 3000 , plaques: 0.04 , grain: 'marbre.couleur' },
-  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 3000 , plaques: 0.08 , grain: 'moquette' },
+  { id: 'moquette',  label: 'Moquette', labelEn: 'Carpet',      icon: '🟫', swatch: '#9E8E7E', roughness: 0.99, metalness: 0,    repeat: 3000 , plaques: 0.08 , grain: 'moquette' , pavage: true },
 ];
 
 
