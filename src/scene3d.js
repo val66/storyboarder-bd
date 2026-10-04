@@ -11,6 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
+import { sondeDebut, sondeFin, sondeCompter } from './perf-probe.js';
 import { materiauDeTrace3D, grainDeTracePret3D, libererMateriauDeTrace3D } from './trace-textures-3d.js';
 import { poserCiel3D, retirerCiel3D, abaissementDeLHorizon3D } from './sky-3d.js';
 import {
@@ -2032,9 +2033,11 @@ export function resteDesRendus3D(){ return _rendusDifferes3D; }
 export function terminerFrameLimitee3D(){ _frameLimitee = false; }
 
 function renderPanelScene3D(panel, page, styleKey, scale = 1){
+  const _tSig = sondeDebut();
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
+  sondeFin('signature de Case', _tSig);
   const cached = panelSceneCache3D.get(panel.id);
-  if (cached && cached.sig === sig) return cached;
+  if (cached && cached.sig === sig) { sondeCompter('Case servie par le cache'); return cached; }
   // Budget épuisé : on REMET À PLUS TARD plutôt que de bloquer. La Case garde son image précédente
   // si elle en a une — périmée d'une frame, ce qui ne se voit pas — et n'affiche rien si elle est
   // froide, ce qui la laisse à son fond blanc et à sa bordure, exactement comme avant l'arrivée de
@@ -2044,7 +2047,10 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
     return cached || null;
   }
   _rendusDeLaFrame++;
-  return renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
+  const _tRendu = sondeDebut();
+  const _rendu = renderPanelSceneUncached3D(panel, page, styleKey, scale, sig);
+  sondeFin('Case rendue (complet)', _tRendu);
+  return _rendu;
 }
 
 /**
@@ -2633,6 +2639,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // Hide all groups; the active ones for this panel are reactivated below.
   tracéMeshCache3D.forEach(e => { e.group.visible = false; });
   const panelTracés3D = page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id);
+  const _tTraces = sondeDebut();
   panelTracés3D.forEach(o => {
     // Ensure the world coords exist (backward compatibility: files without obj.world).
     if (!o.world) computeTracéWorld3D(o, panel, page);
@@ -2650,6 +2657,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const sigKey = JSON.stringify({ tt: o.tracéType, c: o.color, tt2: o.terrainType, wh: o.wallHeight, world: o.world, holes: _tmHoleSig, g: grainDeTracePret3D(o.tracéType) });
     let entry = tracéMeshCache3D.get(o.id);
     if (!entry || entry.sigKey !== sigKey) {
+      sondeCompter('Trace reconstruite');
       // Release the old group if present.
       if (entry) {
         entry.group.traverse(ch => { if (ch.isMesh) { ch.geometry.dispose(); libererMateriauDeTrace3D(ch.material); } });
@@ -2846,6 +2854,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     const _isGroundTracé = (o.tracéType === 'route' || o.tracéType === 'chemin' || o.tracéType === 'terrain');
     entry.group.visible = !_camBelowGround || !_isGroundTracé;
   });
+  sondeFin('  dont Traces', _tTraces);
   // ─────────────────────────────────────────────────────────────────────────────────────────────
 
   // The offscreen 3D render is now sized in the EXACT proportion of page.w/h. NOT panel.w/h,
@@ -2968,7 +2977,9 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       personaCamera3D.far, Math.asin(Math.max(-1, Math.min(1, -_visee.y))));
   }
   poserCiel3D(personaScene3D, _eclairage, _abaisseCiel);
+  const _tGl = sondeDebut();
   personaRenderer3D.render(personaScene3D, personaCamera3D);
+  sondeFin('  dont WebGL (render)', _tGl);
   retirerCiel3D(personaScene3D);
   personaScene3D.background = null;
   // ⚠️ ET LES OMBRES REPARTENT ÉTEINTES, pour la MÊME raison que le fond juste au-dessus (#422k) :
@@ -2998,7 +3009,9 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   }
   const ctx2d = entryCache.canvas.getContext('2d');
   ctx2d.clearRect(0, 0, rw, rh);
+  const _tCopie = sondeDebut();
   ctx2d.drawImage(personaRenderer3D.domElement, 0, 0, rw, rh);
+  sondeFin('  dont copie vers la Planche', _tCopie);
   entryCache.sig = sig; entryCache.rw = rw; entryCache.rh = rh;
   return entryCache;
 }

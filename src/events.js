@@ -11,6 +11,7 @@
  * This module is now the application's real entry point: app.js is now just a
  * simple redirect (`import './events.js'`) kept so index.html doesn't have to change.
  */
+import { demarrer as sondeDemarrer, arreter as sondeArreter, rapport as sondeRapport } from './perf-probe.js';
 import {
   setScenesCallbacks, createScene, openScene, disableSceneCameraMode, loadSceneIntoPanel,
 } from './scenes.js';
@@ -116,7 +117,7 @@ import { APP_VERSION } from './version.js';
 import {
   cloneJoints, disposeObjectRig3D, disposePersonaRig3D, disposeWallRenderRig3D, ensurePersonaScene3D,
   frameOrthoCameraToBox, ensureObjectRigEntry3D, getWallPanRect2D, wallOpeningRect, personaCameraOrtho3D,
-  personaScene3D, getMaxAnisotropy3D,
+  personaScene3D, personaRenderer3D, getMaxAnisotropy3D,
 
   modeleImportePosable3D,
 } from './rig3d.js';
@@ -8490,6 +8491,23 @@ if (window.document && document.fonts && document.fonts.load) {
 // ⚠️ LES GRAINS DU SOL REJOIGNENT CEUX DES BULLES DANS LE MÊME PRÉCHARGEMENT. Deux appels
 // donneraient deux redessins et deux occasions d'oublier le second ; et le magasin de grains est
 // commun, puisque c'est le même mécanisme de chargement pour la même sorte de fichier.
+// ↳ src/perf-probe.js — LA SONDE, ÉTEINTE PAR DÉFAUT, s'allume depuis la console (F12) :
+// sonde.demarrer(), reproduire le ralentissement, sonde.rapport(). Voir son en-tête.
+if (typeof window !== 'undefined') {
+  window.sonde = {
+    demarrer: () => sondeDemarrer(personaRenderer3D),
+    arreter: sondeArreter,
+    rapport: () => {
+      const r = sondeRapport();
+      if (r && typeof r === 'object') {
+        console.table(r.mesures);
+        if (r.images_lentes.length) console.table(r.images_lentes);
+      }
+      return r;
+    },
+  };
+}
+
 if (window.document) {
   prechargerGrains3D([...grainsAPrecharger3D(), ...grainsDuSol3D(), ...grainsDesTraces3D()], drawCurrentPage);
 }

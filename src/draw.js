@@ -16,6 +16,7 @@
  * buildSinglePageImagePdf, downloadCanvasAsPdf, exportPage, exportVolume
  */
 
+import { sondeDebut, sondeFin, sondeImageDebut, sondeImageFin } from './perf-probe.js';
 import { S, currentPage, currentPageData, isLockedScenePanel, estCaseEnRecadrage3D, panelsInPage, ensurePanelNumbers, newId, tr } from './state.js';
 import {
   WALL_TYPES, WALL_OPENING_MAGNET_TYPES, GROUND_TYPE_DEFS, GROUND_Y_DEFAULT_3D,
@@ -52,7 +53,7 @@ import {
 import {
   resolveStyle3D,
   renderPersonaToCanvas3D,
-  personaRigCache3D, personaCamera3D,
+  personaRigCache3D, personaCamera3D, personaRenderer3D,
   drawPersona3D,
 } from './rig3d.js';
 import { noDescriptionLabel } from './i18n.js';
@@ -3024,6 +3025,7 @@ export function drawCurrentPage(){
   // demande plus de teintes que le cache n'a de places jette à chaque tour ce qu'elle redemande au
   // suivant, et passe de 0,03 ms à 63 ms par image.
   nouvelleImage3D();
+  const _tImage = sondeImageDebut();
   const page = currentPage();
   // Clear the 3D render cache on a page change to force a clean re-render.
   // The STABLE reference from currentPageData() is compared (the real Page object in S.tomes[].pages[])
@@ -3053,10 +3055,14 @@ export function drawCurrentPage(){
   // L'export, lui, n'ouvre pas de frame limitée et rend tout, parce qu'une planche exportée à
   // laquelle il manque une Case serait un défaut bien pire que le gel qu'on corrige ici.
   commencerFrameLimitee3D();
+  const _tContenu = sondeDebut();
   drawContent(_ctx, page, S.pageRenderScale, true);
+  sondeFin('dessin de la Planche (drawContent)', _tContenu);
   const _reste = resteDesRendus3D();
   terminerFrameLimitee3D();
+  const _tPanneau = sondeDebut();
   _updateSidePanel();
+  sondeFin('panneau latéral', _tPanneau);
   // On redemande un dessin tant qu'il reste des Cases à reconstruire. `scheduleDrawCurrentPage`
   // coalesce, donc plusieurs demandes dans la même frame n'en produisent qu'une ; et la condition
   // porte sur ce qui a RÉELLEMENT été remis à plus tard, sans quoi cette ligne se rappellerait
@@ -3066,6 +3072,7 @@ export function drawCurrentPage(){
   // encore rien rendu, son coût vaut zéro, et le plafond calculé là-dessus n'avait rien gardé du
   // tout. Ici tous les octets existent et se mesurent.
   if (_elagageADemander && !_reste) { _elagageADemander = false; elaguerCacheDeCases3D(); }
+  sondeImageFin(_tImage, personaRenderer3D);
   if (_reste) scheduleDrawCurrentPage();
 }
 let _elagageADemander = false;
