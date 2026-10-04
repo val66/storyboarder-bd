@@ -32,11 +32,20 @@ import { CLE_ACTUELLE } from './lighting-3d.js';
 export const CIEL_ZENITH = 0.72;
 // 0,45 jusqu'en #436d : un horizon délavé de près de moitié, jugé terne à l'écran.
 export const CIEL_HORIZON_BLANC = 0.25;
-export function couleursDuCielCalcule3D(hex){
+/**
+ * ⚠️ LA NUIT N'EST PAS DÉLAVÉE, ET ELLE EST ASSOMBRIE (#436f). Jugée « pas assez sombre » : son
+ * horizon, éclairci d'un quart vers le blanc comme celui du jour, tournait au gris-bleu. En pleine
+ * nuit, il ne l'est plus qu'au cinquième de cela, et tout le ciel perd encore 35 %.
+ */
+export const NUIT_HORIZON = 0.2, NUIT_ASSOMBRI = 0.35;
+export function couleursDuCielCalcule3D(hex, nuit = 0){
   const c = rvb(hex);
+  const n = Math.min(1, Math.max(0, Number(nuit) || 0));
+  const blanc = CIEL_HORIZON_BLANC * (1 - n * (1 - NUIT_HORIZON));
+  const k = 1 - NUIT_ASSOMBRI * n;
   return {
-    zenith: c.map(x => x * CIEL_ZENITH),
-    horizon: c.map(x => x + (1 - x) * CIEL_HORIZON_BLANC),
+    zenith: c.map(x => x * CIEL_ZENITH * k),
+    horizon: c.map(x => (x + (1 - x) * blanc) * k),
   };
 }
 
@@ -55,8 +64,11 @@ export function nuitDuCiel3D(intensiteRelative){
   return Math.min(1, Math.max(0, (NUIT_DEBUT - i) / (NUIT_DEBUT - NUIT_PLEINE)));
 }
 
-/** La couverture nuageuse : 42 % de jour, 30 % en pleine nuit, pour laisser voir les étoiles. */
-export const NUAGES_JOUR = 0.42, NUAGES_NUIT = 0.30;
+/**
+ * La couverture nuageuse : 32 % de jour, 30 % en pleine nuit, pour laisser voir les étoiles.
+ * Le jour valait 42 % jusqu'en #436f, jugé trop chargé.
+ */
+export const NUAGES_JOUR = 0.32, NUAGES_NUIT = 0.30;
 export function couvertureNuageuse3D(nuit){
   const n = Math.min(1, Math.max(0, Number(nuit) || 0));
   return NUAGES_JOUR + (NUAGES_NUIT - NUAGES_JOUR) * n;
@@ -110,7 +122,7 @@ function rvb(hex){
 export const NUAGES = {
   echelle: 2.0,      // densité de motifs sur le plafond nuageux
   plafond: 0.30,     // décalage de la projection : plus grand, moins de nuages géants au zénith
-  bord: 0.07,        // largeur de la transition du bord : plus petit, plus net
+  bord: 0.04,        // largeur de la transition du bord : plus petit, plus net (0,07 avant #436f)
   pas: 0.07,         // pas des échantillons de lumière vers le soleil
   absorption: 0.55,  // assombrissement par l'épaisseur traversée (Beer-Lambert)
 };
@@ -228,8 +240,12 @@ void main() {
     float g = 0.6;
     float phase = ( 1.0 - g * g ) / pow( 1.0 + g * g - 2.0 * g * dot( vrai, L ), 1.5 ) * 0.06;
     vec3 cielMoyen = mix( uHorizon, uZenith, 0.5 );
-    vec3 ombre = mix( cielMoyen * 0.55 + vec3( 0.36, 0.37, 0.40 ), cielMoyen * 1.10, uNuit );
-    vec3 eclaire = mix( vec3( 0.72 ) + uSoleilCoul * 0.25, cielMoyen * 1.5 + uSoleilCoul * 0.12, uNuit );
+    // ⚠️ LA COULEUR DE LA LUMIÈRE TEINTE LES NUAGES À 60 %, L'OMBRE SUIT LE CIEL (#436f). Ils ne la
+    // recevaient qu'au quart, sur un gris fixe : en Personnalisé, un couchant orangé laissait des
+    // nuages presque blancs. Avec une lumière blanche, le Jour garde exactement sa clarté.
+    vec3 teinte = mix( vec3( 1.0 ), uSoleilCoul, 0.6 );
+    vec3 ombre = mix( cielMoyen * 0.70 + teinte * 0.25, cielMoyen * 1.10, uNuit );
+    vec3 eclaire = mix( teinte * 0.97, cielMoyen * 1.5 + uSoleilCoul * 0.12, uNuit );
     vec3 nuage = mix( ombre, eclaire, T ) + uSoleilCoul * phase * ( 1.0 - dens ) * ( 1.0 - 0.7 * uNuit );
     nuage *= 0.80 + 0.40 * cielFbm5( p * 3.0 + vec2( 2.2, 7.7 ), e * 3.0 );
     a = dens * smoothstep( 0.0, 0.10, d.y );
@@ -286,8 +302,8 @@ function sphereDuCiel3D(){
 export function poserCiel3D(scene, eclairage, abaissement = 0){
   const sphere = sphereDuCiel3D();
   const u = sphere.material.uniforms;
-  const { zenith, horizon } = couleursDuCielCalcule3D(eclairage.ciel);
   const nuit = nuitDuCiel3D(eclairage.soleil.intensite / CLE_ACTUELLE);
+  const { zenith, horizon } = couleursDuCielCalcule3D(eclairage.ciel, nuit);
   u.uZenith.value.setRGB(...zenith);
   u.uHorizon.value.setRGB(...horizon);
   const d = eclairage.soleil.direction;

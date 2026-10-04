@@ -39,6 +39,24 @@ describe('Ciel : les couleurs', () => {
   test('l’horizon n’est délavé que d’un quart, il était jugé terne à près de moitié (#436d)', () => {
     assert.ok(CIEL_HORIZON_BLANC <= 0.3);
   });
+
+  test('⚠️ LA NUIT EST PLUS SOMBRE QUE SA COULEUR, ET SON HORIZON N’EST PRESQUE PAS DÉLAVÉ (#436f)', () => {
+    const jour = couleursDuCielCalcule3D('#131D33', 0), nuit = couleursDuCielCalcule3D('#131D33', 1);
+    const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    assert.ok(lum(nuit.horizon) < 0.5 * lum(jour.horizon), 'l’horizon de nuit tournait au gris-bleu');
+    assert.ok(lum(nuit.zenith) < lum(jour.zenith));
+    // Sans nuit, rien ne change : le Jour garde ses couleurs.
+    assert.deepEqual(couleursDuCielCalcule3D('#8FCEF3'), couleursDuCielCalcule3D('#8FCEF3', 0));
+  });
+
+  test('le ciel posé reçoit les couleurs de SA nuit', () => {
+    _viderCiel3D();
+    const e = eclairage({ mode: 'nuit' });
+    const u = poserCiel3D(new THREE.Scene(), e).material.uniforms;
+    const { horizon } = couleursDuCielCalcule3D(e.ciel, 1);
+    assert.ok(Math.abs(u.uHorizon.value.g - horizon[1]) < 1e-6);
+    _viderCiel3D();
+  });
 });
 
 describe('Ciel : le jour, la nuit, et entre les deux', () => {
@@ -135,6 +153,18 @@ describe('Ciel : le GLSL', () => {
     assert.ok(GLSL_CIEL_FRAGMENT.includes(`smoothstep( seuil, seuil + ${f4(NUAGES.bord)}, n )`));
     assert.ok(GLSL_CIEL_FRAGMENT.includes(`exp( -opt * ${f4(NUAGES.absorption)} )`));
     assert.ok(GLSL_CIEL_FRAGMENT.includes(`vs * ${f4(NUAGES.pas)} * float( j )`));
+  });
+
+  test('⚠️ LA COULEUR DE LA LUMIÈRE TEINTE LES NUAGES, ombre comprise (#436f)', () => {
+    // Ils ne la recevaient qu'au quart, sur un gris fixe : un couchant laissait des nuages blancs.
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec3 teinte = mix( vec3( 1.0 ), uSoleilCoul, 0.6 );'));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec3 ombre = mix( cielMoyen * 0.70 + teinte * 0.25,'));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec3 eclaire = mix( teinte * 0.97,'));
+  });
+
+  test('le jour est moins chargé et ses bords plus nets qu’à l’intégration (#436f)', () => {
+    assert.ok(NUAGES_JOUR <= 0.35);
+    assert.ok(NUAGES.bord <= 0.05);
   });
 
   test('les étoiles ne brillent que la nuit, et pas à travers les nuages', () => {
