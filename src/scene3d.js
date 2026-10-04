@@ -11,7 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
-import { poserCiel3D, retirerCiel3D, etatDuPanorama3D } from './sky-3d.js';
+import { poserCiel3D, retirerCiel3D, etatDuPanorama3D, abaissementDeLHorizon3D } from './sky-3d.js';
 import {
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D, PERSONA_REAL_HEIGHT_M,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
@@ -2949,7 +2949,16 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // ⚠️ LE CIEL SE POSE APRÈS LE MARQUAGE DES OMBRES, juste au-dessus : ce parcours met `castShadow`
   // sur toute la scène, et une sphère de ciel projetterait alors son ombre sur tout le reste (#436).
   // Il se retire aussitôt, comme le fond : la scène est partagée et les aperçus n'en veulent pas.
-  poserCiel3D(personaScene3D, _eclairage, () => { if (_drawCurrentPage) _drawCurrentPage(); });
+  // L'horizon du ciel descend jusqu'au bord VISIBLE du Sol, que le plan lointain coupe (#436c).
+  // Sans Sol affiché, contre-plongée sous le plancher, l'horizon reste le vrai.
+  let _abaisseCiel = 0;
+  if (groundMesh3D && groundMesh3D.visible) {
+    personaCamera3D.updateMatrixWorld();
+    const _visee = personaCamera3D.getWorldDirection(new THREE.Vector3());
+    _abaisseCiel = abaissementDeLHorizon3D(personaCamera3D.position.y - groundMesh3D.position.y,
+      personaCamera3D.far, Math.asin(Math.max(-1, Math.min(1, -_visee.y))));
+  }
+  poserCiel3D(personaScene3D, _eclairage, () => { if (_drawCurrentPage) _drawCurrentPage(); }, _abaisseCiel);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   retirerCiel3D(personaScene3D);
   personaScene3D.background = null;

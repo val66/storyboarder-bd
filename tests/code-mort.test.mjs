@@ -311,6 +311,8 @@ const EN_ATTENTE = {
   // #435m : le MODÈLE du shader de l'eau, pour la même raison : les vagues sont calculées par le
   // GLSL, généré depuis les mêmes constantes ; ce modèle sert à en éprouver la pente et l'effacement.
   vagues3D: '#435m : modèle JS du GLSL de l’eau, éprouvé par les tests',
+  // #436c : même nature, le modèle de `cielDirection`, la déformation du ciel vers le bord du Sol.
+  elevationDuCiel3D: '#436c : modèle JS du GLSL du ciel, éprouvé par les tests',
 };
 
 function exportsSansAppelant(){
@@ -406,8 +408,9 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     //
     // Remonté à 11 en #435m, et ce n'est pas un report non plus : `vagues3D` est le modèle du
     // shader de l'eau, comme les trois du pavage avant lui. Il n'aura jamais d'appelant, c'est le
-    // GLSL qui calcule, et il est tenu par les tests de tests/ground-3d.test.mjs.
-    assert.equal(Object.keys(EN_ATTENTE).length, 11,
+    // GLSL qui calcule, et il est tenu par les tests de tests/ground-3d.test.mjs. Remonté à 12 en
+    // #436c pour la même raison : `elevationDuCiel3D` est le modèle de `cielDirection`.
+    assert.equal(Object.keys(EN_ATTENTE).length, 12,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

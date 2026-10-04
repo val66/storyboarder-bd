@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 
 import {
   CIEL_PANORAMAS, panoramaDuMode3D, couleursDuCielCalcule3D, etoilesDuCiel3D,
-  soleilDuPanorama3D, lacetDuPanorama3D, CIEL_SOLEIL_PLEIN, GLSL_CIEL_SOMMET, GLSL_CIEL_FRAGMENT,
+  soleilDuPanorama3D, lacetDuPanorama3D, CIEL_SOLEIL_PLEIN, abaissementDeLHorizon3D, elevationDuCiel3D, GLSL_CIEL_SOMMET, GLSL_CIEL_FRAGMENT,
   poserCiel3D, retirerCiel3D, etatDuPanorama3D, _viderCiel3D, _poserPanoramaPourTests3D,
   SOLEIL_PIXELS_MIN,
 } from '../src/sky-3d.js';
@@ -185,8 +185,9 @@ describe('Ciel : la rotation du panorama, sur la VRAIE géométrie de la sphère
       assert.ok(Math.min(d, 1 - d) < 1e-6, `u au sommet ${i}`);
       assert.ok(Math.abs(uv.getY(i) - (Math.asin(Math.max(-1, Math.min(1, y))) / Math.PI + 0.5)) < 1e-6, `v au sommet ${i}`);
     }
-    // Et l'image ne porte que la moitié haute : v de 0,5 à 1 couvre toute sa hauteur.
-    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec2( 1.0 - vUv.x, max( vUv.y * 2.0 - 1.0, 0.0 ) )'));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('texture2D( uCarte, vec2( 1.0 - vUv.x, vc ) )'));
+    // Et l'image ne porte que la moitié haute : l'élévation de 0 à 90° couvre toute sa hauteur.
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('float vc = clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 );'));
   });
 
   test('sans soleil, le panorama garde son orientation', () => {
@@ -224,7 +225,7 @@ describe('Ciel : posé pour le rendu, retiré après', () => {
     assert.equal(sphere.material.uniforms.uPanorama.value, 1);
     assert.equal(sphere.material.uniforms.uEtoiles.value, 1);
     assert.equal(sphere.rotation.y, 0, 'sans soleil, pas de rotation');
-    assert.ok(/uPanorama > 0\.5[\s\S]*cielEtoiles\( normalize\( vDir \), 0\.0 \) \* uEtoiles[\s\S]*return;/.test(GLSL_CIEL_FRAGMENT),
+    assert.ok(/uPanorama > 0\.5[\s\S]*cielEtoiles\( dc, 0\.0 \) \* uEtoiles[\s\S]*return;/.test(GLSL_CIEL_FRAGMENT),
       'la branche du panorama n’ajoute pas les étoiles');
     _viderCiel3D();
   });
@@ -370,5 +371,70 @@ describe('Ciel : l’outil qui dépose les panoramas', () => {
     assert.deepEqual(sourceUnique(['a.jpg', 'notes.txt']), { nom: 'a.jpg' });
     assert.match(sourceUnique(['a.exr']).refus, /tonemappé/);
     assert.match(sourceUnique(['a.jpg', 'b.JPEG']).refus, /un seul/);
+  });
+});
+
+describe('Ciel : l’horizon descend jusqu’au bord VISIBLE du Sol (#436c)', () => {
+  /**
+   * Le Sol est coupé par le plan lointain de la caméra bien avant l'horizon vrai. Entre les deux,
+   * on voyait le ciel SOUS l'horizon : une bande uniforme, lue comme un ciel flou et terne.
+   */
+  const bordDuSol = (h, f, phi, beta) => h * Math.cos(beta - phi) / Math.sin(beta) - f;
+
+  test('⚠️ L’ABAISSEMENT EST L’ÉLÉVATION OÙ LE SOL ATTEINT LE PLAN LOINTAIN', () => {
+    for (const [h, f, phi] of [[10, 70, 0.1], [1.6, 34, 0], [25, 300, 0.35], [3, 12, -0.2]]) {
+      const a = abaissementDeLHorizon3D(h, f, phi);
+      assert.ok(a > 0 && a < Math.PI / 2, `${h}/${f}/${phi} : ${a}`);
+      assert.ok(Math.abs(bordDuSol(h, f, phi, a)) < 1e-6 * f, `le rayon abaissé n’atteint pas le plan lointain (${h}/${f})`);
+    }
+    // Le cas de la capture : une caméra à 10 au-dessus du sol, lointain à 70, presque à plat.
+    const a = abaissementDeLHorizon3D(10, 70, 0.1) * 180 / Math.PI;
+    assert.ok(a > 6 && a < 10, `${a.toFixed(1)}° : la bande observée faisait environ huit degrés`);
+  });
+
+  test('plus le lointain recule, plus l’horizon visible rejoint le vrai', () => {
+    let avant = Infinity;
+    for (const f of [20, 50, 100, 400, 2000]) {
+      const a = abaissementDeLHorizon3D(5, f, 0);
+      assert.ok(a < avant); avant = a;
+    }
+  });
+
+  test('sans hauteur ni lointain utilisables, l’horizon reste le vrai', () => {
+    for (const [h, f] of [[0, 50], [-3, 50], [5, 0], [NaN, 50], [5, undefined]]) {
+      assert.equal(abaissementDeLHorizon3D(h, f, 0), 0, `${h}/${f}`);
+    }
+    // Une caméra haute et très piquée dont le lointain n'atteint pas le sol : aucun bord à rejoindre.
+    assert.equal(abaissementDeLHorizon3D(50, 10, 1.2), 0);
+  });
+
+  test('⚠️ LE BORD DU SOL REÇOIT L’HORIZON DU CIEL, LE ZÉNITH RESTE LE ZÉNITH', () => {
+    const a = 0.14;
+    assert.ok(Math.abs(elevationDuCiel3D(-a, a)) < 1e-12);
+    assert.ok(Math.abs(elevationDuCiel3D(Math.PI / 2, a) - Math.PI / 2) < 1e-12);
+    assert.equal(elevationDuCiel3D(0.3, 0), 0.3, 'sans abaissement, rien ne bouge');
+    // Et le GLSL calcule la même chose.
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('float e2 = ( e + uAbaisse ) * 1.5707963 / ( 1.5707963 + uAbaisse );'));
+    assert.ok(/vec3 d = cielDirection\( normalize\( vDir \) \);/.test(GLSL_CIEL_FRAGMENT), 'le ciel calculé ignore l’abaissement');
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec3 dc = cielDirection( normalize( vDir ) );'), 'le panorama ignore l’abaissement');
+  });
+
+  test('l’abaissement posé atteint le shader, et une valeur absurde n’y entre pas', () => {
+    _viderCiel3D();
+    const e = resoudreEclairage3D({ mode: 'perso', azimut: 10, elevation: 30, couleur: '#FFFFFF', intensite: 1 });
+    assert.equal(poserCiel3D(new THREE.Scene(), e, null, 0.12).material.uniforms.uAbaisse.value, 0.12);
+    assert.equal(poserCiel3D(new THREE.Scene(), e, null, NaN).material.uniforms.uAbaisse.value, 0);
+    // Un abaissement négatif RELÈVERAIT l'horizon au-dessus du Sol, et rouvrirait la bande vide.
+    assert.equal(poserCiel3D(new THREE.Scene(), e, null, -0.2).material.uniforms.uAbaisse.value, 0);
+    assert.equal(poserCiel3D(new THREE.Scene(), e).material.uniforms.uAbaisse.value, 0);
+    _viderCiel3D();
+  });
+
+  test('⚠️ LE RENDU D’UNE CASE CALCULE L’ABAISSEMENT DEPUIS SA CAMÉRA ET SON SOL', () => {
+    const scene = readFileSync(join(RACINE, 'src', 'scene3d.js'), 'utf8');
+    assert.ok(scene.includes('abaissementDeLHorizon3D(personaCamera3D.position.y - groundMesh3D.position.y,'));
+    assert.ok(scene.includes('personaCamera3D.far, Math.asin('));
+    assert.ok(scene.includes('if (groundMesh3D && groundMesh3D.visible) {'), 'sans Sol, l’horizon doit rester le vrai');
+    assert.ok(scene.includes('() => { if (_drawCurrentPage) _drawCurrentPage(); }, _abaisseCiel);'));
   });
 });

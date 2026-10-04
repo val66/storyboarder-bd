@@ -137,6 +137,45 @@ export function lacetDuPanorama3D(soleil, direction){
   return (soleil.u - 0.5) * 2 * Math.PI - Math.atan2(direction.z, direction.x);
 }
 
+/**
+ * De combien l'horizon VISIBLE est sous l'horizon vrai (radians), quand le Sol est coupé par le
+ * plan lointain de la caméra. Fonction PURE.
+ *
+ * ⚠️ C'EST CE QUI RENDAIT L'HORIZON « FLOU ET TERNE » (#436c). Le Sol fait 12 000 unités, mais la
+ * caméra d'une Case ne voit qu'à `far` = distance × 2 + 10 : il s'arrête bien avant l'horizon. Entre
+ * son bord et l'horizon vrai, on voyait le ciel SOUS l'horizon : un aplat pour le ciel calculé, la
+ * dernière ligne répétée pour un panorama. Une bande uniforme de huit degrés, que l'œil lisait
+ * comme un ciel délavé. La réponse n'est pas d'allonger `far`, qui règle la précision de
+ * profondeur de toute la scène, mais d'abaisser l'horizon du ciel jusqu'au bord du Sol.
+ *
+ * Le bord du Sol est là où un rayon atteint la profondeur `lointain` le long de l'axe de visée :
+ * un rayon d'élévation −β touche le sol à la distance h / sin β, de profondeur h·cos(β − φ) / sin β
+ * pour une caméra piquée de φ. Cette profondeur décroît avec β : on la résout par dichotomie.
+ * Exacte au centre de l'image ; sur les bords, où la profondeur se mesure de biais, le Sol s'arrête
+ * un peu plus haut, ce que la continuité de la déformation absorbe.
+ */
+export function abaissementDeLHorizon3D(hauteur, lointain, pique){
+  const h = Number(hauteur), f = Number(lointain), p = Number(pique) || 0;
+  if (!(h > 0) || !(f > 0)) return 0;
+  const profondeur = (b) => h * Math.cos(b - p) / Math.sin(b);
+  let bas = 1e-6, haut = Math.PI / 2;
+  if (profondeur(haut) >= f) return 0;
+  for (let i = 0; i < 60; i++) {
+    const m = (bas + haut) / 2;
+    if (profondeur(m) > f) bas = m; else haut = m;
+  }
+  return (bas + haut) / 2;
+}
+
+/**
+ * L'élévation du CIEL montrée dans une direction d'élévation `e` (radians), l'horizon étant abaissé
+ * de `a`. Fonction PURE, modèle de `cielDirection` dans le GLSL : le bord du Sol (−a) reçoit
+ * l'horizon du ciel (0), le zénith reste le zénith, et entre les deux c'est linéaire.
+ */
+export function elevationDuCiel3D(e, a){
+  return (e + a) * (Math.PI / 2) / (Math.PI / 2 + a);
+}
+
 function rvb(hex){
   const s = String(hex || '').replace('#', '');
   const ok = /^[0-9a-fA-F]{6}$/.test(s) ? s : '8FCEF3';
@@ -174,6 +213,7 @@ uniform vec3 uSoleilDir;
 uniform vec3 uSoleilCoul;
 uniform float uNuages;
 uniform float uEtoiles;
+uniform float uAbaisse;
 varying vec3 vDir;
 varying vec2 vUv;
 
@@ -187,6 +227,14 @@ float cielFbm( vec2 p ) {
   float s = 0.0, a = 0.5;
   for ( int i = 0; i < 5; i++ ) { s += a * cielBruit( p ); p = p * 2.03 + vec2( 17.1, 3.7 ); a *= 0.5; }
   return s;
+}
+
+// La direction du ciel, l'horizon abaissé jusqu'au bord du Sol : voir abaissementDeLHorizon3D.
+vec3 cielDirection( vec3 d ) {
+  float e = asin( clamp( d.y, -1.0, 1.0 ) );
+  float e2 = ( e + uAbaisse ) * 1.5707963 / ( 1.5707963 + uAbaisse );
+  vec2 h = d.xz / max( length( d.xz ), 1e-6 );
+  return vec3( h.x * cos( e2 ), sin( e2 ), h.y * cos( e2 ) );
 }
 
 // Des étoiles PONCTUELLES, calculées : nettes à toute taille, ce qu'aucune photo n'est (#436b).
@@ -206,11 +254,15 @@ void main() {
     // équirectangulaire. Sans ce retournement, le ciel serait vu en miroir.
     // L'image ne porte que la moitié haute : v de 0,5 à 1 s'étale sur toute sa hauteur, et sous
     // l'horizon on répète sa dernière ligne, que le Sol cache de toute façon.
-    vec3 p = texture2D( uCarte, vec2( 1.0 - vUv.x, max( vUv.y * 2.0 - 1.0, 0.0 ) ) ).rgb;
-    gl_FragColor = vec4( p + cielEtoiles( normalize( vDir ), 0.0 ) * uEtoiles, 1.0 );
+    // v se calcule depuis la direction et non depuis la sphère : c'est elle qui porte l'horizon
+    // abaissé. u reste celui de la géométrie, qui n'a pas de couture.
+    vec3 dc = cielDirection( normalize( vDir ) );
+    float vc = clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 );
+    vec3 p = texture2D( uCarte, vec2( 1.0 - vUv.x, vc ) ).rgb;
+    gl_FragColor = vec4( p + cielEtoiles( dc, 0.0 ) * uEtoiles, 1.0 );
     return;
   }
-  vec3 d = normalize( vDir );
+  vec3 d = cielDirection( normalize( vDir ) );
   float h = max( d.y, 0.0 );
   vec3 c = mix( uHorizon, uZenith, pow( h, 0.45 ) );
   float s = max( dot( d, normalize( uSoleilDir ) ), 0.0 );
@@ -254,7 +306,7 @@ function sphereDuCiel3D(){
       uPanorama: { value: 0 }, uCarte: { value: null },
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
       uSoleilDir: { value: new THREE.Vector3(0, 1, 0) }, uSoleilCoul: { value: new THREE.Color() },
-      uNuages: { value: CIEL_NUAGES }, uEtoiles: { value: 0 },
+      uNuages: { value: CIEL_NUAGES }, uEtoiles: { value: 0 }, uAbaisse: { value: 0 },
     },
   });
   _sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), mat);
@@ -313,9 +365,10 @@ function soleilDeLImage3D(image){
  * Pose le ciel d'une Case dans la scène, juste avant son rendu. `retirerCiel3D` l'enlève juste
  * après, comme le fond : la scène est partagée, et les aperçus n'ont rien demandé.
  */
-export function poserCiel3D(scene, eclairage, apres){
+export function poserCiel3D(scene, eclairage, apres, abaissement = 0){
   const sphere = sphereDuCiel3D();
   const u = sphere.material.uniforms;
+  u.uAbaisse.value = Number(abaissement) > 0 ? Number(abaissement) : 0;
   const nom = eclairage.panorama || null;
   if (nom) chargerPanorama3D(nom, apres);
   const pano = nom && _panoramas[nom];
