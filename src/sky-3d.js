@@ -65,10 +65,11 @@ export function nuitDuCiel3D(intensiteRelative){
 }
 
 /**
- * La couverture nuageuse : 32 % de jour, 30 % en pleine nuit, pour laisser voir les étoiles.
- * Le jour valait 42 % jusqu'en #436f, jugé trop chargé.
+ * La couverture nuageuse, en seuil sur la forme : 36 % de jour, 32 % en pleine nuit, pour laisser
+ * voir les étoiles. Recalée en #436g avec les nuages ronds, dont la forme se répartit autrement que
+ * le bruit étiré d'avant (42 puis 32 % avec lui).
  */
-export const NUAGES_JOUR = 0.32, NUAGES_NUIT = 0.30;
+export const NUAGES_JOUR = 0.36, NUAGES_NUIT = 0.32;
 export function couvertureNuageuse3D(nuit){
   const n = Math.min(1, Math.max(0, Number(nuit) || 0));
   return NUAGES_JOUR + (NUAGES_NUIT - NUAGES_JOUR) * n;
@@ -145,8 +146,8 @@ const f4 = (x) => Number(x).toFixed(4);
  * Le fragment.
  *
  * LES NUAGES sont posés sur un plafond plat, projeté dans la direction de chaque pixel. Leur forme
- * est un bruit fractal doucement déformé, et leur bord un bruit « en chou-fleur » (1 − |2b − 1|) qui
- * donne les volutes d'un cumulus. Leur lumière approche le volume : on mesure l'épaisseur de nuage
+ * est une grappe de bosses rondes à trois échelles (voir `cielNuage`), ce qui donne l'aspect
+ * cotonneux d'un cumulus. Leur lumière approche le volume : on mesure l'épaisseur de nuage
  * traversée en trois pas vers le soleil, et on assombrit selon Beer-Lambert ; face au soleil, la
  * diffusion vers l'avant (Henyey-Greenstein) allume un liseré sur les bords minces.
  *
@@ -186,15 +187,31 @@ float cielFbm5( vec2 p, float e ) {
   for ( int i = 0; i < 5; i++ ) { float w = cielPoids( fr, e ); s += a * mix( 0.5, cielBruit( p ), w ); p = cielRot * p + vec2( 17.1, 3.7 ); a *= 0.5; fr *= 2.0; }
   return s / 0.96875;
 }
-float cielVolutes( vec2 p, float e ) {
-  float s = 0.0, a = 0.5, fr = 1.0;
-  for ( int i = 0; i < 5; i++ ) { float w = cielPoids( fr, e ); s += a * mix( 0.5, 1.0 - abs( 2.0 * cielBruit( p ) - 1.0 ), w ); p = cielRot * p + vec2( 17.1, 3.7 ); a *= 0.5; fr *= 2.0; }
-  return s / 0.96875;
+// La distance au point le plus proche d'un semis aléatoire : 1 − elle fait des bosses RONDES.
+float cielWorley( vec2 p ) {
+  vec2 i = floor( p ), f = fract( p );
+  float m = 9.0;
+  for ( int x = -1; x <= 1; x++ ) {
+    for ( int y = -1; y <= 1; y++ ) {
+      vec2 o = vec2( float( x ), float( y ) );
+      vec2 c = i + o;
+      vec2 pt = vec2( cielHasard( c + 0.7 ), cielHasard( c + 4.1 ) ) * 0.8 + 0.1;
+      m = min( m, length( o + pt - f ) );
+    }
+  }
+  return m;
 }
+// ⚠️ DES BOSSES RONDES, PAS UN BRUIT DÉFORMÉ (#436g). La forme précédente, un bruit fractal étiré,
+// donnait des nuages « carrés », aux côtés plats. Un cumulus est une grappe de dômes : trois semis
+// de bosses à trois échelles, regroupés par une zone de fond qui décide où il y a des nuages.
 float cielNuage( vec2 q, float e ) {
   vec2 w = vec2( cielFbm3( q * 0.5 + vec2( 5.2, 1.3 ), e * 0.5 ), cielFbm3( q * 0.5 + vec2( 1.7, 9.2 ), e * 0.5 ) ) - 0.5;
-  vec2 q2 = q + w * 0.6;
-  return cielFbm3( q2, e ) * 0.78 + cielVolutes( q2 * 4.0, e * 4.0 ) * 0.22;
+  vec2 q2 = q + w * 0.25;
+  float zone = cielFbm3( q2 * 0.45 + vec2( 3.3, 8.1 ), e * 0.45 );
+  float p1 = 1.0 - cielWorley( q2 * 0.8 );
+  float p2 = mix( 0.45, 1.0 - cielWorley( q2 * 2.3 + vec2( 7.1, 2.9 ) ), cielPoids( 2.3, e ) );
+  float p3 = mix( 0.45, 1.0 - cielWorley( q2 * 5.0 + vec2( 1.3, 5.5 ) ), cielPoids( 5.0, e ) );
+  return zone * 0.55 + ( p1 * 0.55 + p2 * 0.30 + p3 * 0.15 ) * 0.55 - 0.08;
 }
 
 // La direction du ciel, l'horizon abaissé jusqu'au bord du Sol : voir abaissementDeLHorizon3D.

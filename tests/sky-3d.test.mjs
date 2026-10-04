@@ -141,10 +141,13 @@ describe('Ciel : le GLSL', () => {
     assert.ok(GLSL_CIEL_FRAGMENT.includes('return clamp( ( 1.0 / ( freq * e ) - 3.0 ) / 3.0, 0.0, 1.0 );'));
     assert.ok(GLSL_CIEL_FRAGMENT.includes('float e = max( length( dFdx( p ) ), length( dFdy( p ) ) ) + 1e-5;'));
     // Toutes les familles de bruit passent par ce poids.
-    for (const f of ['cielFbm3', 'cielFbm5', 'cielVolutes']) {
+    for (const f of ['cielFbm3', 'cielFbm5']) {
       const corps = GLSL_CIEL_FRAGMENT.slice(GLSL_CIEL_FRAGMENT.indexOf('float ' + f + '('));
       assert.ok(corps.slice(0, corps.indexOf('return')).includes('cielPoids( fr, e )'), f);
     }
+    // Et les deux semis de bosses fines, qui scintilleraient sinon au loin.
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('cielWorley( q2 * 2.3 + vec2( 7.1, 2.9 ) ), cielPoids( 2.3, e ) );'));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('cielWorley( q2 * 5.0 + vec2( 1.3, 5.5 ) ), cielPoids( 5.0, e ) );'));
   });
 
   test('les réglages des nuages sont ceux du registre, pas des nombres cachés dans le GLSL', () => {
@@ -163,8 +166,15 @@ describe('Ciel : le GLSL', () => {
   });
 
   test('le jour est moins chargé et ses bords plus nets qu’à l’intégration (#436f)', () => {
-    assert.ok(NUAGES_JOUR <= 0.35);
+    // Recalé en #436g pour les nuages ronds, dont la forme se répartit autrement.
+    assert.ok(NUAGES_JOUR <= 0.38);
     assert.ok(NUAGES.bord <= 0.05);
+  });
+
+  test('⚠️ LES NUAGES SONT DES GRAPPES DE BOSSES RONDES, plus un bruit étiré (#436g)', () => {
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('float cielWorley( vec2 p ) {'));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('float p1 = 1.0 - cielWorley( q2 * 0.8 );'));
+    assert.ok(!GLSL_CIEL_FRAGMENT.includes('cielVolutes'), 'l’ancienne forme étirée est revenue');
   });
 
   test('les étoiles ne brillent que la nuit, et pas à travers les nuages', () => {
