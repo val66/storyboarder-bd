@@ -11,7 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
-import { poserCiel3D, retirerCiel3D, etatDuPanorama3D, abaissementDeLHorizon3D } from './sky-3d.js';
+import { poserCiel3D, retirerCiel3D, abaissementDeLHorizon3D } from './sky-3d.js';
 import {
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D, PERSONA_REAL_HEIGHT_M,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
@@ -1863,8 +1863,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
   //
   // On y met le résultat RÉSOLU et non le champ brut : deux réglages qui produisent le même
   // éclairage (le mode Jour, ou les mêmes valeurs saisies à la main) doivent garder la même image.
-  const eclairageResolu = resoudreEclairage3D(lumiereDeCase3D(panel));
-  const lumierePart = JSON.stringify(eclairageResolu);
+  const lumierePart = JSON.stringify(resoudreEclairage3D(lumiereDeCase3D(panel)));
   const camPart = JSON.stringify({
     style: (styleKey && styleKey.key) || styleKey,
     camDist: panel.camDist, camRotX: panel.camRotX, camRotY: panel.camRotY,
@@ -1891,10 +1890,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
     page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id)
       .map(o => ({ tt: o.tracéType, c: o.color, tt2: o.terrainType, w: o.width, world: o.world }))
   );
-  // ⚠️ L'ÉTAT DU PANORAMA, POUR LA MÊME RAISON QUE CELUI DES MODÈLES (#436) : il arrive après le
-  // premier rendu, et sans cette part la Case garderait pour toujours son ciel provisoire.
-  const cielPart = etatDuPanorama3D(eclairageResolu.panorama);
-  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart + '||l:' + lumierePart + '||c:' + cielPart;
+  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart + '||l:' + lumierePart;
 }
 // Builds/replaces each rig (persona, objet3d, combined Wall+Wall-Openings) owned by this panel at its true
 // 3D position (see ensureElementWorldPos3D/ensureElementUnits3D), hides the rest of the
@@ -2958,7 +2954,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     _abaisseCiel = abaissementDeLHorizon3D(personaCamera3D.position.y - groundMesh3D.position.y,
       personaCamera3D.far, Math.asin(Math.max(-1, Math.min(1, -_visee.y))));
   }
-  poserCiel3D(personaScene3D, _eclairage, () => { if (_drawCurrentPage) _drawCurrentPage(); }, _abaisseCiel);
+  poserCiel3D(personaScene3D, _eclairage, _abaisseCiel);
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   retirerCiel3D(personaScene3D);
   personaScene3D.background = null;

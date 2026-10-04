@@ -188,37 +188,27 @@ par les dérivées : c'est un mipmap analytique, sans lequel l'eau crépiterait 
 
 Une Case est une image fixe : les vagues ne s'animent pas.
 
-## Le ciel : une photo en Jour et en Nuit, un calcul en Personnalisé
+## Le ciel : entièrement calculé
 
-Décidé avec l'utilisateur après avoir rendu les deux côte à côte (#436). Le panorama photographié
-est nettement plus beau, mais FIGÉ : on peut le tourner pour amener son soleil dans la direction de
-celui de la scène, pas changer sa hauteur ni sa couleur. Or Jour et Nuit sont des ambiances fixes,
-et seul Personnalisé déplace le soleil. La photo va donc là où elle est juste, le ciel calculé
-(`src/sky-3d.js`) là où rien d'autre ne peut suivre. Le ciel est un fond, pas une lumière.
+Après trois essais de panoramas photographiés (#436 à #436d), le ciel est calculé dans les trois
+modes (`src/sky-3d.js`). Ce qui a tranché, mesuré à l'écran :
 
-**Sourcer un panorama :** un HDRI de Poly Haven ou d'ambientCG, au format « JPG tonemappé ». Un
-seul JPEG dans `assets/textures/sources/ciel-jour/` ou `ciel-nuit/`, puis `npm run bake-ciel`, qui
-en garde la moitié haute (le Sol cache l'autre), la réduit et dépose `assets/textures/ciel-<mode>.jpg`.
+- **la netteté** : une Case de 2 000 pixels couvre 66°. Un 4K qui fait le tour complet n'en donne
+  que 750 pixels, un 8K 1 500. Être net aurait demandé du 16K découpé, 340 Mo de mémoire graphique
+  pour un seul ciel. Les étoiles, des points, devenaient des taches à toute taille raisonnable ;
+- **l'horizon** : une photo prise du sol y est toujours brumeuse, et c'est la seule bande qu'un
+  cadrage habituel montre ;
+- **le soleil** : celui d'une image ne se tourne qu'en azimut, jamais en hauteur ni en couleur.
 
-⚠️ **J'AI D'ABORD LIVRÉ DU 4K, ET C'ÉTAIT FLOU À L'ÉCRAN (#436b).** Ma planche de comparaison était
-rendue à 420 pixels de large, une Case en fait 2 000. Elle couvre environ 66°, donc 750 pixels
-d'une 4K qui fait le tour complet : agrandie 2,7 fois. D'où deux traitements :
-- le JOUR en **8K** (source 8K ou 16K, déposé en 8192 × 2048) : agrandissement de 1,35, 85 Mo de
-  mémoire graphique. 16K aurait été net, mais 340 Mo et une texture trop large pour bien des cartes ;
-- la NUIT ne sera jamais nette en photo, une étoile est un point. Le panorama est réduit à 1024 et
-  ses étoiles EFFACÉES par une ouverture morphologique : il n'en reste que la lueur, la Voie
-  lactée. Les étoiles du ciel calculé, nettes à toute taille, sont dessinées par-dessus.
+Calculé, chaque détail plus petit que trois pixels s'efface au lieu d'être agrandi (le même
+mipmap analytique que l'eau), et le soleil comme la lune sont dessinés dans la direction exacte de
+la lumière de la scène. Les nuages approchent le volume : épaisseur traversée vers le soleil
+(Beer-Lambert), liseré face au soleil, bord en volutes. Une version stylisée en aplats a été jugée
+« trop stylisée » et écartée.
 
-⚠️ **UNE CASE NE MONTRE QUE LES 15 PREMIERS DEGRÉS AU-DESSUS DE L'HORIZON** dans un cadrage
-habituel. Le premier ciel de jour y était une brume grise, son bleu ne commençant qu'à 25° : la
-Case ne montrait que du gris. L'outil mesure la saturation de cette bande et prévient sous 35 ;
-cherchez un ciel aux nuages bas.
-
-⚠️ **LE SOLEIL DU PANORAMA EST RETROUVÉ DANS SES PIXELS**, une tache saturée et compacte, et le
-panorama est tourné pour le poser dans la direction du soleil de la scène. Sa HAUTEUR ne se corrige
-pas : choisissez un ciel de jour dont le soleil est vers 40°, comme celui du mode Jour (41,8°).
-Celui du dépôt est à 40°, et c'est ce qui le rend juste. Un panorama de nuit n'a pas de soleil et
-n'est pas tourné.
+⚠️ **L'HORIZON DU CIEL EST ABAISSÉ JUSQU'AU BORD VISIBLE DU SOL.** Le Sol est coupé par le plan
+lointain de la caméra bien avant l'horizon vrai ; sans cela, une bande d'environ huit degrés de ciel
+« sous l'horizon » apparaissait, uniforme, lue comme un ciel flou et terne (#436c).
 
 ## Ce qui reste en réserve, avec son déclencheur
 

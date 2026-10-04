@@ -19,7 +19,6 @@
  *      direction sur un disque ; la tourner, c'est changer un angle. Rien de tout cela n'exige un
  *      moteur de rendu, et le faire ici le rend testable.
  */
-import { panoramaDuMode3D } from './sky-3d.js';
 
 /**
  * ⚠️ LA CONVENTION D'AZIMUT EST CELLE DU DÉPÔT, ET CE N'EST PAS UN DÉTAIL. `rotY = atan2(-dz, dx)`
@@ -342,10 +341,6 @@ export function resoudreEclairage3D(lumiere){
     // champs bruts : `src` vaut le preset en Jour et en Nuit, et c'est bien ce qu'on veut — leur
     // ciel est celui de l'ambiance, pas celui d'un réglage que l'utilisateur n'a pas touché.
     ciel: couleurCielDeCase3D(mode, couleur, intensite),
-    // Le panorama photographié du mode, ou `null` pour le ciel calculé (#436). Dans le résolu pour
-    // la même raison que le ciel : passer de Jour à Personnalisé change le fond, la signature doit
-    // le voir.
-    panorama: panoramaDuMode3D(mode),
   };
 }
 

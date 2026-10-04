@@ -1,96 +1,30 @@
 /**
  * @file src/sky-3d.js
- * Le CIEL d'une Case : un panorama photographié en Jour et en Nuit, un ciel calculé en Personnalisé.
+ * Le CIEL d'une Case : entièrement calculé, en Jour, en Nuit comme en Personnalisé.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * POURQUOI DEUX CIELS, ET POURQUOI CE PARTAGE-LÀ
+ * POURQUOI PLUS AUCUNE PHOTO
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * Les deux ont été rendus côte à côte, aux mêmes cadrages, avant de décider (#436a) :
+ * #436 a d'abord livré des panoramas photographiés en Jour et en Nuit. Jugés à l'écran, ils étaient
+ * flous, et ce n'était pas un réglage : une Case d'environ 2 000 pixels couvre 66°, et même un 8K qui
+ * fait le tour complet n'en donne que 1 500. Les étoiles, des points, devenaient des taches. Être net
+ * aurait demandé du 16K découpé en plusieurs textures, 340 Mo de mémoire graphique pour UN ciel.
+ * S'y ajoutaient l'horizon d'une photo, toujours brumeux, et un soleil d'image qu'on ne peut que
+ * tourner, jamais monter ni teinter.
  *
- *   - le PANORAMA est nettement plus beau : de vrais nuages en volume, une vraie voûte étoilée.
- *     Mais il est FIGÉ. On peut le tourner pour amener son soleil dans la direction de celui de la
- *     scène, pas changer la hauteur de ce soleil ni sa couleur ;
- *   - le ciel CALCULÉ suit tout : direction, hauteur et couleur du soleil, intensité. Plus simple
- *     à l'œil, il ne contredit jamais la lumière de la scène.
- *
- * Or Jour et Nuit sont des ambiances FIXES : leur soleil ne bouge pas, un panorama choisi pour eux
- * ne peut donc pas se trouver en désaccord. Seul Personnalisé déplace le soleil et change sa
- * couleur. D'où le partage, choisi par l'utilisateur : la photo là où elle est juste, le calcul
- * là où rien d'autre ne peut suivre.
+ * Calculé, le ciel est NET À TOUTE TAILLE : chaque détail plus petit qu'un pixel s'efface, aucun
+ * n'est agrandi. Et le soleil comme la lune sont dessinés EXACTEMENT dans la direction de la lumière
+ * de la scène, celle qui porte les ombres. Une première version stylisée, aux nuages en aplats, a
+ * été jugée « trop stylisée » ; celle-ci approche le volume (voir `GLSL_CIEL_FRAGMENT`).
  *
  * ⚠️ LE CIEL EST UN FOND, PAS UNE LUMIÈRE. Il ne participe pas à l'éclairage des modèles : c'est
  * une décision prise pour juger d'abord le rendu, et la reprendre toucherait toutes les Cases.
- *
- * ⚠️ UN PANORAMA SE CHARGE DE FAÇON ASYNCHRONE. Tant qu'il n'est pas là, la Case reçoit le ciel
- * calculé avec les couleurs du mode, et non un aplat : c'est le même ciel en moins riche, pas un
- * autre. L'état de chargement entre dans la signature de Case, sans quoi l'image provisoire
- * resterait en cache pour toujours.
  */
-
-/** Où vivent les panoramas, déposés par `tools/bake-ciel.mjs`. */
-export const DOSSIER_CIELS = 'assets/textures/';
+import { CLE_ACTUELLE } from './lighting-3d.js';
 
 /**
- * Les panoramas, par mode d'éclairage. Un mode absent d'ici reçoit le ciel calculé.
- *
- * ⚠️ UN PANORAMA DÉPOSÉ N'EST QUE SA MOITIÉ HAUTE, en `largeur × largeur / 4`. Le bas est toujours
- * caché par le Sol ; le stocker coûtait la moitié de la mémoire pour des pixels jamais vus.
- *
- * ⚠️ LA LARGEUR N'EST PAS LA MÊME POUR LES DEUX, ET C'EST LE CŒUR DE #436b. Vue à l'écran en 4K,
- * chaque ciel était flou : une Case d'environ 2000 pixels couvre 66° de large, soit 750 pixels d'une
- * image de 4096 qui fait le tour complet. Agrandie 2,7 fois.
- *   - le JOUR passe à 8192 : 1 500 pixels pour 2 000, un agrandissement de 1,35 que des nuages aux
- *     bords doux supportent. 16K aurait été net, mais 340 Mo de mémoire graphique et une texture
- *     plus large que ce que bien des cartes acceptent ;
- *   - la NUIT ne peut PAS être nette en photo, à aucune taille raisonnable : une étoile est un point.
- *     Le panorama est donc réduit à 1024, où les étoiles se fondent en une lueur, celle de la Voie
- *     lactée, et les étoiles du ciel calculé, nettes à toute taille, sont dessinées par-dessus.
- */
-export const CIEL_PANORAMAS = {
-  jour: { fichier: 'ciel-jour.jpg', largeur: 8192, etoiles: 0, desembrume: 0.55 },
-  nuit: { fichier: 'ciel-nuit.jpg', largeur: 1024, etoiles: 1, desembrume: 0 },
-};
-
-/**
- * ⚠️ UN CIEL PHOTOGRAPHIÉ EST TERNE PRÈS DE L'HORIZON, ET C'EST LA SEULE PARTIE QU'UNE CASE MONTRE
- * (#436d). Corrigée la bande vide de #436c, l'horizon restait « terne, gris ». Ce n'est pas un
- * défaut de la photo : vu à travers une grande épaisseur d'air, le ciel bas est pâle, et une Case
- * en cadrage habituel ne voit que ses quinze premiers degrés. Deux gestes, essayés côte à côte
- * face au soleil et dos au soleil avant d'être retenus :
- *
- *   - la TOILE ABAISSÉE : l'élévation lue dans l'image suit t^CIEL_TOILE, ce qui fait descendre
- *     dans le champ le bleu et les nuages de 20 à 30°, comme on baisse une toile de fond au
- *     théâtre. Le prix : le soleil de l'image paraît plus bas que celui qui éclaire la scène ;
- *   - le DÉSEMBRUMAGE : on retire la couleur de la brume, mesurée sur l'image, à proportion de sa
- *     présence près de l'horizon, puis on rend la saturation perdue. PROTÉGÉ sur les zones claires :
- *     face au soleil, tout est clair, et le retirer sans garde brûlait le ciel en blanc (vu au banc).
- *     La nuit n'en reçoit pas : sa « brume » est le noir, la retirer assombrirait l'horizon.
- */
-export const CIEL_TOILE = 0.7;
-export const BRUME_HAUTEUR = 35, BRUME_CLAIR = 0.72, BRUME_SATURATION = 0.6;
-
-/**
- * La couleur de la brume d'un panorama : la moyenne de ses trois degrés les plus bas. Fonction
- * PURE, sur des pixels RGBA de la moitié haute (dernière ligne = horizon), rendue de 0 à 1.
- */
-export function brumeDuPanorama3D(rgba, largeur, hauteur){
-  const debut = Math.min(hauteur - 1, Math.floor(hauteur * (1 - 3 / 90)));
-  const s = [0, 0, 0]; let n = 0;
-  for (let y = debut; y < hauteur; y++) for (let x = 0; x < largeur; x++) {
-    const i = 4 * (y * largeur + x);
-    s[0] += rgba[i]; s[1] += rgba[i + 1]; s[2] += rgba[i + 2]; n++;
-  }
-  return s.map(v => (n ? v / n : 0) / 255);
-}
-
-/** Le panorama d'un mode, ou `null` pour le ciel calculé. Fonction PURE. */
-export function panoramaDuMode3D(mode){
-  return Object.prototype.hasOwnProperty.call(CIEL_PANORAMAS, mode) ? mode : null;
-}
-
-/**
- * Les deux couleurs du ciel calculé, dérivées de LA couleur de ciel déjà résolue. Fonction PURE.
+ * Les deux couleurs du ciel, dérivées de LA couleur de ciel déjà résolue. Fonction PURE.
  * Le zénith est plus profond, l'horizon plus clair et délavé, comme l'est un vrai ciel par
  * l'épaisseur d'air qu'on regarde à travers. Rendre la couleur résolue en un seul point ferait
  * diverger le ciel de ce que la signature de Case connaît déjà.
@@ -106,68 +40,26 @@ export function couleursDuCielCalcule3D(hex){
   };
 }
 
-/** Part du ciel couverte de nuages dans le ciel calculé. */
-export const CIEL_NUAGES = 0.45;
-
 /**
- * Les étoiles du ciel calculé selon l'intensité du soleil (0 à 1). Fonction PURE.
- * Un Personnalisé assombri finit en nuit : il doit en avoir les étoiles, et un plein jour aucune.
+ * Le degré de NUIT d'un ciel (0 à 1), d'après l'intensité de son soleil rapportée au plein jour.
+ * Fonction PURE. Il allume les étoiles, change le disque en lune, assombrit et raréfie les nuages.
+ *
+ * ⚠️ IL VAUT 1 EXACTEMENT POUR LE MODE NUIT, et ce n'est pas un hasard de réglage : son soleil est
+ * à 0,327 du plein jour (cf. PRESETS_LUMIERE), et la rampe s'achève à 0,33. Un Personnalisé
+ * assombri glisse ainsi vers la même nuit, sans seconde définition de ce qu'est une nuit.
  */
-export function etoilesDuCiel3D(intensite){
-  const i = Number(intensite);
+export const NUIT_DEBUT = 0.6, NUIT_PLEINE = 0.33;
+export function nuitDuCiel3D(intensiteRelative){
+  const i = Number(intensiteRelative);
   if (!Number.isFinite(i)) return 0;
-  return Math.min(1, Math.max(0, (0.45 - i) / 0.3));
+  return Math.min(1, Math.max(0, (NUIT_DEBUT - i) / (NUIT_DEBUT - NUIT_PLEINE)));
 }
 
-/**
- * Le soleil d'un panorama, trouvé dans ses pixels, ou `null`. Fonction PURE.
- * `lum` est la luminance (0 à 255) d'une version réduite de la MOITIÉ HAUTE déposée, rangée ligne
- * par ligne depuis le zénith ; sa dernière ligne est l'horizon.
- *
- * ⚠️ UN SOLEIL EST UNE TACHE SATURÉE ET COMPACTE, et les deux conditions comptent. Relevé sur les
- * deux premiers panoramas du dépôt, réduits à 512 de large : le jour a 44 pixels au-dessus de 97 % du maximum,
- * étalés sur 2 pixels ; la nuit en a UN, une étoile, à 127 sur 255. Un nuage blanc saturé serait
- * nombreux mais étalé : on refuse alors de deviner, et le panorama n'est pas tourné.
- *
- * ⚠️ LA MOYENNE DE u EST CIRCULAIRE. Un soleil posé sur la couture tomberait sinon au milieu de
- * l'image, à l'opposé exact de sa vraie place.
- */
-export const SOLEIL_SATURE = 240, SOLEIL_PIXELS_MIN = 8, SOLEIL_ETALEMENT_MAX = 6;
-export function soleilDuPanorama3D(lum, largeur, hauteur){
-  let max = 0;
-  for (let i = 0; i < lum.length; i++) if (lum[i] > max) max = lum[i];
-  if (max < SOLEIL_SATURE) return null;
-  const seuil = 0.97 * max;
-  let n = 0, sx = 0, sy = 0, sv = 0, sv2 = 0;
-  for (let y = 0; y < hauteur; y++) {
-    for (let x = 0; x < largeur; x++) {
-      if (lum[y * largeur + x] < seuil) continue;
-      const a = 2 * Math.PI * (x + 0.5) / largeur;
-      sx += Math.cos(a); sy += Math.sin(a); sv += y; sv2 += y * y; n++;
-    }
-  }
-  if (n < SOLEIL_PIXELS_MIN) return null;
-  const r = Math.hypot(sx, sy) / n;
-  const etalementU = Math.sqrt(Math.max(0, -2 * Math.log(Math.max(r, 1e-9)))) * largeur / (2 * Math.PI);
-  const moyV = sv / n, etalementV = Math.sqrt(Math.max(0, sv2 / n - moyV * moyV));
-  if (etalementU > SOLEIL_ETALEMENT_MAX || etalementV > SOLEIL_ETALEMENT_MAX) return null;
-  let u = Math.atan2(sy, sx) / (2 * Math.PI);
-  if (u < 0) u += 1;
-  const elevation = (1 - (moyV + 0.5) / hauteur) * 90;
-  return { u, v: 0.5 + elevation / 180, elevation };
-}
-
-/**
- * La rotation (radians, autour de l'axe vertical) qui amène le soleil d'un panorama dans la
- * direction du soleil de la scène. Fonction PURE.
- *
- * Convention équirectangulaire de three.js : u = atan2(z, x) / 2π + 0,5. Le soleil du panorama est
- * donc à l'angle local (u − 0,5)·2π ; une rotation r autour de y retire r à l'angle. Testé sur la
- * géométrie réelle de la sphère, pas sur cette formule.
- */
-export function lacetDuPanorama3D(soleil, direction){
-  if (!soleil || !direction) return 0;
-  return (soleil.u - 0.5) * 2 * Math.PI - Math.atan2(direction.z, direction.x);
+/** La couverture nuageuse : 42 % de jour, 30 % en pleine nuit, pour laisser voir les étoiles. */
+export const NUAGES_JOUR = 0.42, NUAGES_NUIT = 0.30;
+export function couvertureNuageuse3D(nuit){
+  const n = Math.min(1, Math.max(0, Number(nuit) || 0));
+  return NUAGES_JOUR + (NUAGES_NUIT - NUAGES_JOUR) * n;
 }
 
 /**
@@ -176,10 +68,9 @@ export function lacetDuPanorama3D(soleil, direction){
  *
  * ⚠️ C'EST CE QUI RENDAIT L'HORIZON « FLOU ET TERNE » (#436c). Le Sol fait 12 000 unités, mais la
  * caméra d'une Case ne voit qu'à `far` = distance × 2 + 10 : il s'arrête bien avant l'horizon. Entre
- * son bord et l'horizon vrai, on voyait le ciel SOUS l'horizon : un aplat pour le ciel calculé, la
- * dernière ligne répétée pour un panorama. Une bande uniforme de huit degrés, que l'œil lisait
- * comme un ciel délavé. La réponse n'est pas d'allonger `far`, qui règle la précision de
- * profondeur de toute la scène, mais d'abaisser l'horizon du ciel jusqu'au bord du Sol.
+ * son bord et l'horizon vrai, on voyait le ciel SOUS l'horizon, un aplat d'environ huit degrés que
+ * l'œil lisait comme un ciel délavé. La réponse n'est pas d'allonger `far`, qui règle la précision
+ * de profondeur de toute la scène, mais d'abaisser l'horizon du ciel jusqu'au bord du Sol.
  *
  * Le bord du Sol est là où un rayon atteint la profondeur `lointain` le long de l'axe de visée :
  * un rayon d'élévation −β touche le sol à la distance h / sin β, de profondeur h·cos(β − φ) / sin β
@@ -215,19 +106,19 @@ function rvb(hex){
   return [0, 2, 4].map(i => parseInt(ok.slice(i, i + 2), 16) / 255);
 }
 
-/**
- * La part de l'intensité de soleil qui correspond au plein jour, pour les étoiles. C'est la
- * constante de `lighting-3d.js`, recopiée et non importée : ce module est importé PAR lui, et la
- * garde de tests/sky-3d.test.mjs vérifie que les deux valeurs restent égales.
- */
-export const CIEL_SOLEIL_PLEIN = 0.55;
+/** Les réglages des nuages, réunis pour pouvoir être affinés sans chercher dans le GLSL. */
+export const NUAGES = {
+  echelle: 2.0,      // densité de motifs sur le plafond nuageux
+  plafond: 0.30,     // décalage de la projection : plus grand, moins de nuages géants au zénith
+  bord: 0.07,        // largeur de la transition du bord : plus petit, plus net
+  pas: 0.07,         // pas des échantillons de lumière vers le soleil
+  absorption: 0.55,  // assombrissement par l'épaisseur traversée (Beer-Lambert)
+};
 
 /** Le sommet : la sphère suit la caméra et se dessine au plan lointain, quelle que soit sa taille. */
 export const GLSL_CIEL_SOMMET = `
 varying vec3 vDir;
-varying vec2 vUv;
 void main() {
-  vUv = uv;
   vDir = ( modelMatrix * vec4( position, 0.0 ) ).xyz;
   vec4 p = projectionMatrix * viewMatrix * vec4( vDir + cameraPosition, 1.0 );
   // z = w place le fragment au plan lointain ; un rien en deçà pour ne pas y être découpé.
@@ -236,21 +127,33 @@ void main() {
 }
 `;
 
-/** Le fragment : soit le panorama, soit le ciel calculé. */
+const f4 = (x) => Number(x).toFixed(4);
+
+/**
+ * Le fragment.
+ *
+ * LES NUAGES sont posés sur un plafond plat, projeté dans la direction de chaque pixel. Leur forme
+ * est un bruit fractal doucement déformé, et leur bord un bruit « en chou-fleur » (1 − |2b − 1|) qui
+ * donne les volutes d'un cumulus. Leur lumière approche le volume : on mesure l'épaisseur de nuage
+ * traversée en trois pas vers le soleil, et on assombrit selon Beer-Lambert ; face au soleil, la
+ * diffusion vers l'avant (Henyey-Greenstein) allume un liseré sur les bords minces.
+ *
+ * ⚠️ NET À TOUTE TAILLE, SANS SCINTILLER. Chaque octave du bruit s'efface quand sa période tombe
+ * sous trois pixels, mesurés par les dérivées de la position sur le plafond : c'est le même mipmap
+ * analytique que l'eau de #435m. Un détail est donc soit net, soit absent, jamais agrandi.
+ *
+ * ⚠️ LE DISQUE EST DANS LA VRAIE DIRECTION DE LA LUMIÈRE, pas dans la direction déformée par
+ * l'abaissement de l'horizon. Sinon il se serait décalé de quelques degrés de l'ombre qu'il porte.
+ */
 export const GLSL_CIEL_FRAGMENT = `
-uniform float uPanorama;
-uniform sampler2D uCarte;
 uniform vec3 uZenith;
 uniform vec3 uHorizon;
 uniform vec3 uSoleilDir;
 uniform vec3 uSoleilCoul;
 uniform float uNuages;
-uniform float uEtoiles;
+uniform float uNuit;
 uniform float uAbaisse;
-uniform vec3 uBrume;
-uniform float uDesembrume;
 varying vec3 vDir;
-varying vec2 vUv;
 
 float cielHasard( vec2 p ) { p = fract( p * vec2( 123.34, 456.21 ) ); p += dot( p, p + 45.32 ); return fract( p.x * p.y ); }
 float cielBruit( vec2 p ) {
@@ -258,10 +161,28 @@ float cielBruit( vec2 p ) {
   return mix( mix( cielHasard( i ), cielHasard( i + vec2( 1.0, 0.0 ) ), f.x ),
               mix( cielHasard( i + vec2( 0.0, 1.0 ) ), cielHasard( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
 }
-float cielFbm( vec2 p ) {
-  float s = 0.0, a = 0.5;
-  for ( int i = 0; i < 5; i++ ) { s += a * cielBruit( p ); p = p * 2.03 + vec2( 17.1, 3.7 ); a *= 0.5; }
-  return s;
+const mat2 cielRot = mat2( 1.6, -1.2, 1.2, 1.6 );
+// Un octave s'efface quand sa période tombe sous trois pixels (e = empreinte du pixel sur le plafond).
+float cielPoids( float freq, float e ) { return clamp( ( 1.0 / ( freq * e ) - 3.0 ) / 3.0, 0.0, 1.0 ); }
+float cielFbm3( vec2 p, float e ) {
+  float s = 0.0, a = 0.5, fr = 1.0;
+  for ( int i = 0; i < 3; i++ ) { float w = cielPoids( fr, e ); s += a * mix( 0.5, cielBruit( p ), w ); p = cielRot * p + vec2( 17.1, 3.7 ); a *= 0.5; fr *= 2.0; }
+  return s / 0.875;
+}
+float cielFbm5( vec2 p, float e ) {
+  float s = 0.0, a = 0.5, fr = 1.0;
+  for ( int i = 0; i < 5; i++ ) { float w = cielPoids( fr, e ); s += a * mix( 0.5, cielBruit( p ), w ); p = cielRot * p + vec2( 17.1, 3.7 ); a *= 0.5; fr *= 2.0; }
+  return s / 0.96875;
+}
+float cielVolutes( vec2 p, float e ) {
+  float s = 0.0, a = 0.5, fr = 1.0;
+  for ( int i = 0; i < 5; i++ ) { float w = cielPoids( fr, e ); s += a * mix( 0.5, 1.0 - abs( 2.0 * cielBruit( p ) - 1.0 ), w ); p = cielRot * p + vec2( 17.1, 3.7 ); a *= 0.5; fr *= 2.0; }
+  return s / 0.96875;
+}
+float cielNuage( vec2 q, float e ) {
+  vec2 w = vec2( cielFbm3( q * 0.5 + vec2( 5.2, 1.3 ), e * 0.5 ), cielFbm3( q * 0.5 + vec2( 1.7, 9.2 ), e * 0.5 ) ) - 0.5;
+  vec2 q2 = q + w * 0.6;
+  return cielFbm3( q2, e ) * 0.78 + cielVolutes( q2 * 4.0, e * 4.0 ) * 0.22;
 }
 
 // La direction du ciel, l'horizon abaissé jusqu'au bord du Sol : voir abaissementDeLHorizon3D.
@@ -272,70 +193,63 @@ vec3 cielDirection( vec3 d ) {
   return vec3( h.x * cos( e2 ), sin( e2 ), h.y * cos( e2 ) );
 }
 
-// Des étoiles PONCTUELLES, calculées : nettes à toute taille, ce qu'aucune photo n'est (#436b).
-vec3 cielEtoiles( vec3 d, float couv ) {
-  if ( uEtoiles <= 0.0 || d.y <= 0.0 ) return vec3( 0.0 );
-  vec2 g = d.xz / ( d.y + 1.0 ) * 220.0;
+// Des étoiles PONCTUELLES : nettes à toute taille.
+float cielEtoiles( vec3 d ) {
+  vec2 g = d.xz / ( d.y + 1.0 ) * 260.0;
   vec2 ci = floor( g );
-  vec2 o = vec2( cielHasard( ci + 1.3 ), cielHasard( ci + 9.1 ) );
-  float pt = smoothstep( 0.18, 0.0, length( fract( g ) - o ) ) * step( 0.93, cielHasard( ci + 7.0 ) );
-  float bord = smoothstep( 0.0, 0.25, d.y );
-  return vec3( 0.9, 0.95, 1.0 ) * pt * ( 1.0 - couv ) * bord * ( 0.4 + 0.6 * cielHasard( ci + 3.3 ) );
+  vec2 o = vec2( cielHasard( ci + 1.3 ), cielHasard( ci + 9.1 ) ) * 0.7 + 0.15;
+  float pt = smoothstep( 0.16, 0.04, length( fract( g ) - o ) ) * step( 0.92, cielHasard( ci + 7.0 ) );
+  return pt * ( 0.35 + 0.65 * cielHasard( ci + 3.3 ) );
 }
 
 void main() {
-  if ( uPanorama > 0.5 ) {
-    // ⚠️ 1 − u : la SphereGeometry de three.js tourne dans le sens inverse de la convention
-    // équirectangulaire. Sans ce retournement, le ciel serait vu en miroir.
-    // L'image ne porte que la moitié haute : v de 0,5 à 1 s'étale sur toute sa hauteur, et sous
-    // l'horizon on répète sa dernière ligne, que le Sol cache de toute façon.
-    // v se calcule depuis la direction et non depuis la sphère : c'est elle qui porte l'horizon
-    // abaissé. u reste celui de la géométrie, qui n'a pas de couture.
-    vec3 dc = cielDirection( normalize( vDir ) );
-    float vc = pow( clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 ), ${CIEL_TOILE.toFixed(4)} );
-    vec3 p = texture2D( uCarte, vec2( 1.0 - vUv.x, vc ) ).rgb;
-    if ( uDesembrume > 0.0 ) {
-      float l0 = dot( p, vec3( 0.2126, 0.7152, 0.0722 ) );
-      float garde = 1.0 - pow( clamp( ( l0 - ${BRUME_CLAIR.toFixed(4)} ) / 0.25, 0.0, 1.0 ), 2.0 );
-      float w = uDesembrume * clamp( 1.0 - vc * 90.0 / ${BRUME_HAUTEUR.toFixed(1)}, 0.0, 1.0 ) * garde;
-      p = clamp( ( p - w * uBrume ) / ( 1.0 - w ), 0.0, 1.0 );
-      float l1 = dot( p, vec3( 0.2126, 0.7152, 0.0722 ) );
-      p = clamp( vec3( l1 ) + ( p - vec3( l1 ) ) * ( 1.0 + ${BRUME_SATURATION.toFixed(4)} * w / max( uDesembrume, 1e-4 ) ), 0.0, 1.0 );
-    }
-    gl_FragColor = vec4( p + cielEtoiles( dc, 0.0 ) * uEtoiles, 1.0 );
-    return;
-  }
-  vec3 d = cielDirection( normalize( vDir ) );
+  vec3 vrai = normalize( vDir );
+  vec3 d = cielDirection( vrai );
+  vec3 L = normalize( uSoleilDir );
   float h = max( d.y, 0.0 );
-  vec3 c = mix( uHorizon, uZenith, pow( h, 0.45 ) );
-  float s = max( dot( d, normalize( uSoleilDir ) ), 0.0 );
-  c += uSoleilCoul * ( 0.18 * pow( s, 6.0 ) + 0.35 * pow( s, 60.0 ) );
-  float disque = smoothstep( 0.9993, 0.9997, s );
+  vec3 c = mix( uHorizon, uZenith, pow( h, 0.5 ) );
+  float s = max( dot( vrai, L ), 0.0 );
+  c += uSoleilCoul * ( 0.12 * pow( s, 4.0 ) + 0.25 * pow( s, 40.0 ) ) * ( 1.0 - 0.7 * uNuit );
+  float a = 0.0;
   if ( d.y > 0.0 ) {
-    // Les nuages sont posés sur un plafond plat : ils rétrécissent vers l'horizon, où ils s'effacent.
-    vec2 p = d.xz / ( d.y + 0.12 ) * 2.2 + 3.7;
-    float n = cielFbm( p );
-    float bord = smoothstep( 0.0, 0.25, d.y );
-    float couv = smoothstep( 1.0 - uNuages, 1.0 - uNuages + 0.28, n ) * bord;
-    // Le côté du nuage tourné vers le soleil est éclairé : on compare le bruit un pas plus loin.
-    vec2 versSoleil = normalize( uSoleilDir.xz + vec2( 1e-4 ) );
-    float lumiere = clamp( ( cielFbm( p + versSoleil * 0.06 ) - n ) * 4.0 + 0.6, 0.0, 1.0 );
-    vec3 nuage = mix( uHorizon * 0.78 + uZenith * 0.1, mix( vec3( 1.0 ), uSoleilCoul, 0.25 ), lumiere );
-    nuage += uSoleilCoul * 0.35 * pow( s, 8.0 );
-    disque *= 1.0 - couv;
-    c = mix( c, nuage, couv * 0.92 );
-    c += cielEtoiles( d, couv ) * uEtoiles;
+    vec2 p = d.xz / ( d.y + ${f4(NUAGES.plafond)} ) * ${f4(NUAGES.echelle)} + 3.7;
+    float e = max( length( dFdx( p ) ), length( dFdy( p ) ) ) + 1e-5;
+    float n = cielNuage( p, e );
+    float seuil = 1.0 - uNuages;
+    float dens = smoothstep( seuil, seuil + ${f4(NUAGES.bord)}, n );
+    // L'épaisseur traversée vers le soleil, en trois pas : Beer-Lambert.
+    vec2 vs = L.xz / max( length( L.xz ), 1e-4 );
+    float opt = 0.0;
+    for ( int j = 1; j <= 3; j++ ) {
+      opt += smoothstep( seuil, seuil + 0.10, cielNuage( p + vs * ${f4(NUAGES.pas)} * float( j ), e ) );
+    }
+    float T = exp( -opt * ${f4(NUAGES.absorption)} );
+    // La diffusion vers l'avant : un liseré lumineux sur les bords minces, face au soleil.
+    float g = 0.6;
+    float phase = ( 1.0 - g * g ) / pow( 1.0 + g * g - 2.0 * g * dot( vrai, L ), 1.5 ) * 0.06;
+    vec3 cielMoyen = mix( uHorizon, uZenith, 0.5 );
+    vec3 ombre = mix( cielMoyen * 0.55 + vec3( 0.36, 0.37, 0.40 ), cielMoyen * 1.10, uNuit );
+    vec3 eclaire = mix( vec3( 0.72 ) + uSoleilCoul * 0.25, cielMoyen * 1.5 + uSoleilCoul * 0.12, uNuit );
+    vec3 nuage = mix( ombre, eclaire, T ) + uSoleilCoul * phase * ( 1.0 - dens ) * ( 1.0 - 0.7 * uNuit );
+    nuage *= 0.80 + 0.40 * cielFbm5( p * 3.0 + vec2( 2.2, 7.7 ), e * 3.0 );
+    a = dens * smoothstep( 0.0, 0.10, d.y );
+    c = mix( c, nuage, a );
+    c += vec3( 0.92, 0.95, 1.0 ) * cielEtoiles( d ) * uNuit * ( 1.0 - a ) * smoothstep( 0.0, 0.15, d.y );
   }
-  c += uSoleilCoul * disque * 1.5;
+  // Le disque, soleil ou lune, au bord net et anticrénelé.
+  float ang = acos( clamp( dot( vrai, L ), -1.0, 1.0 ) );
+  float r = mix( 0.022, 0.03, uNuit );
+  float aad = max( fwidth( ang ), 1e-4 );
+  float disque = 1.0 - smoothstep( r - aad, r + aad, ang );
+  vec3 couleurDisque = mix( vec3( 1.0, 0.98, 0.92 ) * 1.6, vec3( 0.93, 0.94, 0.9 ), uNuit );
+  c = mix( c, couleurDisque, disque * ( 1.0 - a * 0.9 ) );
   gl_FragColor = vec4( c, 1.0 );
 }
 `;
 
-// ── La moitié impure : la sphère, et le chargement des panoramas ───────────────────────────────
+// ── La moitié impure : la sphère ────────────────────────────────────────────────────────────────
 
 let _sphere = null;
-/** Par nom de panorama : { etat: 'charge' | 'en-cours' | 'absent', texture, soleil }. */
-const _panoramas = {};
 
 function sphereDuCiel3D(){
   if (_sphere) return _sphere;
@@ -345,11 +259,12 @@ function sphereDuCiel3D(){
     fragmentShader: GLSL_CIEL_FRAGMENT,
     side: THREE.BackSide,
     depthWrite: false,
+    // dFdx et fwidth : l'effacement des octaves et l'anticrénelage du disque.
+    extensions: { derivatives: true },
     uniforms: {
-      uPanorama: { value: 0 }, uCarte: { value: null },
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
       uSoleilDir: { value: new THREE.Vector3(0, 1, 0) }, uSoleilCoul: { value: new THREE.Color() },
-      uNuages: { value: CIEL_NUAGES }, uEtoiles: { value: 0 }, uAbaisse: { value: 0 }, uBrume: { value: new THREE.Color() }, uDesembrume: { value: 0 },
+      uNuages: { value: NUAGES_JOUR }, uNuit: { value: 0 }, uAbaisse: { value: 0 },
     },
   });
   _sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), mat);
@@ -357,8 +272,7 @@ function sphereDuCiel3D(){
   // ⚠️ IL NE PROJETTE AUCUNE OMBRE, ET CE N'EST PAS UNE LIGNE D'ICI QUI LE GARANTIT. `castShadow`
   // vaut faux par défaut ; le risque est `marquerProjectionDOmbre3D`, qui l'allume sur toute la
   // scène. C'est l'ORDRE dans scene3d.js qui protège : le ciel est posé après ce marquage et retiré
-  // après le rendu, donc il n'est jamais dans la scène quand le marquage passe. Écrire ici
-  // `castShadow = false` aurait été une ligne sans effet, et un mutant l'a montré.
+  // après le rendu, donc il n'est jamais dans la scène quand le marquage passe.
   _sphere.frustumCulled = false;
   _sphere.renderOrder = -1;
   _sphere.name = 'ciel';
@@ -366,75 +280,22 @@ function sphereDuCiel3D(){
 }
 
 /**
- * L'état du panorama d'une Case, pour sa signature : chargé, absent, ou encore attendu. Seul celui
- * de LA Case compte ; l'état de tous ferait redessiner une Case de jour à l'arrivée du ciel de nuit.
- */
-export function etatDuPanorama3D(nom){
-  if (!nom) return 'calcule';
-  const p = _panoramas[nom];
-  return p && p.etat !== 'en-cours' ? p.etat : 'attente';
-}
-
-function chargerPanorama3D(nom, apres){
-  if (_panoramas[nom]) return;
-  const THREE = globalThis.THREE;
-  if (typeof Image === 'undefined' || !THREE || !THREE.TextureLoader) { _panoramas[nom] = { etat: 'absent' }; return; }
-  _panoramas[nom] = { etat: 'en-cours' };
-  new THREE.TextureLoader().load(DOSSIER_CIELS + CIEL_PANORAMAS[nom].fichier, (texture) => {
-    _panoramas[nom] = { etat: 'charge', texture, ...mesuresDeLImage3D(texture.image) };
-    if (typeof apres === 'function') apres();
-  }, undefined, () => {
-    console.warn(`[ciel] introuvable : ${DOSSIER_CIELS}${CIEL_PANORAMAS[nom].fichier}, le ciel calculé le remplace. `
-      + 'Déposez le panorama avec : npm run bake-ciel');
-    _panoramas[nom] = { etat: 'absent' };
-    if (typeof apres === 'function') apres();
-  });
-}
-
-function mesuresDeLImage3D(image){
-  try {
-    const l = 512, h = 128;
-    const cv = document.createElement('canvas'); cv.width = l; cv.height = h;
-    const ctx = cv.getContext('2d');
-    ctx.drawImage(image, 0, 0, l, h);
-    const px = ctx.getImageData(0, 0, l, h).data;
-    const lum = new Float32Array(l * h);
-    for (let i = 0; i < lum.length; i++) lum[i] = 0.2126 * px[4 * i] + 0.7152 * px[4 * i + 1] + 0.0722 * px[4 * i + 2];
-    return { soleil: soleilDuPanorama3D(lum, l, h), brume: brumeDuPanorama3D(px, l, h) };
-  } catch (e) { return { soleil: null, brume: null }; }
-}
-
-/**
  * Pose le ciel d'une Case dans la scène, juste avant son rendu. `retirerCiel3D` l'enlève juste
  * après, comme le fond : la scène est partagée, et les aperçus n'ont rien demandé.
  */
-export function poserCiel3D(scene, eclairage, apres, abaissement = 0){
+export function poserCiel3D(scene, eclairage, abaissement = 0){
   const sphere = sphereDuCiel3D();
   const u = sphere.material.uniforms;
+  const { zenith, horizon } = couleursDuCielCalcule3D(eclairage.ciel);
+  const nuit = nuitDuCiel3D(eclairage.soleil.intensite / CLE_ACTUELLE);
+  u.uZenith.value.setRGB(...zenith);
+  u.uHorizon.value.setRGB(...horizon);
+  const d = eclairage.soleil.direction;
+  u.uSoleilDir.value.set(d.x, d.y, d.z);
+  u.uSoleilCoul.value.set(eclairage.soleil.couleur);
+  u.uNuit.value = nuit;
+  u.uNuages.value = couvertureNuageuse3D(nuit);
   u.uAbaisse.value = Number(abaissement) > 0 ? Number(abaissement) : 0;
-  const nom = eclairage.panorama || null;
-  if (nom) chargerPanorama3D(nom, apres);
-  const pano = nom && _panoramas[nom];
-  if (pano && pano.etat === 'charge') {
-    u.uPanorama.value = 1;
-    u.uCarte.value = pano.texture;
-    u.uEtoiles.value = CIEL_PANORAMAS[nom].etoiles;
-    // Sans brume mesurée, pas de désembrumage : retirer une couleur inconnue serait deviner.
-    u.uDesembrume.value = pano.brume ? CIEL_PANORAMAS[nom].desembrume : 0;
-    if (pano.brume) u.uBrume.value.setRGB(...pano.brume);
-    // Seul un panorama AVEC soleil se tourne : celui de nuit n'en a pas, il garde son orientation.
-    sphere.rotation.y = lacetDuPanorama3D(pano.soleil, eclairage.soleil.direction);
-  } else {
-    const { zenith, horizon } = couleursDuCielCalcule3D(eclairage.ciel);
-    u.uPanorama.value = 0;
-    u.uZenith.value.setRGB(...zenith);
-    u.uHorizon.value.setRGB(...horizon);
-    const d = eclairage.soleil.direction;
-    u.uSoleilDir.value.set(d.x, d.y, d.z);
-    u.uSoleilCoul.value.set(eclairage.soleil.couleur);
-    u.uEtoiles.value = etoilesDuCiel3D(eclairage.soleil.intensite / CIEL_SOLEIL_PLEIN);
-    sphere.rotation.y = 0;
-  }
   scene.add(sphere);
   return sphere;
 }
@@ -443,13 +304,5 @@ export function retirerCiel3D(scene){
   if (_sphere && _sphere.parent === scene) scene.remove(_sphere);
 }
 
-/** Pour les tests : oublier les panoramas et la sphère. */
-export function _viderCiel3D(){
-  for (const k of Object.keys(_panoramas)) delete _panoramas[k];
-  _sphere = null;
-}
-
-/** Pour les tests : poser un panorama chargé sans passer par le réseau. */
-export function _poserPanoramaPourTests3D(nom, texture, soleil, brume = null){
-  _panoramas[nom] = { etat: 'charge', texture, soleil, brume };
-}
+/** Pour les tests : oublier la sphère. */
+export function _viderCiel3D(){ _sphere = null; }

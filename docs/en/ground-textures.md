@@ -184,35 +184,26 @@ measured by derivatives: an analytic mipmap, without which water would crackle w
 
 A Panel is a still image: waves are not animated.
 
-## The sky: a photograph for Day and Night, computed for Custom
+## The sky: fully computed
 
-Decided with the user after rendering both side by side (#436). The photographed panorama is far
-nicer, but FIXED: it can be rotated to bring its sun into the direction of the scene's, not
-raised, lowered or tinted. Day and Night are fixed moods, and only Custom moves the sun. The
-photograph therefore goes where it is right, the computed sky (`src/sky-3d.js`) where nothing else
-can follow. The sky is a background, not a light.
+After three attempts with photographed panoramas (#436 to #436d), the sky is computed in all three
+modes (`src/sky-3d.js`). What decided it, measured on screen:
 
-**Sourcing a panorama:** an HDRI from Poly Haven or ambientCG, as a "tonemapped JPG". A single
-JPEG in `assets/textures/sources/ciel-jour/` or `ciel-nuit/`, then `npm run bake-ciel`, which keeps
-its upper half (the Ground hides the rest), resizes it and drops `assets/textures/ciel-<mode>.jpg`.
+- **sharpness**: a 2,000-pixel Panel spans 66°. A 4K image covering the full turn only gives it 750
+  pixels, an 8K 1,500. Being sharp would have taken a tiled 16K, 340 MB of GPU memory for one sky.
+  Stars, being points, turned into blots at any reasonable size;
+- **the horizon**: a photograph taken from the ground is always hazy there, and it is the only band
+  a usual framing shows;
+- **the sun**: an image's sun can only be rotated in azimuth, never raised, lowered or tinted.
 
-⚠️ **I FIRST SHIPPED 4K, AND IT WAS BLURRY ON SCREEN (#436b).** My comparison sheet was rendered
-420 pixels wide, a Panel is 2,000. It spans about 66°, so 750 pixels of a 4K image covering the
-full turn: magnified 2.7 times. Hence two treatments:
-- DAY in **8K** (8K or 16K source, dropped as 8192 × 2048): 1.35 magnification, 85 MB of GPU
-  memory. 16K would have been sharp, but 340 MB and a texture too wide for many cards;
-- NIGHT will never be sharp as a photograph, a star is a point. The panorama is reduced to 1024 and
-  its stars ERASED by a morphological opening: only the glow remains, the Milky Way. The computed
-  sky's stars, sharp at any size, are drawn on top.
+Computed, every detail smaller than three pixels fades out instead of being magnified (the same
+analytic mipmap as the water), and both sun and moon are drawn in the exact direction of the scene's
+light. Clouds approximate volume: thickness crossed towards the sun (Beer-Lambert), a rim facing the
+sun, billowy edges. A stylised flat-shaded version was judged "too stylised" and dropped.
 
-⚠️ **A PANEL ONLY SHOWS THE FIRST 15 DEGREES ABOVE THE HORIZON** in a usual framing. The first day
-sky was a grey haze there, its blue only starting at 25°: the Panel showed nothing but grey. The
-tool measures the saturation of that band and warns below 35; look for a sky with low clouds.
-
-⚠️ **THE PANORAMA'S SUN IS FOUND IN ITS PIXELS**, a saturated, compact spot, and the panorama is
-rotated to put it in the direction of the scene's sun. Its HEIGHT cannot be corrected: pick a day
-sky whose sun sits around 40°, like the Day mode's (41.8°). The repository's is at 40°, which is
-what makes it right. A night panorama has no sun and is not rotated.
+⚠️ **THE SKY'S HORIZON IS LOWERED TO THE VISIBLE EDGE OF THE GROUND.** The Ground is cut by the
+camera's far plane well before the true horizon; without this, a band of roughly eight degrees of
+sky "below the horizon" showed up, uniform, read as a blurry, dull sky (#436c).
 
 ## What is held in reserve, with its trigger
 
