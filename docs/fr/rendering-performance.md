@@ -969,7 +969,7 @@ pour les textures.
 
 ---
 
-# Dixième campagne — une Case lourde à 108 ms, octobre 2026
+# Dixième campagne : une Case lourde à 108 ms, octobre 2026
 
 Ouverte par un signalement : « ça lag parfois sur certaines Scènes lourdes ». La sonde de la
 première campagne, retirée, a été recréée (`src/perf-probe.js`) selon la liste laissée plus haut,

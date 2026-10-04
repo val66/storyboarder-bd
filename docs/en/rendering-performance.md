@@ -926,7 +926,7 @@ Bubble changes would be worth considering, as the tile cache already does for te
 
 ---
 
-# Tenth campaign — a heavy Panel at 108 ms, October 2026
+# Tenth campaign: a heavy Panel at 108 ms, October 2026
 
 Opened by a report: "it sometimes lags on some heavy Scenes". The first campaign's probe, removed,
 was rebuilt (`src/perf-probe.js`) from the checklist above, with three additions: it counts **new
