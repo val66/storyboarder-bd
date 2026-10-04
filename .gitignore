@@ -68,3 +68,7 @@ TACHES.md
 # des images de TRAVAIL, refaites à chaque réglage : les versionner ferait grossir le dépôt d une
 # planche par essai, pour des fichiers dont aucun ne fait foi.
 apercus/
+
+# Rapport de cuisson produit par la commande en une ligne donnée à l utilisateur : un fichier de
+# travail, relu puis jeté, et que `git add -A` avait ramassé une fois dans un commit.
+cuisson.txt

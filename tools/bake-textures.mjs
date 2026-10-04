@@ -94,7 +94,7 @@
  * régulier. Un bon chiffre ne garantit pas une texture utilisable, d'où l'avertissement plus bas.
  */
 
-import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 
@@ -766,6 +766,17 @@ async function main(){
 
   mkdirSync(SORTIE, { recursive: true });
   const sortie = join(SORTIE, nomDuGrain3D(id, nature));
+  // ⚠️ LE FICHIER DE L'AUTRE NATURE EST SUPPRIMÉ, sans quoi il survit à la recuisson. Trouvé quand
+  // une nouvelle source a fait basculer le sable de gris à couleur et le gravier de couleur à gris :
+  // `sable.couleur.png` s'écrivait à côté de l'ancien `sable.png`, que le registre continuait de
+  // désigner. L'application aurait affiché l'ANCIENNE texture, sans un mot, pendant que le rapport
+  // annonçait la nouvelle. Un seul fichier par identifiant, et c'est le dernier cuit.
+  const concurrent = join(SORTIE, nomDuGrain3D(id, nature === 'couleur' ? 'gris' : 'couleur'));
+  if (existsSync(concurrent)) {
+    rmSync(concurrent);
+    console.warn(`  ⚠️  ${basename(concurrent)} supprimé : la nature a changé. Le registre doit maintenant`
+      + ` déclarer grain: '${basename(sortie, '.png')}'.`);
+  }
   if (nature === 'couleur') await ecrireImagePng(albedoRgba, taille, sortie);
   else await ecrireGrainPng(grain, taille, sortie);
 

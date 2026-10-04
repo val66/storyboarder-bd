@@ -30,7 +30,7 @@ import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -508,6 +508,20 @@ describe('Sol : la matière photographiée, et le manque qui doit rester un manq
     assert.deepEqual(manquants, [],
       `grains déclarés au registre mais absents du dépôt : ${manquants.join(', ')}. `
       + 'Le nom déclaré est celui du FICHIER, suffixe « .couleur » compris.');
+  });
+
+  test('⚠️ AUCUN IDENTIFIANT N’A SES DEUX NATURES À LA FOIS DANS assets/textures/', () => {
+    // ⚠️ LA GARDE D'EXISTENCE CI-DESSUS NE POUVAIT PAS LE VOIR. Quand une nouvelle source a fait
+    // basculer le sable de gris à couleur, `sable.couleur.png` s'est écrit à côté de l'ancien
+    // `sable.png` ; le registre désignait toujours `sable`, et ce fichier EXISTAIT. La garde était
+    // donc satisfaite par la texture périmée. Le cuiseur supprime désormais l'autre nature en
+    // écrivant ; ce test tient l'état du dépôt, pour le cas où un fichier serait déposé à la main.
+    const fichiers = readdirSync(join(RACINE, 'assets', 'textures')).filter(f => f.endsWith('.png'));
+    const doubles = fichiers.filter(f => f.endsWith('.couleur.png'))
+      .map(f => f.replace(/\.couleur\.png$/, ''))
+      .filter(base => fichiers.includes(base + '.png'));
+    assert.deepEqual(doubles, [],
+      `identifiants présents sous leurs deux natures : ${doubles.join(', ')} — l’un des deux est périmé`);
   });
 
   test('le garde-fou : la liste des grains n’est pas vide, et elle vient du registre', () => {
