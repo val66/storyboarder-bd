@@ -39,7 +39,7 @@ import { clearImageCache } from './image-cache.js';
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
 // squelette, pas seulement de la géométrie brute, sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
-import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
+import { box3FromObjectSkinAware3D, box3FromObjectSkinAwareCached3D } from './skinned-box-3d.js';
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 // Le champ visible d'une Case : il sert de plan éloigné à l'ombre d'une source SANS portée (#422d).
 import { champVisibleDeCase3D } from './shadows-3d.js';
@@ -2436,7 +2436,9 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       // Le bug corrigé (cf. boiteDesOsMappes3D) porte sur ce qu'on REGARDE, pas sur la taille
       // réelle d'un Élément dans sa Scène. Ce sont deux questions distinctes, et la seconde est
       // suivie à part : la hauteur mesurée à l'import est fausse pour les fichiers Z-up.
-      : (o.objType === 'modele' ? (fg) => { const _t = sondeDebut(); const b = box3FromObjectSkinAware3D(fg); sondeFin('    dont boîte d’un modèle importé', _t); return b; } : null);
+      // #438 : mémorisée tant que la pose, l'orientation et l'échelle n'ont pas bougé. Tourner la
+      // caméra recalculait 15 ms de sommets déformés par modèle, deux fois par rendu.
+      : (o.objType === 'modele' ? (fg) => { const _t = sondeDebut(); const b = box3FromObjectSkinAwareCached3D(fg); sondeFin('    dont boîte d’un modèle importé', _t); return b; } : null);
     // Un modèle importé COUCHÉ : même protection que le Personnage, mais mesurée plutôt que retenue
     // à la construction, sa pose peut changer sans que le rig soit reconstruit. Rend `undefined`
     // pour tout le reste, donc aucun autre type d'Élément n'est touché.

@@ -16,7 +16,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { box3FromObjectSkinAware3D, expandBoxSkinAware3D } from '../src/skinned-box-3d.js';
+import { box3FromObjectSkinAware3D, expandBoxSkinAware3D, box3FromObjectSkinAwareCached3D, _calculsDeBoite3D } from '../src/skinned-box-3d.js';
 
 // Rend THREE accessible en global : skinned-box-3d.js (comme rig3d.js/scene3d.js dans
 // l'application) lit `THREE` en global plutôt que de l'importer, cf. leurs en-têtes respectifs.
@@ -265,5 +265,91 @@ describe('LES OS DOIVENT ÊTRE À JOUR, et c\'est la fonction qui s\'en charge (
     const s = maillagePoséNonÀJour(); s.updateMatrixWorld(true);
     box3FromObjectSkinAware3D(s).getSize(b);
     assert.ok(Math.abs(a.y - b.y) < 1e-6, `${a.y} contre ${b.y}`);
+  });
+});
+
+describe('box3FromObjectSkinAwareCached3D : la boîte mémorisée (#438)', () => {
+  const egales = (a, b) => a.min.distanceTo(b.min) < 1e-9 && a.max.distanceTo(b.max) < 1e-9;
+
+  test('⚠️ TANT QUE RIEN NE BOUGE, LA BOÎTE N’EST PAS RECALCULÉE, ET ELLE EST JUSTE', () => {
+    // Mesuré chez l'utilisateur : 15,4 ms par boîte, deux par modèle et par rendu, pour un geste
+    // (tourner la caméra) qui ne change ni la pose ni le modèle.
+    const { scène } = maillageArticuléPosé();
+    const avant = _calculsDeBoite3D();
+    const a = box3FromObjectSkinAwareCached3D(scène);
+    const b = box3FromObjectSkinAwareCached3D(scène);
+    assert.equal(_calculsDeBoite3D() - avant, 1, 'la seconde demande a recalculé');
+    assert.ok(egales(a, b));
+    assert.ok(egales(a, box3FromObjectSkinAware3D(scène)), 'la boîte mémorisée diffère de la vraie');
+  });
+
+  test('⚠️ UNE POSE QUI CHANGE RECALCULE, et la nouvelle boîte suit la pose', () => {
+    const { scène, enfant } = maillageArticuléPosé();
+    const a = box3FromObjectSkinAwareCached3D(scène);
+    enfant.position.set(0, 80, 0);
+    const avant = _calculsDeBoite3D();
+    const b = box3FromObjectSkinAwareCached3D(scène);
+    assert.equal(_calculsDeBoite3D() - avant, 1);
+    assert.ok(b.max.y > a.max.y + 20, `la boîte n'a pas suivi la pose : ${a.max.y} -> ${b.max.y}`);
+    enfant.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.3);
+    box3FromObjectSkinAwareCached3D(scène);
+    assert.equal(_calculsDeBoite3D() - avant, 2, 'une rotation d’os n’a pas recalculé');
+  });
+
+  test('une orientation, une échelle ou une position de la racine recalculent aussi', () => {
+    const { scène } = maillageArticuléPosé();
+    box3FromObjectSkinAwareCached3D(scène);
+    const avant = _calculsDeBoite3D();
+    scène.rotation.y = 1.0;
+    const tournee = box3FromObjectSkinAwareCached3D(scène);
+    scène.scale.set(2, 2, 2);
+    box3FromObjectSkinAwareCached3D(scène);
+    scène.position.set(3, 0, 0);
+    box3FromObjectSkinAwareCached3D(scène);
+    assert.equal(_calculsDeBoite3D() - avant, 3);
+    assert.ok(egales(tournee, box3FromObjectSkinAware3D((() => { scène.scale.set(1, 1, 1); scène.position.set(0, 0, 0); return scène; })())));
+  });
+
+  test('⚠️ DEUX ÉTATS ALTERNÉS (POSÉ, AU REPOS) RESTENT TOUS DEUX MÉMORISÉS', () => {
+    // Chaque rendu mesure un modèle posé puis au repos ; une seule entrée se serait écrasée à
+    // chaque appel et n'aurait jamais servi.
+    const { scène, enfant } = maillageArticuléPosé();
+    const pose = () => enfant.position.set(0, 50, 0), repos = () => enfant.position.set(0, 1, 0);
+    pose(); box3FromObjectSkinAwareCached3D(scène);
+    repos(); box3FromObjectSkinAwareCached3D(scène);
+    const avant = _calculsDeBoite3D();
+    for (let i = 0; i < 5; i++) {
+      pose(); box3FromObjectSkinAwareCached3D(scène);
+      repos(); box3FromObjectSkinAwareCached3D(scène);
+    }
+    assert.equal(_calculsDeBoite3D() - avant, 0, 'l’alternance recalcule à chaque fois');
+  });
+
+  test('un parent qui bouge recalcule aussi : la clé lit la matrice monde', () => {
+    const { scène } = maillageArticuléPosé();
+    const parent = new THREE.Group(); parent.add(scène);
+    box3FromObjectSkinAwareCached3D(scène);
+    const avant = _calculsDeBoite3D();
+    // Comme dans l'application, la matrice du parent est à jour quand on mesure : la boîte, elle
+    // non plus, ne remonte pas mettre à jour les ancêtres.
+    parent.position.set(0, 10, 0); parent.updateMatrixWorld(true);
+    const b = box3FromObjectSkinAwareCached3D(scène);
+    assert.equal(_calculsDeBoite3D() - avant, 1);
+    assert.ok(egales(b, box3FromObjectSkinAware3D(scène)));
+  });
+
+  test('la boîte rendue est une copie : la modifier ne corrompt pas la mémoire', () => {
+    const { scène } = maillageArticuléPosé();
+    box3FromObjectSkinAwareCached3D(scène);
+    const a = box3FromObjectSkinAwareCached3D(scène); // servie par la mémoire
+    a.max.set(999, 999, 999);
+    const b = box3FromObjectSkinAwareCached3D(scène);
+    assert.ok(b.max.y < 999, 'la mémoire a été corrompue par l’appelant');
+  });
+
+  test('⚠️ LE PLACEMENT DES MODÈLES IMPORTÉS PASSE PAR LA BOÎTE MÉMORISÉE', async () => {
+    const { readFileSync } = await import('node:fs');
+    const scene = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+    assert.ok(scene.includes('const b = box3FromObjectSkinAwareCached3D(fg);'));
   });
 });

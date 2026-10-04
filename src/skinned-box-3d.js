@@ -143,3 +143,55 @@ export function box3FromObjectSkinAware3D(object) {
   expandBoxSkinAware3D(box, object);
   return box;
 }
+
+/**
+ * La même boîte, MÉMORISÉE tant que rien de ce qui la détermine n'a bougé (#438).
+ *
+ * ⚠️ MESURÉ CHEZ L'UTILISATEUR, ET C'ÉTAIT PRESQUE TOUT LE COÛT D'UNE CASE LOURDE. Une Scène à trois
+ * modèles importés, caméra tournée pendant 26 s : 124 rendus complets à 108 ms de médiane, dont
+ * 11 ms de WebGL et 95 ms de placement des Éléments ; la boîte d'un modèle, 744 appels à 15,4 ms,
+ * soit 92 ms par rendu. Elle déforme chaque sommet sur le processeur, deux fois par modèle et par
+ * rendu (placement et hauteur debout), alors que TOURNER LA CAMÉRA NE CHANGE NI LA POSE NI LE MODÈLE.
+ *
+ * La clé est ce que la boîte lit : la matrice monde de la racine, et la position, l'orientation
+ * et l'échelle locales de CHAQUE nœud du sous-arbre, os compris. Parcourir les nœuds coûte une
+ * fraction du parcours des sommets. Une pose, une orientation, une bascule ou une échelle qui
+ * change change la clé, et la boîte est recalculée. La boîte rendue est une COPIE : l'appelant peut
+ * la modifier sans corrompre la mémoire.
+ */
+const _boitesMemorisees = new WeakMap();
+const ETATS_MEMORISES = 4;
+let _calculsDeBoite = 0;
+
+function cleDeLaBoite3D(object){
+  object.updateMatrixWorld(true);
+  const n = [];
+  const e = object.matrixWorld.elements;
+  for (let i = 0; i < 16; i++) n.push(e[i]);
+  object.traverse(o => {
+    n.push(o.id, o.position.x, o.position.y, o.position.z,
+      o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w,
+      o.scale.x, o.scale.y, o.scale.z, o.visible ? 1 : 0);
+  });
+  return n.join(',');
+}
+
+export function box3FromObjectSkinAwareCached3D(object){
+  if (!object) return box3FromObjectSkinAware3D(object);
+  const cle = cleDeLaBoite3D(object);
+  // ⚠️ PLUSIEURS ÉTATS PAR OBJET, PAS UN SEUL. Chaque rendu mesure le même modèle dans DEUX états :
+  // posé (placement) et au repos (hauteur debout, qui remet les os à zéro). Une seule entrée
+  // aurait été écrasée à chaque appel par l'autre état, et ne servait donc jamais.
+  let gardes = _boitesMemorisees.get(object);
+  if (!gardes) { gardes = []; _boitesMemorisees.set(object, gardes); }
+  const garde = gardes.find(g => g.cle === cle);
+  if (garde) return garde.box.clone();
+  _calculsDeBoite++;
+  const box = box3FromObjectSkinAware3D(object);
+  gardes.unshift({ cle, box: box.clone() });
+  if (gardes.length > ETATS_MEMORISES) gardes.length = ETATS_MEMORISES;
+  return box;
+}
+
+/** Pour les tests : combien de boîtes ont réellement été calculées. */
+export function _calculsDeBoite3D(){ return _calculsDeBoite; }
