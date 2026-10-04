@@ -947,49 +947,6 @@ export function tailleDuTampon3D(format, largeur, hauteur){
   return Math.floor(l) * Math.floor(h) * canauxDuFormat3D(format);
 }
 
-/**
- * La répétition du Sol POUR UNE CASE DONNÉE, d'après la distance de sa caméra. Fonction PURE.
- *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * ⚠️ UNE VALEUR UNIQUE NE PEUT PAS SERVIR LE PRÈS ET LE LOIN, ET C'EST MESURABLE
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- *
- * La densité arbitre entre les deux : beaucoup de px/m donne du net de près et du bruit moyenné de
- * loin, peu donne l'inverse. Harmoniser tout le registre à 128 px/m a réglé l'incohérence entre
- * matières et rendu le premier plan flou, le sable passant de 410 à 128, soit un grossissement de
- * 3,2. Signalé aussitôt, et c'était le prix qu'on avait accepté pour l'herbe sans voir qu'il
- * frapperait les matières plus denses.
- *
- * ⚠️ LES MOTEURS RÈGLENT ÇA DANS UN SHADER, ET NOUS N'EN AVONS PAS BESOIN. Unity et les autres
- * fondent deux échelles selon la distance à l'observateur, parce que leur caméra bouge en continu
- * pendant qu'une image se compose. Une Case est une IMAGE FIXE, rendue avec une caméra dont la
- * distance est déjà connue et stockée dans `panel.camDist`. On choisit donc la densité AU MOMENT DE
- * POSER LA MATIÈRE, sans une ligne de shader.
- *
- * ⚠️ ET ÇA NE DÉFAIT PAS L'HARMONISATION, c'est même ce qui la rend tenable. Toutes les matières
- * gardent la MÊME densité entre elles, ce qui était tout l'enjeu de la cohérence ; c'est cette
- * densité commune qui suit le plan.
- *
- * ⚠️ LA RÉFÉRENCE EST LE POINT VALIDÉ À L'ÉCRAN, PAS UN OPTIMUM CALCULÉ. À la distance de cadrage
- * par défaut, la valeur du registre est rendue telle quelle : ce que l'utilisateur a jugé bon ne
- * bouge pas. La fonction ne fait que s'en écarter quand la Case s'écarte de cette distance.
- *
- * Les bornes tiennent l'échelle PHYSIQUE : au-delà d'un facteur deux, une photographie d'un mètre
- * carré étirée sur seize mètres cesse de ressembler à ce qu'elle représente, et la netteté gagnée
- * ne vaut plus ce qu'elle coûte en vraisemblance.
- */
-export const REPEAT_SOL_MIN_3D = 1500, REPEAT_SOL_MAX_3D = 6000;
-
-export function repeatSelonLaCase3D(camDist, reference, distanceDeReference = PANEL_CAM_DEFAULT_DIST_3D){
-  const r = Number(reference);
-  if (!Number.isFinite(r) || r <= 0) return 0;
-  const d = Number(camDist), dr = Number(distanceDeReference);
-  // Une Case sans caméra déclarée est à la distance de référence : elle reçoit la valeur du
-  // registre, inchangée. C'est le cas de toutes les Cases existantes.
-  if (![d, dr].every(Number.isFinite) || d <= 0 || dr <= 0) return Math.round(r);
-  return Math.round(Math.min(REPEAT_SOL_MAX_3D, Math.max(REPEAT_SOL_MIN_3D, r * dr / d)));
-}
-
 /** La répétition de la couche large d'une matière photographiée. Fonction PURE. */
 export function repeatMacro3D(repeat, rapport = GROUND_MACRO_RATIO_3D){
   const r = Number(repeat), q = Number(rapport);
