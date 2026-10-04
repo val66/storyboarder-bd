@@ -65,6 +65,7 @@ import {
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
   classerCartes3D, regimeDeCuisson3D, reliefAmbigu3D, nomDuGrain3D,
+  TAILLE_GRAIN_SOL, tailleDuGrain3D, reduireDeMoitie3D, versReference3D,
   natureDeLaTexture3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
 import { natureDuNom3D } from '../src/bubble-texture.js';
@@ -883,5 +884,70 @@ describe('les réglages tiennent ensemble', () => {
 
   test('le mélange est une vraie moyenne pondérée', () => {
     assert.ok(PART_OMBRAGE > 0 && PART_OMBRAGE < 1, `${PART_OMBRAGE}`);
+  });
+});
+
+describe('Le Sol cuit en 1024, et décide toujours en 512', () => {
+  /**
+   * ⚠️ CE BLOC TIENT UNE AFFIRMATION QUE J'AVAIS FAITE SANS LA MESURER. « Au cadrage par défaut,
+   * rien ne change » : les mipmaps rendent la même MOYENNE, mais le cuiseur normalise le CONTRASTE
+   * par texel, et un texel de 1024 est deux fois plus petit. Normalisé naïvement, le grain revu au
+   * niveau de mipmap 512 sortait de -16 % à +51 % selon la matière. Le gain se calcule donc sur la
+   * version réduite, et ce bloc vérifie que c'est bien ce qui se passe.
+   */
+  const relief = (T) => {
+    // Un relief réaliste plutôt qu'un damier : du bruit à plusieurs échelles, déterministe.
+    let s = 7; const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const g = new Float64Array(T * T);
+    for (let i = 0; i < g.length; i++) g[i] = 128 + 40 * (r() - 0.5);
+    return g;
+  };
+
+  test('⚠️ LE CONTRASTE VU À L’ÉCHELLE DE RÉFÉRENCE EST CELUI DE LA CIBLE', () => {
+    const T = TAILLE_GRAIN_SOL;
+    const { grain } = grainNormalise3D(relief(T), null, T, CONTRASTE_CIBLE, TAILLE_GRAIN);
+    const vu = contrasteLocal3D(versReference3D(Float64Array.from(grain), T, TAILLE_GRAIN), TAILLE_GRAIN);
+    assert.ok(Math.abs(vu - CONTRASTE_CIBLE) / CONTRASTE_CIBLE < 0.05,
+      `revu à ${TAILLE_GRAIN}², le grain rend ${vu.toFixed(2)} pour une cible de ${CONTRASTE_CIBLE}`);
+  });
+
+  test('le garde-fou : SANS la référence, l’écart réapparaît', () => {
+    // Sans ce témoin, le test précédent serait vrai si l'écart n'avait jamais existé, et la
+    // correction ne prouverait rien. On montre que la version naïve s'écarte bien de la cible.
+    const T = TAILLE_GRAIN_SOL;
+    const { grain } = grainNormalise3D(relief(T), null, T, CONTRASTE_CIBLE);
+    const vu = contrasteLocal3D(versReference3D(Float64Array.from(grain), T, TAILLE_GRAIN), TAILLE_GRAIN);
+    assert.ok(Math.abs(vu - CONTRASTE_CIBLE) / CONTRASTE_CIBLE > 0.10,
+      `sans référence, ${vu.toFixed(2)} : l’écart que la correction doit supprimer n’apparaît pas`);
+  });
+
+  test('sans référence fournie, le comportement des Bulles est inchangé', () => {
+    const a = grainNormalise3D(relief(TAILLE_GRAIN), null, TAILLE_GRAIN);
+    const b = grainNormalise3D(relief(TAILLE_GRAIN), null, TAILLE_GRAIN, CONTRASTE_CIBLE, TAILLE_GRAIN);
+    assert.equal(a.gain, b.gain, 'la référence par défaut doit valoir la taille elle-même');
+  });
+
+  test('⚠️ SEULES LES MATIÈRES DU SOL CUISENT EN 1024', () => {
+    const sol = ['herbe', 'béton', 'sable'];
+    assert.equal(tailleDuGrain3D('herbe', sol), TAILLE_GRAIN_SOL);
+    assert.equal(tailleDuGrain3D('béton', sol), TAILLE_GRAIN_SOL, 'un identifiant accentué est reconnu');
+    // Une Bulle s'affiche sur deux cents pixels : un 1024 y serait du poids pour rien.
+    assert.equal(tailleDuGrain3D('papier-froisse', sol), TAILLE_GRAIN);
+    assert.equal(tailleDuGrain3D('herbe', []), TAILLE_GRAIN);
+    assert.equal(tailleDuGrain3D('herbe', undefined), TAILLE_GRAIN);
+  });
+
+  test('la taille du Sol est la référence multipliée par une puissance de deux', () => {
+    // C'est ce qui fait tomber un niveau de mipmap EXACTEMENT sur la référence, et ce qui rend
+    // `versReference3D` possible sans rééchantillonnage approximatif.
+    let t = TAILLE_GRAIN_SOL;
+    while (t > TAILLE_GRAIN) { assert.equal(t % 2, 0); t /= 2; }
+    assert.equal(t, TAILLE_GRAIN);
+    assert.throws(() => versReference3D(new Float64Array(9), 3, 2), 'une taille hors puissance de deux doit être refusée');
+  });
+
+  test('la réduction moyenne bien par blocs de deux sur deux', () => {
+    const g = Float64Array.from([0, 4, 8, 12, 2, 6, 10, 14, 1, 1, 1, 1, 3, 3, 3, 3]);
+    assert.deepEqual([...reduireDeMoitie3D(g, 4)], [3, 11, 2, 2]);
   });
 });

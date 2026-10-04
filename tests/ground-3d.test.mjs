@@ -608,7 +608,15 @@ describe('Sol : le grain est TEINTÉ, et pas seulement recopié', () => {
 });
 
 describe('Sol : une matière photographiée doit pouvoir être VUE', () => {
-  /** Le côté du grain cuit, cf. TAILLE_GRAIN de tools/bake-textures.mjs. */
+  /**
+   * Le côté du grain À L'ÉCHELLE OÙ SON CONTRASTE EST DÉCIDÉ, cf. TAILLE_GRAIN de
+   * tools/bake-textures.mjs.
+   *
+   * ⚠️ PAS LE CÔTÉ DU FICHIER, qui vaut 1024 pour le Sol depuis #435k. Les texels en surplus servent
+   * le gros plan et sont moyennés par les mipmaps au cadrage par défaut, où le cuiseur a justement
+   * calé le contraste à 512. Juger la netteté sur 1024 dénoncerait comme « trop dense » l'échange
+   * même qu'on a voulu.
+   */
   const COTE_GRAIN = 512;
 
   test('⚠️ AUCUNE MATIÈRE PHOTOGRAPHIÉE NE SE RÉPÈTE PLUS VITE QUE L’ÉCRAN NE RÉSOUT', () => {
@@ -993,5 +1001,50 @@ describe('Sol : les couches larges n’occupent qu’un canal', () => {
       assert.equal(t.generateMipmaps, true, `couche ${nom} : mipmaps désactivées`);
     }
     _viderGrains3D(); _viderTexturesDuSol3D();
+  });
+});
+
+describe('Sol : la couche macro reste en 512, même quand le grain passe en 1024', () => {
+  test('⚠️ UN GRAIN DE 1024 EST RÉDUIT AVANT D’ÊTRE COMPOSÉ EN COUCHE LARGE', () => {
+    // ⚠️ CE TEST EST NÉ D'UN MUTANT QUI A ÉCHAPPÉ. Composer la couche large à la taille du grain
+    // ne cassait rien de visible et rien ne le disait : elle est ralentie soixante-quatre fois, le
+    // détail d'un 1024 y serait grossi bien au-delà de la résolution de l'écran, et coûterait
+    // quatre fois la mémoire et la composition. Un gaspillage qui ne se voit pas n'est retenu que
+    // par une garde.
+    _viderGrains3D(); _viderTexturesDuSol3D();
+    const def = GROUND_TYPE_DEFS.find(d => d.grain);
+    _setGrain3D(def.grain, { width: 1024, height: 1024 });
+    solDEssai();
+    const vrai = document.createElement;
+    const toiles = [];
+    document.createElement = (balise) => {
+      if (balise !== 'canvas') return vrai(balise);
+      const t = {
+        width: 0, height: 0,
+        getContext: () => ({
+          drawImage(){}, putImageData(){},
+          getImageData(x, y, l, h){
+            t.lu = [l, h];
+            const data = new Uint8ClampedArray(4).fill(128);
+            return { data, width: 1, height: 1 };
+          },
+        }),
+      };
+      toiles.push(t);
+      return t;
+    };
+    try {
+      applyGroundType({ groundType: def.id });
+    } finally {
+      document.createElement = vrai;
+      _viderGrains3D(); _viderTexturesDuSol3D();
+    }
+    const macro = toiles[toiles.length - 1];
+    assert.equal(macro.width, GROUND_MODULATION_TAILLE_3D,
+      `couche large composée en ${macro.width}² au lieu de ${GROUND_MODULATION_TAILLE_3D}²`);
+    assert.deepEqual(macro.lu, [GROUND_MODULATION_TAILLE_3D, GROUND_MODULATION_TAILLE_3D],
+      'les pixels lus ne sont pas ceux de la couche réduite');
+    // Et la tuile de la matière, elle, garde la pleine taille : c'est elle qui sert le gros plan.
+    assert.equal(toiles[0].width, 1024, 'la tuile de la matière a perdu la résolution du grain');
   });
 });

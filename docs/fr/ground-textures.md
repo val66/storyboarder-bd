@@ -137,6 +137,25 @@ en moyenne, 1 au maximum, et le contraste local de 0,16 %. Les deux chemins fini
 et ce que le 4K porte en plus est sous la limite de résolution de cette sortie. Cette réponse tient
 **tant que `TAILLE_GRAIN` vaut 512** : s'il passait à 1024, un 1K deviendrait du 1:1.
 
+⚠️ **ET C'EST ARRIVÉ POUR LE SOL, en #435k.** Ses matières cuisent désormais en 1024²
+(`TAILLE_GRAIN_SOL`), parce que le gros plan s'est révélé un vrai cas d'usage : avec une tuile de
+4 m, un grain de 512 passe sous un texel par pixel d'écran dès une distance de caméra de 10, et
+en 1024 ce seuil recule à 5. Pour le Sol, un 1K est donc maintenant du 1:1. Les Bulles restent en
+512, et la mesure ci-dessus vaut toujours pour elles.
+
+⚠️ **TOUTES LES DÉCISIONS DU CUISEUR RESTENT PRISES À 512**, et c'est le point délicat. J'avais
+affirmé qu'au cadrage par défaut rien ne changerait, puisque les mipmaps rendent la même moyenne.
+C'était faux : le cuiseur normalise le contraste PAR TEXEL, et un texel de 1024 est deux fois plus
+petit. Normalisé naïvement, le grain revu au niveau de mipmap 512 sortait de -16 % (gazon) à
++51 % (sable). Le gain se calcule donc sur la version réduite à 512, où la cible a été calibrée :
+l'écart retombe sous 1 % sur sept matières. Nature, couture et motif se mesurent de même. Le 1024
+n'ajoute que du détail de près.
+
+**Et deux voies écartées en chemin, pour qu'on ne les retente pas.** Faire suivre la densité à la
+distance de la caméra (#435j, révoqué) : une Case n'est pas une image fixe PENDANT qu'on la règle,
+et la répétition glissait à chaque cran de molette, jusqu'à 375 d'écart en un cran. Et la carte de
+détail, réponse complète de l'industrie, reste en réserve : elle demande de toucher au shader.
+
 ## Ce qui reste en réserve, avec son déclencheur
 
 **Carte de détail.** Une texture haute fréquence surimposée, qui sert le très gros plan. La réponse

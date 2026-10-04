@@ -133,6 +133,25 @@ out of 255 on average, 1 at most, and the local contrast by 0.16 %. Both paths e
 and what the 4K carries beyond that is below the resolution limit of that output. This answer holds
 **as long as `TAILLE_GRAIN` is 512**: were it raised to 1024, a 1K source would become 1:1.
 
+⚠️ **AND THAT HAPPENED FOR THE GROUND, in #435k.** Its materials are now baked at 1024²
+(`TAILLE_GRAIN_SOL`), because close-ups turned out to be a real use case: with a 4 m tile, a 512
+grain drops below one texel per screen pixel from a camera distance of 10, and at 1024 that
+threshold moves back to 5. For the Ground, a 1K source is therefore now 1:1. Bubbles stay at 512,
+and the measurement above still holds for them.
+
+⚠️ **EVERY DECISION OF THE BAKER IS STILL TAKEN AT 512**, and that is the delicate point. I had
+claimed nothing would change at the default framing, since mipmaps return the same average. That
+was wrong: the baker normalises contrast PER TEXEL, and a 1024 texel is half the size. Normalised
+naively, the grain seen again at mipmap level 512 came out from -16 % (lawn) to +51 % (sand). The
+gain is therefore computed on the version reduced to 512, where the target was calibrated: the gap
+falls under 1 % on seven materials. Nature, seam and pattern are measured the same way. The 1024
+only adds close-up detail.
+
+**And two roads ruled out along the way, so they are not retried.** Making the density follow the
+camera distance (#435j, reverted): a Panel is not a still image WHILE it is being framed, and the
+tiling slid at every scroll step, by up to 375 in a single step. And the detail map, the industry's
+complete answer, stays in reserve: it requires touching the shader.
+
 ## What is held in reserve, with its trigger
 
 **Detail map.** A high-frequency texture overlaid on top, serving the extreme close-up. The

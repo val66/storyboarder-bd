@@ -115,6 +115,56 @@ import { dirname, join, basename } from 'node:path';
  */
 export const TAILLE_GRAIN = 512;
 
+/**
+ * La taille des grains du SOL, double de celle des Bulles. Décidée avec l'utilisateur en #435k.
+ *
+ * ⚠️ POURQUOI LE SOL ET PAS LES BULLES. Une Bulle s'affiche sur deux cents pixels environ : un
+ * grain de 512 y est déjà réduit. Le Sol, lui, se regarde de près quand la caméra descend : avec
+ * une tuile de 4 m, un grain de 512 passe sous un texel par pixel dès une distance de 10, et la
+ * photographie est grossie au-delà de sa résolution. En 1024, ce seuil recule à 5.
+ *
+ * ⚠️ ET TOUTES LES DÉCISIONS RESTENT PRISES À L'ÉCHELLE 512. Nature, gain, couture, motif : leurs
+ * seuils ont été calibrés à 512, et les mesurer à 1024 les déplacerait. Le cas le plus net est le
+ * gain. Normalisé naïvement à 1024, le grain revu au cadrage par défaut — c'est-à-dire au niveau de
+ * mipmap 512 — sortait PLUS contrasté que l'actuel, de 11 % pour l'herbe à 51 % pour le sable, et
+ * 16 % moins pour le gazon. J'avais annoncé « au cadrage par défaut rien ne change » sans l'avoir
+ * mesuré, et c'était faux. Le gain se calcule donc sur la version réduite à 512 : relevé sur sept
+ * matières, l'écart retombe sous 1 %. Le 1024 n'ajoute que du détail de près.
+ */
+export const TAILLE_GRAIN_SOL = 1024;
+
+/** La taille de cuisson d'un identifiant : celle du Sol pour ses matières, celle des Bulles sinon. */
+export function tailleDuGrain3D(id, idsDuSol = []){
+  return (idsDuSol || []).includes(id) ? TAILLE_GRAIN_SOL : TAILLE_GRAIN;
+}
+
+/** Réduction 2×2 par moyenne, ce que fait un niveau de mipmap. Fonction PURE. */
+export function reduireDeMoitie3D(g, taille){
+  const h = Math.floor(taille / 2), o = new Float64Array(h * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < h; x++) {
+      const i = 2 * y * taille + 2 * x;
+      o[y * h + x] = (g[i] + g[i + 1] + g[i + taille] + g[i + taille + 1]) / 4;
+    }
+  }
+  return o;
+}
+
+/**
+ * Ramène une image à la taille de référence par réductions successives. Fonction PURE.
+ * La taille doit valoir la référence multipliée par une puissance de deux : on refuse le reste
+ * plutôt que de rééchantillonner à côté, ce qui fausserait en silence chaque mesure qui suit.
+ */
+export function versReference3D(g, taille, reference = TAILLE_GRAIN){
+  let t = taille, img = g;
+  while (t > reference) {
+    if (t % 2) throw new Error(`taille ${taille} : pas un multiple de ${reference} par puissances de deux`);
+    img = reduireDeMoitie3D(img, t); t /= 2;
+  }
+  if (t !== reference) throw new Error(`taille ${taille} : pas un multiple de ${reference} par puissances de deux`);
+  return img;
+}
+
 /** Le contraste local visé. C'est le papier froissé validé à l'œil, devenu la référence. */
 export const CONTRASTE_CIBLE = 6.4;
 
@@ -322,7 +372,7 @@ export function ombrageDepuisNormale3D(normaleRgba, taille, ampli = AMPLI_NORMAL
  * un téléchargement incomplet, donc un refus. Sans cette condition, une carte oubliée produirait un
  * grain plausible et appauvri, et personne ne saurait qu'il manquait quelque chose.
  */
-export function grainNormalise3D(relief, normaleRgba, taille, cible = CONTRASTE_CIBLE){
+export function grainNormalise3D(relief, normaleRgba, taille, cible = CONTRASTE_CIBLE, reference = taille){
   const n = taille * taille;
   let somme = 0;
   for (let i = 0; i < n; i++) somme += relief[i];
@@ -338,7 +388,11 @@ export function grainNormalise3D(relief, normaleRgba, taille, cible = CONTRASTE_
   // porte sur des écarts entre voisins, donc le décalage n'y change rien, mais on reste homogène.
   const centre = new Float64Array(n);
   for (let i = 0; i < n; i++) centre[i] = GRIS_NEUTRE + brut[i];
-  const c0 = contrasteLocal3D(centre, taille);
+  // ⚠️ MESURÉ À L'ÉCHELLE DE RÉFÉRENCE, cf. TAILLE_GRAIN_SOL : à 1024 sans cela, le grain revu au
+  // cadrage par défaut sortait jusqu'à 51 % plus contrasté. Sans référence fournie, rien ne change.
+  const c0 = reference < taille
+    ? contrasteLocal3D(versReference3D(centre, taille, reference), reference)
+    : contrasteLocal3D(centre, taille);
   const gain = cible / Math.max(c0, 1e-6);
   const grain = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
@@ -559,7 +613,7 @@ export function nomDuGrain3D(id, nature = 'gris'){
  * justement pouvoir tester sans rien lancer. C'est la même garde que `fetch-fonts.mjs` emploie
  * pour ne pas télécharger onze familles à chaque `npm test`.
  */
-async function chargerCarte(chemin){
+async function chargerCarte(chemin, taille = TAILLE_GRAIN){
   const { nativeImage } = await import('electron');
   const img = nativeImage.createFromPath(chemin);
   if (img.isEmpty()) throw new Error(`carte illisible : ${chemin}`);
@@ -573,7 +627,7 @@ async function chargerCarte(chemin){
   const carre = (width === height) ? img
     : img.crop({ x: Math.floor((width - cote) / 2), y: Math.floor((height - cote) / 2),
                  width: cote, height: cote });
-  const redim = carre.resize({ width: TAILLE_GRAIN, height: TAILLE_GRAIN, quality: 'best' });
+  const redim = carre.resize({ width: taille, height: taille, quality: 'best' });
   // ⚠️ toBitmap() REND DU BGRA, PAS DU RGBA. Inverser les deux donnerait une teinte par défaut
   // fausse — un parchemin ocre reviendrait bleuté — et un ombrage dont la pente X serait celle
   // du canal bleu. Le genre d'erreur qui produit une image plausible et fausse. La première
@@ -650,23 +704,28 @@ async function main(){
   // ⚠️ RECADRÉ AU CARRÉ AVANT TOUT, et ce n'est pas cosmétique. Une panoramique fait 2:1 ; la
   // redimensionner en 512² l'écraserait du double dans un sens. C'est l'erreur exacte qui avait
   // déformé ma première planche de comparaison, signalée à l'époque.
-  const relief = grisDepuisRgba(await chargerCarte(join(dossier, cartes.relief)));
-  const normale = cartes.normale ? await chargerCarte(join(dossier, cartes.normale)) : null;
-  const albedoRgba = cartes.albedo ? await chargerCarte(join(dossier, cartes.albedo)) : null;
+  const { GROUND_TYPE_DEFS } = await import('../src/constants.js');
+  const taille = tailleDuGrain3D(id, GROUND_TYPE_DEFS.map(d => d.id));
+  const aRef = (g) => versReference3D(g, taille, TAILLE_GRAIN);
+  const relief = grisDepuisRgba(await chargerCarte(join(dossier, cartes.relief), taille));
+  const normale = cartes.normale ? await chargerCarte(join(dossier, cartes.normale), taille) : null;
+  const albedoRgba = cartes.albedo ? await chargerCarte(join(dossier, cartes.albedo), taille) : null;
   const teinte = albedoRgba ? teinteDominante3D(albedoRgba) : '#FFFFFF';
 
   // ⚠️ LA NATURE SE MESURE SUR LES CARTES D'ORIGINE, PAS SUR LE GRAIN. Le grain est normalisé à
   // 6,4 par construction : le comparer à quoi que ce soit ne dirait rien. Ce qu'on veut savoir est
   // laquelle des deux cartes SOURCES porte le plus de structure.
-  const contrasteRelief = contrasteLocal3D(relief, TAILLE_GRAIN);
+  const contrasteRelief = contrasteLocal3D(aRef(relief), TAILLE_GRAIN);
   const contrasteAlbedo = albedoRgba
-    ? contrasteLocal3D(grisDepuisRgba(albedoRgba), TAILLE_GRAIN) : 0;
+    ? contrasteLocal3D(aRef(grisDepuisRgba(albedoRgba)), TAILLE_GRAIN) : 0;
   const nature = natureDeLaTexture3D(contrasteAlbedo, contrasteRelief);
 
   // Le grain sert au régime GRIS, et sa luminance sert de support aux mesures dans les deux cas :
   // couture et motif se jugent sur ce qui se répète, indépendamment de la couleur.
-  const { grain, gain, contraste } = grainNormalise3D(relief, normale, TAILLE_GRAIN);
-  const mesure = nature === 'couleur' ? grisDepuisRgba(albedoRgba) : grain;
+  const { grain, gain } = grainNormalise3D(relief, normale, taille, CONTRASTE_CIBLE, TAILLE_GRAIN);
+  // Toutes les mesures se lisent à l'échelle de référence, où leurs seuils ont été calibrés.
+  const mesure = aRef(nature === 'couleur' ? grisDepuisRgba(albedoRgba) : grain);
+  const contraste = contrasteLocal3D(mesure, TAILLE_GRAIN);
   const couture = coutureCarrelage3D(mesure, TAILLE_GRAIN);
   // Mesuré sur ce qui est LIVRÉ et non sur les cartes d'origine : le rapport y est plus tranché
   // (0,126 contre 0,241) que sur le déplacement (0,16 contre 0,26).
@@ -674,10 +733,10 @@ async function main(){
 
   mkdirSync(SORTIE, { recursive: true });
   const sortie = join(SORTIE, nomDuGrain3D(id, nature));
-  if (nature === 'couleur') await ecrireImagePng(albedoRgba, TAILLE_GRAIN, sortie);
-  else await ecrireGrainPng(grain, TAILLE_GRAIN, sortie);
+  if (nature === 'couleur') await ecrireImagePng(albedoRgba, taille, sortie);
+  else await ecrireGrainPng(grain, taille, sortie);
 
-  console.log(`${id} → ${basename(sortie)}`);
+  console.log(`${id} → ${basename(sortie)}  (${taille}², mesures à ${TAILLE_GRAIN}²)`);
   // ⚠️ LE RÉGIME EST IMPRIMÉ, JAMAIS DEVINÉ EN SILENCE. Une matière cuite par erreur en image
   // perdrait 30 % de son grain — le terme directionnel — sans rien changer d'autre. Le seul moyen
   // de s'en apercevoir est de le lire ici.

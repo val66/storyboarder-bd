@@ -676,13 +676,20 @@ function modulationDuSol3D(def) {
   if (!img) return buildGroundModulation3D();
   if (_macroSol3D[def.id]) return _macroSol3D[def.id];
 
+  // ⚠️ LA COUCHE LARGE EST COMPOSÉE EN 512, QUELLE QUE SOIT LA TAILLE DU GRAIN. Elle est ralentie
+  // soixante-quatre fois : le détail d'un grain en 1024 y serait grossi bien au-delà de ce que
+  // l'écran résout, donc invisible, et coûterait quatre fois plus de mémoire et de composition.
+  // `drawImage` réduit au passage. La sous-échelle de seize divise toujours 512.
+  const T = GROUND_MODULATION_TAILLE_3D;
   const toile = document.createElement('canvas');
-  toile.width = img.width; toile.height = img.height;
+  toile.width = T; toile.height = T;
   const tc = toile.getContext('2d');
-  tc.drawImage(img, 0, 0);
-  const donnees = tc.getImageData(0, 0, toile.width, toile.height);
+  tc.drawImage(img, 0, 0, T, T);
+  const donnees = tc.getImageData(0, 0, T, T);
   const px = donnees.data;
-  const L = toile.width, H = toile.height;
+  // Les dimensions se lisent sur ce que le canevas RENDS, pas sur ce qu'on lui a demandé : c'est
+  // le tableau qu'on parcourt, et deux sources de vérité pour sa taille finiraient par diverger.
+  const L = donnees.width, H = donnees.height;
 
   // ⚠️ LA TROISIÈME ÉCHELLE EST COMPOSÉE ICI, DANS LA MÊME TEXTURE. Le grain est mélangé avec
   // lui-même répété seize fois : la copie serrée donne une période effective seize fois plus
