@@ -26,11 +26,13 @@
  * redessiner (scene3d.js). Ce module ne connaît que des octets et des scènes Three.
  */
 
+import { sondeDebut, sondeFin, sondeCompter } from './perf-probe.js';
+import { glbSansTexturesEnDouble3D } from './glb-textures.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { readModel } from './model-store.js';
 // cf. son en-tête : Box3.setFromObject ignore le squelette d'un modèle articulé (SkinnedMesh), la
 // hauteur mesurée ici doit tenir compte de la pose réellement affichée, pas de la géométrie brute.
-import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
+import { box3FromObjectSkinAwareCached3D } from './skinned-box-3d.js';
 // La verticale d'un corps se DÉRIVE de son squelette, elle ne se suppose pas, cf. la mesure des six
 // fichiers réels dans docs/en/imported-skeletons.md : deux d'entre eux ont +Z pour verticale.
 import { bonesFromObject3D, inferSkeletonMap } from './skeleton-map.js';
@@ -102,8 +104,12 @@ function parseGlb(octets){
     // un .glb porte ses textures à l'intérieur, et un .gltf qui pointerait vers des fichiers voisins
     // n'a de toute façon pas été copié avec eux (cf. model-store.js, extension imposée).
     try {
-      loader.parse(octets.buffer ? octets.buffer.slice(octets.byteOffset, octets.byteOffset + octets.byteLength) : octets,
-        '', (gltf) => resolve(gltf), (err) => reject(err));
+      const brut = octets.buffer ? octets.buffer.slice(octets.byteOffset, octets.byteOffset + octets.byteLength) : octets;
+      // #438 : une image portée en double n'est décodée, téléversée et gardée qu'une fois. Le rendu
+      // est identique au pixel près (cf. src/glb-textures.js) ; centaur3.glb épargne quatre 2048².
+      const { buffer, redirigees } = glbSansTexturesEnDouble3D(brut);
+      if (redirigees) sondeCompter('chargement : textures en double évitées', redirigees);
+      loader.parse(buffer, '', (gltf) => resolve(gltf), (err) => reject(err));
     } catch (err) {
       reject(err);   // parse peut lever de façon synchrone sur un fichier tronqué
     }
@@ -151,12 +157,16 @@ export async function preloadModels(noms){
   _onChange();
   await Promise.all(àFaire.map(async (nom) => {
     try {
+      const _tLecture = sondeDebut();
       const octets = await readModel(nom);
+      sondeFin('chargement : lecture du fichier', _tLecture);
       if (!octets || !octets.length) { _cache.set(nom, 'introuvable'); return; }
       // ⚠️ `parseGlb` S'EXÉCUTE SUR LE FIL PRINCIPAL, et c'est la raison d'être de la cascade de
       // #406b : N analyses se le disputent. Mesuré, médiane 917 ms par modèle quand quatre se
       // partagent le fil, 1 409 ms quand vingt-deux le font (cf. docs/en/rendering-performance.md).
+      const _tDecodage = sondeDebut();
       const gltf = await parseGlb(octets);
+      sondeFin('chargement : décodage GLB', _tDecodage);
       const scene = gltf && gltf.scene;
       if (!scene) { _cache.set(nom, 'introuvable'); return; }
       // La hauteur naturelle est mesurée UNE fois. Elle n'est pas utilisée pour redimensionner ici,
@@ -166,7 +176,8 @@ export async function preloadModels(noms){
       // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée, cf.
       // src/skinned-box-3d.js.
       applyAnisotropy(scene);
-      _cache.set(nom, {
+      const _tMesures = sondeDebut();
+      const _entree = {
         scene,
         hauteurM: hauteurNaturelleModele3D(scene),
         // Relevé UNE fois, au décodage. L'import le lit pour avertir, rig3d.js pour masquer, et le
@@ -175,7 +186,9 @@ export async function preloadModels(noms){
         // Le rapport largeur/hauteur de la silhouette : c'est lui qui donne son empreinte 2D à
         // l'Élément créé, plutôt qu'un carré arbitraire (cf. ratioLargeurModele3D).
         ratioLargeur: ratioLargeurModele3D(scene),
-      });
+      };
+      sondeFin('chargement : mesures du modèle (hauteur, égarés, silhouette)', _tMesures);
+      _cache.set(nom, _entree);
     } catch {
       _cache.set(nom, 'introuvable');
     }
@@ -302,7 +315,9 @@ function etendueDuCorps3D(scene){
 export function hauteurNaturelleModele3D(scene){
   const parDefaut = () => {
     const t = new THREE.Vector3();
-    box3FromObjectSkinAware3D(scene).getSize(t);
+    // Mémorisée (#438) : un objet sans corps (bureau, véhicule) la demande deux fois au décodage,
+    // ici puis pour sa silhouette, sur la même scène inchangée.
+    box3FromObjectSkinAwareCached3D(scene).getSize(t);
     return t.y > 0 ? t.y : 1;
   };
   try {
@@ -376,7 +391,7 @@ export function ratioLargeurModele3D(scene){
       // Aucun corps dérivable : un meuble, un véhicule. Il n'y a pas de verticale à déduire : la
       // convention du fichier est tout ce qu'on a, et la boîte du maillage la porte.
       const t = new THREE.Vector3();
-      box3FromObjectSkinAware3D(scene).getSize(t);
+      box3FromObjectSkinAwareCached3D(scene).getSize(t);
       r = t.x / t.y;
     }
     return (Number.isFinite(r) && r > 0) ? r : 1;

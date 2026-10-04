@@ -39,6 +39,18 @@ export function sondeFin(nom, t0){
   enregistrer(nom, performance.now() - t0);
 }
 
+/** La sonde est-elle allumée ? Pour les mesures qui coûtent quelque chose à préparer. */
+export function sondeActive(){ return _actif; }
+
+/**
+ * Enregistre une VALEUR qui n'est pas une durée (un nombre d'appels de dessin, de nœuds) : même
+ * agrégat, médiane et maximum compris. Son nom porte son unité.
+ */
+export function sondeValeur(nom, v){
+  if (!_actif || !Number.isFinite(v)) return;
+  enregistrer(nom, v);
+}
+
 /** Compte un événement sans durée. */
 export function sondeCompter(nom, n = 1){
   if (!_actif) return;

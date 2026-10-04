@@ -11,7 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
-import { sondeDebut, sondeFin, sondeCompter } from './perf-probe.js';
+import { sondeDebut, sondeFin, sondeCompter, sondeActive, sondeValeur } from './perf-probe.js';
 import { materiauDeTrace3D, grainDeTracePret3D, libererMateriauDeTrace3D } from './trace-textures-3d.js';
 import { poserCiel3D, retirerCiel3D, abaissementDeLHorizon3D } from './sky-3d.js';
 import {
@@ -2988,9 +2988,29 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       personaCamera3D.far, Math.asin(Math.max(-1, Math.min(1, -_visee.y))));
   }
   poserCiel3D(personaScene3D, _eclairage, _abaisseCiel);
+  // #438 : ce que contient la scène partagée, et ce que coûte la seule mise à jour de ses matrices,
+  // que three refait sur TOUT l'arbre à chaque rendu, rigs masqués des autres Cases compris. Mesuré
+  // à part, sonde allumée seulement : la mise à jour faite ici rend celle du rendu presque gratuite,
+  // donc le « WebGL » ci-dessous est un peu sous-estimé quand la sonde tourne, ce qui est nommé.
+  if (sondeActive()) {
+    const _tMat = sondeDebut();
+    personaScene3D.updateMatrixWorld();
+    sondeFin('  dont matrices de toute la scène (mesure à part)', _tMat);
+    let _noeuds = 0, _visibles = 0;
+    personaScene3D.traverse(n => { _noeuds++; });
+    personaScene3D.traverseVisible(n => { _visibles++; });
+    sondeValeur('nœuds dans la scène (nombre)', _noeuds);
+    sondeValeur('nœuds visibles (nombre)', _visibles);
+  }
   const _tGl = sondeDebut();
   personaRenderer3D.render(personaScene3D, personaCamera3D);
   sondeFin('  dont WebGL (render)', _tGl);
+  if (sondeActive()) {
+    sondeValeur('appels de dessin par rendu (nombre)', personaRenderer3D.info.render.calls);
+    sondeValeur('triangles par rendu (milliers)', personaRenderer3D.info.render.triangles / 1000);
+    sondeValeur('géométries en mémoire GPU (nombre)', personaRenderer3D.info.memory.geometries);
+    sondeValeur('textures en mémoire GPU (nombre)', personaRenderer3D.info.memory.textures);
+  }
   retirerCiel3D(personaScene3D);
   personaScene3D.background = null;
   // ⚠️ ET LES OMBRES REPARTENT ÉTEINTES, pour la MÊME raison que le fond juste au-dessus (#422k) :
