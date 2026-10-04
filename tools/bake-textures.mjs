@@ -427,13 +427,37 @@ export function teinteDominante3D(albedoRgba){
 /** Les deux familles de relief, séparées : elles ne disent pas la même chose. */
 const MOTIFS_DEPLACEMENT = [/_displacement/i, /_disp[_.]/i, /_height/i];
 const MOTIFS_OCCLUSION = [/_ao[_.]/i, /_ambientocclusion/i];
+const MOTIFS_NORMALE = [/_normalgl/i, /_nor_gl/i, /_normal_gl/i];
+const MOTIFS_ALBEDO = [/_color/i, /_diff[_.]/i, /_albedo/i, /_basecolor/i];
+
+/**
+ * Plusieurs fichiers pour un même RÔLE ? Fonction PURE. Rend la liste des rôles en double.
+ *
+ * ⚠️ TROUVÉ AU MOMENT OÙ L'UTILISATEUR ALLAIT REMPLACER TROIS SOURCES. Déposer un nouveau jeu sans
+ * retirer l'ancien laissait deux déplacements, deux normales et deux albédos dans le même dossier,
+ * et `find` prenait le premier dans l'ordre alphabétique, sans un mot. Relevé : avec Ground080 et
+ * Ground054 côte à côte, c'est 054 qui sortait, par chance ; avec un numéro plus grand, l'ANCIEN
+ * aurait été cuit. Et deux jeux nommés autrement pouvaient se MÉLANGER, le relief de l'un avec la
+ * normale de l'autre : un grain plausible, cohérent nulle part.
+ */
+export function rolesEnDouble3D(noms){
+  const liste = noms || [];
+  const compte = (motifs) => liste.filter(f => motifs.some(m => m.test(f)));
+  const doublons = [];
+  for (const [role, motifs] of [['relief', MOTIFS_DEPLACEMENT], ['occlusion', MOTIFS_OCCLUSION],
+    ['normale', MOTIFS_NORMALE], ['albédo', MOTIFS_ALBEDO]]) {
+    const vus = compte(motifs);
+    if (vus.length > 1) doublons.push({ role, fichiers: vus });
+  }
+  return doublons;
+}
 
 export function classerCartes3D(noms){
   const trouve = (motifs) => noms.find(f => motifs.some(m => m.test(f))) || null;
   return {
     relief: trouve([...MOTIFS_DEPLACEMENT, ...MOTIFS_OCCLUSION]),
-    normale: trouve([/_normalgl/i, /_nor_gl/i, /_normal_gl/i]),
-    albedo: trouve([/_color/i, /_diff[_.]/i, /_albedo/i, /_basecolor/i]),
+    normale: trouve(MOTIFS_NORMALE),
+    albedo: trouve(MOTIFS_ALBEDO),
   };
 }
 
@@ -490,6 +514,15 @@ export function reliefAmbigu3D(noms){
  */
 export function regimeDeCuisson3D(fichiers){
   const cartes = classerCartes3D(fichiers);
+  // ⚠️ UN RÔLE EN DOUBLE EST REFUSÉ AVANT TOUT, cf. rolesEnDouble3D : sinon l'ordre alphabétique
+  // choisit entre l'ancien et le nouveau jeu, et peut même les mélanger.
+  const doublons = rolesEnDouble3D(fichiers);
+  if (doublons.length) {
+    return { regime: null, ...cartes,
+      refus: 'plusieurs jeux de cartes dans le même dossier ('
+        + doublons.map(d => `${d.role} : ${d.fichiers.join(', ')}`).join(' ; ')
+        + '). Retirez l\'ancien jeu avant de cuire le nouveau.' };
+  }
   // ⚠️ L'AMBIGUÏTÉ SE TRANCHE AVANT TOUT LE RESTE. Un dossier qui porte les deux sources de relief
   // ne manque de rien : il en a trop, et personne n'a dit laquelle compte.
   const ambigu = reliefAmbigu3D(fichiers);

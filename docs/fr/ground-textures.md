@@ -128,6 +128,11 @@ tissage l'occlusion est meilleure, puisqu'elle contient l'ombre entre les fils. 
 il refuse. Avant #431, `find` rendait la première correspondance dans l'ordre alphabétique, si bien
 que `_ao_` passait devant `_disp_` : le grain sortait de la mauvaise carte, sans message.
 
+⚠️ **UN SEUL JEU PAR DOSSIER.** Pour changer de source, retirer l'ancien jeu avant de déposer le
+nouveau. Sinon le cuiseur refuse, et c'est voulu : avant #431, il prenait le premier fichier de
+chaque rôle dans l'ordre alphabétique, ce qui cuisait parfois l'ANCIEN jeu sans un mot, et pouvait
+même mélanger le relief de l'un avec la normale de l'autre.
+
 ⚠️ **LES .EXR SONT IGNORÉS**, le cuiseur ne lit que `.jpg`, `.jpeg` et `.png`. Une normale en EXR
 n'existe pas pour lui, et il refuse en disant qu'elle manque.
 

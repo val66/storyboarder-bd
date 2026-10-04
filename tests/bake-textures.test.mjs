@@ -64,7 +64,7 @@ import {
   PART_TUILE_SUSPECTE, BLOCS_ECHELLE_TUILE, COUTURE_SUSPECTE,
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
-  classerCartes3D, regimeDeCuisson3D, reliefAmbigu3D, nomDuGrain3D,
+  classerCartes3D, regimeDeCuisson3D, reliefAmbigu3D, rolesEnDouble3D, nomDuGrain3D,
   TAILLE_GRAIN_SOL, tailleDuGrain3D, reduireDeMoitie3D, versReference3D,
   natureDeLaTexture3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
@@ -949,5 +949,36 @@ describe('Le Sol cuit en 1024, et décide toujours en 512', () => {
   test('la réduction moyenne bien par blocs de deux sur deux', () => {
     const g = Float64Array.from([0, 4, 8, 12, 2, 6, 10, 14, 1, 1, 1, 1, 3, 3, 3, 3]);
     assert.deepEqual([...reduireDeMoitie3D(g, 4)], [3, 11, 2, 2]);
+  });
+});
+
+describe('Deux jeux de cartes dans un dossier : on refuse, on ne choisit pas l’ancien', () => {
+  const ancien = ['Ground080_1K-JPG_Color.jpg', 'Ground080_1K-JPG_Displacement.jpg', 'Ground080_1K-JPG_NormalGL.jpg'];
+  const nouveau = ['Ground090_1K-JPG_Color.jpg', 'Ground090_1K-JPG_Displacement.jpg', 'Ground090_1K-JPG_NormalGL.jpg'];
+
+  test('⚠️ L’ANCIEN ET LE NOUVEAU CÔTE À CÔTE SONT REFUSÉS, ET LE MESSAGE DIT QUOI RETIRER', () => {
+    // Avec 090 comme nouveau, l'ordre alphabétique aurait cuit 080, l'ANCIEN, sans un mot.
+    const r = regimeDeCuisson3D([...ancien, ...nouveau].sort());
+    assert.equal(r.regime, null);
+    assert.match(r.refus, /Ground080_1K-JPG_Displacement\.jpg/);
+    assert.match(r.refus, /Ground090_1K-JPG_Displacement\.jpg/);
+    assert.match(r.refus, /Retirez l'ancien jeu/);
+  });
+
+  test('⚠️ DEUX JEUX NOMMÉS AUTREMENT NE PEUVENT PLUS SE MÉLANGER', () => {
+    // Le cas le plus sournois : relief d'ambientCG, normale de Poly Haven. Chacun pris seul aurait
+    // l'air complet, et le grain serait cohérent nulle part.
+    const r = regimeDeCuisson3D(['a_disp_1k.png', 'a_nor_gl_1k.png', 'B_Displacement.jpg', 'B_NormalGL.jpg']);
+    assert.equal(r.regime, null);
+    assert.deepEqual(rolesEnDouble3D(['a_disp_1k.png', 'a_nor_gl_1k.png', 'B_Displacement.jpg', 'B_NormalGL.jpg'])
+      .map(d => d.role), ['relief', 'normale']);
+  });
+
+  test('le garde-fou : un seul jeu passe, et le tissage à occlusion seule aussi', () => {
+    assert.deepEqual(rolesEnDouble3D(nouveau), []);
+    assert.equal(regimeDeCuisson3D(nouveau).regime, 'matiere');
+    assert.deepEqual(rolesEnDouble3D(['denim_ao_4k.jpg', 'denim_diff_4k.jpg', 'denim_nor_gl_4k.png']), []);
+    assert.deepEqual(rolesEnDouble3D([]), []);
+    assert.deepEqual(rolesEnDouble3D(undefined), []);
   });
 });

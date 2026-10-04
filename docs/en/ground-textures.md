@@ -124,6 +124,11 @@ occlusion is better, since it holds the shadow between the threads. Both togethe
 Before #431, `find` returned the first match in alphabetical order, so `_ao_` came before `_disp_`:
 the grain was baked from the wrong map, with no message.
 
+⚠️ **ONE SET PER FOLDER.** To change source, remove the old set before dropping the new one.
+Otherwise the baker refuses, on purpose: before #431 it took the first file of each role in
+alphabetical order, which sometimes baked the OLD set without a word, and could even mix the height
+map of one with the normal map of the other.
+
 ⚠️ **.EXR FILES ARE IGNORED**, the baker only reads `.jpg`, `.jpeg` and `.png`. A normal map in EXR
 does not exist for it, and it refuses saying the map is missing.
 
