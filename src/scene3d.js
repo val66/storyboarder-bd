@@ -11,6 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
+import { poserCiel3D, retirerCiel3D, etatDuPanorama3D } from './sky-3d.js';
 import {
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D, PERSONA_REAL_HEIGHT_M,
   PANEL_DEPTH_MAX_3D, PANEL_SCENE_RENDER_MAX_PX, CHILD_DESIGN_SIZE_3D, FIXED_COLOR, WALL_OPENING_MAGNET_TYPES,
@@ -1862,7 +1863,8 @@ function computePanelSceneSignature3D(panel, page, styleKey){
   //
   // On y met le résultat RÉSOLU et non le champ brut : deux réglages qui produisent le même
   // éclairage (le mode Jour, ou les mêmes valeurs saisies à la main) doivent garder la même image.
-  const lumierePart = JSON.stringify(resoudreEclairage3D(lumiereDeCase3D(panel)));
+  const eclairageResolu = resoudreEclairage3D(lumiereDeCase3D(panel));
+  const lumierePart = JSON.stringify(eclairageResolu);
   const camPart = JSON.stringify({
     style: (styleKey && styleKey.key) || styleKey,
     camDist: panel.camDist, camRotX: panel.camRotX, camRotY: panel.camRotY,
@@ -1889,7 +1891,10 @@ function computePanelSceneSignature3D(panel, page, styleKey){
     page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id)
       .map(o => ({ tt: o.tracéType, c: o.color, tt2: o.terrainType, w: o.width, world: o.world }))
   );
-  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart + '||l:' + lumierePart;
+  // ⚠️ L'ÉTAT DU PANORAMA, POUR LA MÊME RAISON QUE CELUI DES MODÈLES (#436) : il arrive après le
+  // premier rendu, et sans cette part la Case garderait pour toujours son ciel provisoire.
+  const cielPart = etatDuPanorama3D(eclairageResolu.panorama);
+  return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart + '||l:' + lumierePart + '||c:' + cielPart;
 }
 // Builds/replaces each rig (persona, objet3d, combined Wall+Wall-Openings) owned by this panel at its true
 // 3D position (see ensureElementWorldPos3D/ensureElementUnits3D), hides the rest of the
@@ -2941,7 +2946,12 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // Case, donc changer de mode redessine ; le recalculer sur place serait la seconde copie d'une
   // décision, et la signature ne la verrait pas passer.
   personaScene3D.background = new THREE.Color(_eclairage.ciel);
+  // ⚠️ LE CIEL SE POSE APRÈS LE MARQUAGE DES OMBRES, juste au-dessus : ce parcours met `castShadow`
+  // sur toute la scène, et une sphère de ciel projetterait alors son ombre sur tout le reste (#436).
+  // Il se retire aussitôt, comme le fond : la scène est partagée et les aperçus n'en veulent pas.
+  poserCiel3D(personaScene3D, _eclairage, () => { if (_drawCurrentPage) _drawCurrentPage(); });
   personaRenderer3D.render(personaScene3D, personaCamera3D);
+  retirerCiel3D(personaScene3D);
   personaScene3D.background = null;
   // ⚠️ ET LES OMBRES REPARTENT ÉTEINTES, pour la MÊME raison que le fond juste au-dessus (#422k) :
   // le renderer est partagé, et ce qui suit — l'aperçu d'une fiche, l'Éditeur — n'a rien demandé.

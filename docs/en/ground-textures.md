@@ -184,6 +184,27 @@ measured by derivatives: an analytic mipmap, without which water would crackle w
 
 A Panel is a still image: waves are not animated.
 
+## The sky: a photograph for Day and Night, computed for Custom
+
+Decided with the user after rendering both side by side (#436). The photographed panorama is far
+nicer, but FIXED: it can be rotated to bring its sun into the direction of the scene's, not
+raised, lowered or tinted. Day and Night are fixed moods, and only Custom moves the sun. The
+photograph therefore goes where it is right, the computed sky (`src/sky-3d.js`) where nothing else
+can follow. The sky is a background, not a light.
+
+**Sourcing a panorama:** an HDRI from Poly Haven or ambientCG, as a "tonemapped JPG", in 4K. A
+single JPEG in `assets/textures/sources/ciel-jour/` or `ciel-nuit/`, then `npm run bake-ciel`,
+which checks it and drops `assets/textures/ciel-<mode>.jpg`.
+
+⚠️ **4K AT MOST, 2K AT LEAST.** Decoded, a 4K image weighs 45 MB of GPU memory with its mipmaps,
+an 8K four times more. And a 36° field receives a tenth of the image: 400 pixels in 4K for the
+whole width of a Panel, 200 in 2K. The tool refuses outside that range.
+
+⚠️ **THE PANORAMA'S SUN IS FOUND IN ITS PIXELS**, a saturated, compact spot, and the panorama is
+rotated to put it in the direction of the scene's sun. Its HEIGHT cannot be corrected: pick a day
+sky whose sun sits around 40°, like the Day mode's (41.8°). The repository's is at 40°, which is
+what makes it right. A night panorama has no sun and is not rotated.
+
 ## What is held in reserve, with its trigger
 
 **Detail map.** A high-frequency texture overlaid on top, serving the extreme close-up. The

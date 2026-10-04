@@ -188,6 +188,28 @@ par les dérivées : c'est un mipmap analytique, sans lequel l'eau crépiterait 
 
 Une Case est une image fixe : les vagues ne s'animent pas.
 
+## Le ciel : une photo en Jour et en Nuit, un calcul en Personnalisé
+
+Décidé avec l'utilisateur après avoir rendu les deux côte à côte (#436). Le panorama photographié
+est nettement plus beau, mais FIGÉ : on peut le tourner pour amener son soleil dans la direction de
+celui de la scène, pas changer sa hauteur ni sa couleur. Or Jour et Nuit sont des ambiances fixes,
+et seul Personnalisé déplace le soleil. La photo va donc là où elle est juste, le ciel calculé
+(`src/sky-3d.js`) là où rien d'autre ne peut suivre. Le ciel est un fond, pas une lumière.
+
+**Sourcer un panorama :** un HDRI de Poly Haven ou d'ambientCG, au format « JPG tonemappé », en
+4K. Un seul JPEG dans `assets/textures/sources/ciel-jour/` ou `ciel-nuit/`, puis
+`npm run bake-ciel`, qui vérifie et dépose `assets/textures/ciel-<mode>.jpg`.
+
+⚠️ **4K AU PLUS, 2K AU MOINS.** Décodée, une 4K pèse 45 Mo de mémoire graphique avec ses mipmaps,
+une 8K quatre fois plus. Et un champ de 36° ne reçoit qu'un dixième de l'image : 400 pixels en 4K
+pour toute la largeur d'une Case, 200 en 2K. L'outil refuse en dehors.
+
+⚠️ **LE SOLEIL DU PANORAMA EST RETROUVÉ DANS SES PIXELS**, une tache saturée et compacte, et le
+panorama est tourné pour le poser dans la direction du soleil de la scène. Sa HAUTEUR ne se corrige
+pas : choisissez un ciel de jour dont le soleil est vers 40°, comme celui du mode Jour (41,8°).
+Celui du dépôt est à 40°, et c'est ce qui le rend juste. Un panorama de nuit n'a pas de soleil et
+n'est pas tourné.
+
 ## Ce qui reste en réserve, avec son déclencheur
 
 **Carte de détail.** Une texture haute fréquence surimposée, qui sert le très gros plan. La réponse

@@ -44,7 +44,7 @@ const DEHORS = ['main.js', 'preload.js', 'index.html']
 const SEAUX_DE_TEST = [
   '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
   '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
-  '_setImageCacheEntry', 'fermeturesEnregistrees', '_poserSolPourTests3D', '_viderTexturesDuSol3D', '_poserWebGL2PourTests3D', '_uniformesEauPourTests3D',
+  '_setImageCacheEntry', 'fermeturesEnregistrees', '_poserSolPourTests3D', '_viderTexturesDuSol3D', '_poserWebGL2PourTests3D', '_uniformesEauPourTests3D', '_viderCiel3D', '_poserPanoramaPourTests3D',
   // #431b2 — `bubble-grain.js` garde deux Map de module : les grains chargés et les motifs
   // composés. Sans ces deux seaux, aucun test ne pourrait ni repartir d'un état propre entre deux
   // cas, ni injecter un grain sans réseau — donc aucun ne pourrait tenir l'éviction du cache.
