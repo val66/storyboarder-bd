@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import {
   demarrer, arreter, rapport, sondeDebut, sondeFin, sondeCompter, sondeImageDebut, sondeImageFin,
-  quantile, IMAGE_LENTE_MS,
+  quantile, IMAGE_LENTE_MS, synthese,
 } from '../src/perf-probe.js';
 
 describe('La sonde de performance', () => {
@@ -74,5 +74,20 @@ describe('La sonde de performance', () => {
     assert.equal(quantile([], 0.5), 0);
     assert.equal(quantile([3, 1, 2], 0.5), 2);
     assert.equal(quantile([1, 2, 3, 4, 100], 0.95), 100);
+  });
+  test('⚠️ LA SYNTHÈSE TIENT SUR UNE LIGNE, et porte comptes, médiane, p95, max et images lentes', () => {
+    demarrer();
+    sondeFin('travail', performance.now() - 2);
+    sondeCompter('événement', 4);
+    const t = sondeImageDebut();
+    sondeImageFin(t - IMAGE_LENTE_MS - 1, null);
+    const l = synthese();
+    assert.ok(!l.includes('\n'), 'la synthèse tient sur plusieurs lignes');
+    assert.match(l, /^sonde [\d.]+s \| /);
+    assert.match(l, /travail 1× [\d.]+\/[\d.]+\/[\d.]+/);
+    assert.match(l, /événement 4×/);
+    assert.match(l, /lentes\(ms\) \d/);
+    arreter();
+    assert.match(synthese('jamais démarrée'), /jamais/);
   });
 });

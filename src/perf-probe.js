@@ -13,7 +13,7 @@
  *
  * Usage, dans la console (F12) :
  *   sonde.demarrer()   puis reproduire le ralentissement
- *   sonde.rapport()    affiche le tableau
+ *   sonde.rapport()    affiche le tableau, et en tête la SYNTHÈSE sur une ligne, à copier
  *   sonde.arreter()
  *
  * ⚠️ ELLE COMPTE AUSSI LES PROGRAMMES DE SHADER NEUFS. Une compilation coûte des dizaines de
@@ -120,4 +120,24 @@ export function rapport(){
       : { appels: m.n };
   }
   return { duree_s: +((performance.now() - _depuis) / 1000).toFixed(1), mesures: lignes, images_lentes: _lentes };
+}
+
+/**
+ * La SYNTHÈSE, sur une seule ligne à copier-coller (demandée par l'utilisateur : un tableau se
+ * capture en image, une ligne se colle telle quelle et se relit sans erreur de lecture).
+ * Chaque mesure : `nom n× méd/p95/max` en ms ; un simple compte : `nom n×`. Puis les images lentes.
+ * Fonction PURE sur le rapport.
+ */
+export function synthese(r = rapport()){
+  if (!r || typeof r !== 'object') return String(r);
+  const parties = [`sonde ${r.duree_s}s`];
+  for (const [nom, m] of Object.entries(r.mesures)) {
+    const n = nom.trim();
+    parties.push(m['médiane'] === undefined ? `${n} ${m.appels}×`
+      : `${n} ${m.appels}× ${m['médiane']}/${m.p95}/${m.max}`);
+  }
+  if (r.images_lentes.length) {
+    parties.push(`lentes(ms) ${r.images_lentes.map(l => l.ms).join(',')}`);
+  }
+  return parties.join(' | ');
 }

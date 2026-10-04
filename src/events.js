@@ -11,7 +11,7 @@
  * This module is now the application's real entry point: app.js is now just a
  * simple redirect (`import './events.js'`) kept so index.html doesn't have to change.
  */
-import { demarrer as sondeDemarrer, arreter as sondeArreter, rapport as sondeRapport } from './perf-probe.js';
+import { demarrer as sondeDemarrer, arreter as sondeArreter, rapport as sondeRapport, synthese as sondeSynthese } from './perf-probe.js';
 import {
   setScenesCallbacks, createScene, openScene, disableSceneCameraMode, loadSceneIntoPanel,
 } from './scenes.js';
@@ -8497,9 +8497,12 @@ if (typeof window !== 'undefined') {
   window.sonde = {
     demarrer: () => sondeDemarrer(personaRenderer3D),
     arreter: sondeArreter,
+    synthese: () => sondeSynthese(),
     rapport: () => {
       const r = sondeRapport();
       if (r && typeof r === 'object') {
+        // La synthèse d'abord, sur une ligne : c'est elle qu'on copie (méd/p95/max en ms).
+        console.log(sondeSynthese(r));
         console.table(r.mesures);
         if (r.images_lentes.length) console.table(r.images_lentes);
       }

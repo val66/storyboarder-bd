@@ -923,3 +923,50 @@ shout or an inner voice: a Page carries one or two, not forty. At two Bubbles th
 re-measure: a Page where half the Bubbles carried the fringe. The cost is strictly linear, so twenty
 thorny Bubbles would cost 5.8 ms per frame — at that point, recomputing the fringe only when the
 Bubble changes would be worth considering, as the tile cache already does for textures.
+
+---
+
+# Tenth campaign — a heavy Panel at 108 ms, October 2026
+
+Opened by a report: "it sometimes lags on some heavy Scenes". The first campaign's probe, removed,
+was rebuilt (`src/perf-probe.js`) from the checklist above, with three additions: it counts **new
+shader programs** (a recompilation after release creates a new object without changing their
+number), it keeps **slow frames** with what happened in them, and it prints a **one-line summary**
+to copy, requested by the user. Console (F12): `sonde.demarrer()`, reproduce, `sonde.rapport()`.
+
+## Before the probe: two suspects cleared, one found
+
+Measured in a real WebGL, on the user's card (Radeon RX 9070 XT, ANGLE Direct3D 11):
+
+- **the computed sky** (#436): 2.0 ms per render at 2000 × 1100, against 0.6 ms for a bare shader. Not it;
+- **textured Traces** (#437): releasing a program's last material releases the program, and the
+  next rebuild recompiles it, 8.7 ms instead of 0.7 (51.6 ms the first time). A Trace rebuilds on
+  every step of a drag: a lone low wall recompiled every frame. Regression from #437b, fixed in
+  #437c by sharing materials.
+
+## The measurement, and the cause
+
+Scene with three rigged imported models, camera orbiting:
+
+| | before | after |
+|---|---|---|
+| full render of a Panel, median | **108 ms** | **16.8 ms** |
+| of which WebGL | 11 ms | 11 ms |
+| of which Element placement | 95 ms | 4.9 ms |
+| of which an imported model's box | 15.4 ms × 6 per render | 0.1 ms (median) |
+| frame, median / p95 | 107 / 110 ms | 17.7 / 19.1 ms |
+
+`box3FromObjectSkinAware3D` skins every vertex on the CPU, which #372 made necessary to place a
+rigged model by its pose. It was called **twice per model per render** (placement, standing
+height), while orbiting the camera changes neither the pose nor the model. It is now memoised
+(`box3FromObjectSkinAwareCached3D`) under a key made of what it reads: the root's world matrix and
+each node's local transform, bones included.
+
+⚠️ **FOUR STATES PER OBJECT, NOT ONE.** Every render measures the same model posed THEN at rest; a
+single entry was overwritten on every call and would never have hit. Written down in a test.
+
+## What remains
+
+WebGL (11 ms) is now most of a frame, and it is only paid when the Panel changes. One isolated slow
+frame per run remains (240 ms), the very first after starting the probe: rig construction. No
+remedy to look for while it stays single.

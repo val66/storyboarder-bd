@@ -966,3 +966,51 @@ quoi remesurer : une Planche où la moitié des Bulles porteraient la frange. Le
 linéaire, donc vingt Bulles épineuses coûteraient 5,8 ms par image — à ce niveau, il faudrait
 envisager de ne recalculer la frange que lorsque la Bulle change, comme le cache de tuiles le fait
 pour les textures.
+
+---
+
+# Dixième campagne — une Case lourde à 108 ms, octobre 2026
+
+Ouverte par un signalement : « ça lag parfois sur certaines Scènes lourdes ». La sonde de la
+première campagne, retirée, a été recréée (`src/perf-probe.js`) selon la liste laissée plus haut,
+avec trois ajouts : elle compte les **programmes de shader neufs** (une recompilation après
+libération crée un objet neuf sans changer leur nombre), elle garde les **images lentes** avec ce
+qui s'y est passé, et elle imprime une **synthèse sur une ligne** à copier, demandée par
+l'utilisateur. Console (F12) : `sonde.demarrer()`, reproduire, `sonde.rapport()`.
+
+## Avant la sonde : deux suspects écartés, un trouvé
+
+Mesurés dans un vrai WebGL, sur la carte de l'utilisateur (Radeon RX 9070 XT, ANGLE Direct3D 11) :
+
+- **le ciel calculé** (#436) : 2,0 ms par rendu à 2000 × 1100, contre 0,6 ms pour un shader nu. Pas lui ;
+- **les Traces texturées** (#437) : libérer le dernier matériau d'un programme libère le programme,
+  et la reconstruction suivante le recompile, 8,7 ms au lieu de 0,7 (51,6 ms la première fois).
+  Une Trace se reconstruit à chaque pas d'un glissé : un muret seul recompilait à chaque image.
+  Régression de #437b, corrigée en #437c en partageant les matériaux.
+
+## Le relevé, et la cause
+
+Scène à trois modèles importés articulés, caméra tournée :
+
+| | avant | après |
+|---|---|---|
+| rendu complet d'une Case, médiane | **108 ms** | **16,8 ms** |
+| dont WebGL | 11 ms | 11 ms |
+| dont placement des Éléments | 95 ms | 4,9 ms |
+| dont boîte d'un modèle importé | 15,4 ms × 6 par rendu | 0,1 ms (médiane) |
+| image, médiane / p95 | 107 / 110 ms | 17,7 / 19,1 ms |
+
+`box3FromObjectSkinAware3D` déforme chaque sommet sur le processeur, ce que #372 a rendu nécessaire
+pour placer un modèle articulé selon sa pose. Elle était appelée **deux fois par modèle et par
+rendu** (placement, hauteur debout), alors que tourner la caméra ne change ni la pose ni le modèle.
+Elle est désormais mémorisée (`box3FromObjectSkinAwareCached3D`) sous une clé faite de ce qu'elle
+lit : matrice monde de la racine, transformée locale de chaque nœud, os compris.
+
+⚠️ **QUATRE ÉTATS PAR OBJET, PAS UN.** Chaque rendu mesure le même modèle posé PUIS au repos ; une
+seule entrée s'écrasait à chaque appel et n'aurait jamais servi. Écrit dans un test.
+
+## Ce qui reste
+
+Le WebGL (11 ms) est maintenant l'essentiel d'une image, et il n'est payé que quand la Case change.
+Il reste une image lente isolée par relevé (240 ms), la toute première après le démarrage de la
+sonde : construction des rigs. Pas de remède à chercher tant qu'elle reste unique.
