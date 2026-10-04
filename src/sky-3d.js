@@ -48,9 +48,41 @@ export const DOSSIER_CIELS = 'assets/textures/';
  *     lactée, et les étoiles du ciel calculé, nettes à toute taille, sont dessinées par-dessus.
  */
 export const CIEL_PANORAMAS = {
-  jour: { fichier: 'ciel-jour.jpg', largeur: 8192, etoiles: 0 },
-  nuit: { fichier: 'ciel-nuit.jpg', largeur: 1024, etoiles: 1 },
+  jour: { fichier: 'ciel-jour.jpg', largeur: 8192, etoiles: 0, desembrume: 0.55 },
+  nuit: { fichier: 'ciel-nuit.jpg', largeur: 1024, etoiles: 1, desembrume: 0 },
 };
+
+/**
+ * ⚠️ UN CIEL PHOTOGRAPHIÉ EST TERNE PRÈS DE L'HORIZON, ET C'EST LA SEULE PARTIE QU'UNE CASE MONTRE
+ * (#436d). Corrigée la bande vide de #436c, l'horizon restait « terne, gris ». Ce n'est pas un
+ * défaut de la photo : vu à travers une grande épaisseur d'air, le ciel bas est pâle, et une Case
+ * en cadrage habituel ne voit que ses quinze premiers degrés. Deux gestes, essayés côte à côte
+ * face au soleil et dos au soleil avant d'être retenus :
+ *
+ *   - la TOILE ABAISSÉE : l'élévation lue dans l'image suit t^CIEL_TOILE, ce qui fait descendre
+ *     dans le champ le bleu et les nuages de 20 à 30°, comme on baisse une toile de fond au
+ *     théâtre. Le prix : le soleil de l'image paraît plus bas que celui qui éclaire la scène ;
+ *   - le DÉSEMBRUMAGE : on retire la couleur de la brume, mesurée sur l'image, à proportion de sa
+ *     présence près de l'horizon, puis on rend la saturation perdue. PROTÉGÉ sur les zones claires :
+ *     face au soleil, tout est clair, et le retirer sans garde brûlait le ciel en blanc (vu au banc).
+ *     La nuit n'en reçoit pas : sa « brume » est le noir, la retirer assombrirait l'horizon.
+ */
+export const CIEL_TOILE = 0.7;
+export const BRUME_HAUTEUR = 35, BRUME_CLAIR = 0.72, BRUME_SATURATION = 0.6;
+
+/**
+ * La couleur de la brume d'un panorama : la moyenne de ses trois degrés les plus bas. Fonction
+ * PURE, sur des pixels RGBA de la moitié haute (dernière ligne = horizon), rendue de 0 à 1.
+ */
+export function brumeDuPanorama3D(rgba, largeur, hauteur){
+  const debut = Math.min(hauteur - 1, Math.floor(hauteur * (1 - 3 / 90)));
+  const s = [0, 0, 0]; let n = 0;
+  for (let y = debut; y < hauteur; y++) for (let x = 0; x < largeur; x++) {
+    const i = 4 * (y * largeur + x);
+    s[0] += rgba[i]; s[1] += rgba[i + 1]; s[2] += rgba[i + 2]; n++;
+  }
+  return s.map(v => (n ? v / n : 0) / 255);
+}
 
 /** Le panorama d'un mode, ou `null` pour le ciel calculé. Fonction PURE. */
 export function panoramaDuMode3D(mode){
@@ -64,7 +96,8 @@ export function panoramaDuMode3D(mode){
  * diverger le ciel de ce que la signature de Case connaît déjà.
  */
 export const CIEL_ZENITH = 0.72;
-export const CIEL_HORIZON_BLANC = 0.45;
+// 0,45 jusqu'en #436d : un horizon délavé de près de moitié, jugé terne à l'écran.
+export const CIEL_HORIZON_BLANC = 0.25;
 export function couleursDuCielCalcule3D(hex){
   const c = rvb(hex);
   return {
@@ -214,6 +247,8 @@ uniform vec3 uSoleilCoul;
 uniform float uNuages;
 uniform float uEtoiles;
 uniform float uAbaisse;
+uniform vec3 uBrume;
+uniform float uDesembrume;
 varying vec3 vDir;
 varying vec2 vUv;
 
@@ -257,8 +292,16 @@ void main() {
     // v se calcule depuis la direction et non depuis la sphère : c'est elle qui porte l'horizon
     // abaissé. u reste celui de la géométrie, qui n'a pas de couture.
     vec3 dc = cielDirection( normalize( vDir ) );
-    float vc = clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 );
+    float vc = pow( clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 ), ${CIEL_TOILE.toFixed(4)} );
     vec3 p = texture2D( uCarte, vec2( 1.0 - vUv.x, vc ) ).rgb;
+    if ( uDesembrume > 0.0 ) {
+      float l0 = dot( p, vec3( 0.2126, 0.7152, 0.0722 ) );
+      float garde = 1.0 - pow( clamp( ( l0 - ${BRUME_CLAIR.toFixed(4)} ) / 0.25, 0.0, 1.0 ), 2.0 );
+      float w = uDesembrume * clamp( 1.0 - vc * 90.0 / ${BRUME_HAUTEUR.toFixed(1)}, 0.0, 1.0 ) * garde;
+      p = clamp( ( p - w * uBrume ) / ( 1.0 - w ), 0.0, 1.0 );
+      float l1 = dot( p, vec3( 0.2126, 0.7152, 0.0722 ) );
+      p = clamp( vec3( l1 ) + ( p - vec3( l1 ) ) * ( 1.0 + ${BRUME_SATURATION.toFixed(4)} * w / max( uDesembrume, 1e-4 ) ), 0.0, 1.0 );
+    }
     gl_FragColor = vec4( p + cielEtoiles( dc, 0.0 ) * uEtoiles, 1.0 );
     return;
   }
@@ -306,7 +349,7 @@ function sphereDuCiel3D(){
       uPanorama: { value: 0 }, uCarte: { value: null },
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
       uSoleilDir: { value: new THREE.Vector3(0, 1, 0) }, uSoleilCoul: { value: new THREE.Color() },
-      uNuages: { value: CIEL_NUAGES }, uEtoiles: { value: 0 }, uAbaisse: { value: 0 },
+      uNuages: { value: CIEL_NUAGES }, uEtoiles: { value: 0 }, uAbaisse: { value: 0 }, uBrume: { value: new THREE.Color() }, uDesembrume: { value: 0 },
     },
   });
   _sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), mat);
@@ -338,7 +381,7 @@ function chargerPanorama3D(nom, apres){
   if (typeof Image === 'undefined' || !THREE || !THREE.TextureLoader) { _panoramas[nom] = { etat: 'absent' }; return; }
   _panoramas[nom] = { etat: 'en-cours' };
   new THREE.TextureLoader().load(DOSSIER_CIELS + CIEL_PANORAMAS[nom].fichier, (texture) => {
-    _panoramas[nom] = { etat: 'charge', texture, soleil: soleilDeLImage3D(texture.image) };
+    _panoramas[nom] = { etat: 'charge', texture, ...mesuresDeLImage3D(texture.image) };
     if (typeof apres === 'function') apres();
   }, undefined, () => {
     console.warn(`[ciel] introuvable : ${DOSSIER_CIELS}${CIEL_PANORAMAS[nom].fichier}, le ciel calculé le remplace. `
@@ -348,7 +391,7 @@ function chargerPanorama3D(nom, apres){
   });
 }
 
-function soleilDeLImage3D(image){
+function mesuresDeLImage3D(image){
   try {
     const l = 512, h = 128;
     const cv = document.createElement('canvas'); cv.width = l; cv.height = h;
@@ -357,8 +400,8 @@ function soleilDeLImage3D(image){
     const px = ctx.getImageData(0, 0, l, h).data;
     const lum = new Float32Array(l * h);
     for (let i = 0; i < lum.length; i++) lum[i] = 0.2126 * px[4 * i] + 0.7152 * px[4 * i + 1] + 0.0722 * px[4 * i + 2];
-    return soleilDuPanorama3D(lum, l, h);
-  } catch (e) { return null; }
+    return { soleil: soleilDuPanorama3D(lum, l, h), brume: brumeDuPanorama3D(px, l, h) };
+  } catch (e) { return { soleil: null, brume: null }; }
 }
 
 /**
@@ -376,6 +419,9 @@ export function poserCiel3D(scene, eclairage, apres, abaissement = 0){
     u.uPanorama.value = 1;
     u.uCarte.value = pano.texture;
     u.uEtoiles.value = CIEL_PANORAMAS[nom].etoiles;
+    // Sans brume mesurée, pas de désembrumage : retirer une couleur inconnue serait deviner.
+    u.uDesembrume.value = pano.brume ? CIEL_PANORAMAS[nom].desembrume : 0;
+    if (pano.brume) u.uBrume.value.setRGB(...pano.brume);
     // Seul un panorama AVEC soleil se tourne : celui de nuit n'en a pas, il garde son orientation.
     sphere.rotation.y = lacetDuPanorama3D(pano.soleil, eclairage.soleil.direction);
   } else {
@@ -404,6 +450,6 @@ export function _viderCiel3D(){
 }
 
 /** Pour les tests : poser un panorama chargé sans passer par le réseau. */
-export function _poserPanoramaPourTests3D(nom, texture, soleil){
-  _panoramas[nom] = { etat: 'charge', texture, soleil };
+export function _poserPanoramaPourTests3D(nom, texture, soleil, brume = null){
+  _panoramas[nom] = { etat: 'charge', texture, soleil, brume };
 }

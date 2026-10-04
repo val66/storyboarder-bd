@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 
 import {
   CIEL_PANORAMAS, panoramaDuMode3D, couleursDuCielCalcule3D, etoilesDuCiel3D,
-  soleilDuPanorama3D, lacetDuPanorama3D, CIEL_SOLEIL_PLEIN, abaissementDeLHorizon3D, elevationDuCiel3D, GLSL_CIEL_SOMMET, GLSL_CIEL_FRAGMENT,
+  soleilDuPanorama3D, lacetDuPanorama3D, CIEL_SOLEIL_PLEIN, CIEL_TOILE, brumeDuPanorama3D, CIEL_HORIZON_BLANC, abaissementDeLHorizon3D, elevationDuCiel3D, GLSL_CIEL_SOMMET, GLSL_CIEL_FRAGMENT,
   poserCiel3D, retirerCiel3D, etatDuPanorama3D, _viderCiel3D, _poserPanoramaPourTests3D,
   SOLEIL_PIXELS_MIN,
 } from '../src/sky-3d.js';
@@ -187,7 +187,7 @@ describe('Ciel : la rotation du panorama, sur la VRAIE géométrie de la sphère
     }
     assert.ok(GLSL_CIEL_FRAGMENT.includes('texture2D( uCarte, vec2( 1.0 - vUv.x, vc ) )'));
     // Et l'image ne porte que la moitié haute : l'élévation de 0 à 90° couvre toute sa hauteur.
-    assert.ok(GLSL_CIEL_FRAGMENT.includes('float vc = clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 );'));
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('float vc = pow( clamp( asin( clamp( dc.y, -1.0, 1.0 ) ) / 1.5707963, 0.0, 1.0 ), ' + CIEL_TOILE.toFixed(4) + ' );'));
   });
 
   test('sans soleil, le panorama garde son orientation', () => {
@@ -436,5 +436,52 @@ describe('Ciel : l’horizon descend jusqu’au bord VISIBLE du Sol (#436c)', ()
     assert.ok(scene.includes('personaCamera3D.far, Math.asin('));
     assert.ok(scene.includes('if (groundMesh3D && groundMesh3D.visible) {'), 'sans Sol, l’horizon doit rester le vrai');
     assert.ok(scene.includes('() => { if (_drawCurrentPage) _drawCurrentPage(); }, _abaisseCiel);'));
+  });
+});
+
+describe('Ciel : l’horizon terne d’une photo (#436d)', () => {
+  test('⚠️ LA TOILE EST ABAISSÉE : le bas du champ lit l’image plus haut qu’il n’est', () => {
+    // 0,7 fait lire à 10° affichés l'image à 19°, là où le bleu et les nuages commencent.
+    assert.equal(CIEL_TOILE, 0.7);
+    assert.ok(Math.abs(90 * Math.pow(10 / 90, CIEL_TOILE) - 19.0) < 0.5);
+    assert.ok(/pow\( clamp\( asin[\s\S]*\), 0\.7000 \);/.test(GLSL_CIEL_FRAGMENT));
+  });
+
+  test('la brume est la moyenne des trois degrés les plus bas, et d’eux seuls', () => {
+    const l = 8, h = 90;
+    const px = new Uint8Array(l * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < l; x++) {
+      const i = 4 * (y * l + x), bas = y >= h - 3;
+      px[i] = bas ? 200 : 20; px[i + 1] = bas ? 210 : 60; px[i + 2] = bas ? 220 : 160; px[i + 3] = 255;
+    }
+    const b = brumeDuPanorama3D(px, l, h);
+    assert.deepEqual(b.map(v => Math.round(v * 255)), [200, 210, 220]);
+  });
+
+  test('⚠️ LE JOUR SE DÉSEMBRUME, LA NUIT NON, ET JAMAIS SANS BRUME MESURÉE', () => {
+    _viderCiel3D();
+    _poserPanoramaPourTests3D('jour', new THREE.Texture(), null, [0.62, 0.67, 0.69]);
+    let u = poserCiel3D(new THREE.Scene(), resoudreEclairage3D({ mode: 'jour' })).material.uniforms;
+    assert.equal(u.uDesembrume.value, CIEL_PANORAMAS.jour.desembrume);
+    assert.ok(u.uDesembrume.value > 0);
+    assert.ok(Math.abs(u.uBrume.value.g - 0.67) < 1e-6);
+    _viderCiel3D();
+    _poserPanoramaPourTests3D('jour', new THREE.Texture(), null, null);
+    u = poserCiel3D(new THREE.Scene(), resoudreEclairage3D({ mode: 'jour' })).material.uniforms;
+    assert.equal(u.uDesembrume.value, 0, 'retirer une brume inconnue, c’est deviner');
+    _viderCiel3D();
+    _poserPanoramaPourTests3D('nuit', new THREE.Texture(), null, [0.1, 0.1, 0.12]);
+    u = poserCiel3D(new THREE.Scene(), resoudreEclairage3D({ mode: 'nuit' })).material.uniforms;
+    assert.equal(u.uDesembrume.value, 0, 'la brume de la nuit est le noir : la retirer assombrirait l’horizon');
+    _viderCiel3D();
+  });
+
+  test('⚠️ LE DÉSEMBRUMAGE ÉPARGNE LES ZONES CLAIRES, sans quoi le ciel face au soleil brûle', () => {
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('float garde = 1.0 - pow( clamp( ( l0 - 0.7200 ) / 0.25, 0.0, 1.0 ), 2.0 );'));
+    assert.ok(/float w = uDesembrume \* clamp\( 1\.0 - vc \* 90\.0 \/ 35\.0, 0\.0, 1\.0 \) \* garde;/.test(GLSL_CIEL_FRAGMENT));
+  });
+
+  test('le ciel calculé est moins délavé à l’horizon qu’avant #436d', () => {
+    assert.ok(CIEL_HORIZON_BLANC <= 0.3);
   });
 });
