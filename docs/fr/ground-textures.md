@@ -128,6 +128,16 @@ tissage l'occlusion est meilleure, puisqu'elle contient l'ombre entre les fils. 
 il refuse. Avant #431, `find` rendait la première correspondance dans l'ordre alphabétique, si bien
 que `_ao_` passait devant `_disp_` : le grain sortait de la mauvaise carte, sans message.
 
+⚠️ **LA FENÊTRE DE LA LIGNE `tuile` EST CONFIRMÉE À L'ÉCRAN : ENTRE 0,05 ET 0,18.** Trois neiges
+successives l'ont tranché, jugées par l'utilisateur avec le pavage en place : 0,497 puis 0,727
+montraient encore des taches qui reviennent, 0,090 est retenue. Le gravier, passé de 0,159 à 0,141,
+a été jugé bon d'emblée. La borne basse vient de l'herbe, à 0,044, trop lisse pour tenir de loin.
+
+⚠️ **ET ELLE NE SE PRÉDIT PAS DEPUIS LE RELIEF SOURCE.** J'ai essayé, pour éviter une cuisson : la
+même mesure faite sur le seul déplacement ne suit pas le chiffre du cuiseur, qui mêle l'ombrage de
+la normale et mesure l'albédo en régime couleur. Terre 0,65 au pronostic et 0,16 au rapport, béton
+0,78 et 0,43. Il faut cuire et lire la ligne ; une cuisson prend quelques secondes.
+
 ⚠️ **UN SEUL JEU PAR DOSSIER.** Pour changer de source, retirer l'ancien jeu avant de déposer le
 nouveau. Sinon le cuiseur refuse, et c'est voulu : avant #431, il prenait le premier fichier de
 chaque rôle dans l'ordre alphabétique, ce qui cuisait parfois l'ANCIEN jeu sans un mot, et pouvait

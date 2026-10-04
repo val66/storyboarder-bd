@@ -124,6 +124,16 @@ occlusion is better, since it holds the shadow between the threads. Both togethe
 Before #431, `find` returned the first match in alphabetical order, so `_ao_` came before `_disp_`:
 the grain was baked from the wrong map, with no message.
 
+⚠️ **THE WINDOW OF THE `tuile` LINE IS CONFIRMED ON SCREEN: BETWEEN 0.05 AND 0.18.** Three
+successive snows settled it, judged by the user with tiling in place: 0.497 then 0.727 still showed
+recurring patches, 0.090 is kept. Gravel, moved from 0.159 to 0.141, was judged good at once. The
+lower bound comes from grass, at 0.044, too smooth to hold at distance.
+
+⚠️ **AND IT CANNOT BE PREDICTED FROM THE SOURCE HEIGHT MAP.** I tried, to save a bake: the same
+measurement taken on the displacement alone does not follow the baker's figure, which mixes the
+normal-map shading and measures the albedo in colour mode. Dirt 0.65 predicted and 0.16 reported,
+concrete 0.78 and 0.43. Bake and read the line; a bake takes a few seconds.
+
 ⚠️ **ONE SET PER FOLDER.** To change source, remove the old set before dropping the new one.
 Otherwise the baker refuses, on purpose: before #431 it took the first file of each role in
 alphabetical order, which sometimes baked the OLD set without a word, and could even mix the height
