@@ -2112,6 +2112,10 @@ export function hauteurDeboutModele3D(entry, boxFn){
 }
 
 function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
+  // #438 : des jalons successifs, pour savoir OÙ passent les 90 ms qu'une Case lourde coûte hors
+  // WebGL (mesuré : 100 ms par rendu complet, dont 10 de WebGL). Inertes sonde éteinte.
+  let _jalonT = sondeDebut();
+  const jalon = (nom) => { sondeFin(nom, _jalonT); _jalonT = sondeDebut(); };
   ensurePersonaScene3D();
   // ⚠️ LA CAMÉRA EST CADRÉE D'ABORD, ET C'EST #422g QUI L'A EXIGÉ. `framePanelCamera3D` est le seul
   // endroit qui RÉSOUT le centre d'orbite — cible explicite du menu Caméra, Élément sélectionné, ou
@@ -2342,6 +2346,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // recalculer donnerait une seconde copie de la même décision, et deux copies finissent toujours
   // par diverger (cf. le saut de 116 px de #420d, né de cette faute).
   const _posLumieres3D = new Map();
+  jalon('  1. caméra, éclairage, ombres, murs fusionnés, Sol');
   elements.forEach((o, idx) => {
     if (o.objType === 'dalle') return; // rendered separately below (THREE.ShapeGeometry)
     if (mergedWallCovered.has(o.id)) return; // rendered via a merged group (below)
@@ -2431,7 +2436,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       // Le bug corrigé (cf. boiteDesOsMappes3D) porte sur ce qu'on REGARDE, pas sur la taille
       // réelle d'un Élément dans sa Scène. Ce sont deux questions distinctes, et la seconde est
       // suivie à part : la hauteur mesurée à l'import est fausse pour les fichiers Z-up.
-      : (o.objType === 'modele' ? (fg) => box3FromObjectSkinAware3D(fg) : null);
+      : (o.objType === 'modele' ? (fg) => { const _t = sondeDebut(); const b = box3FromObjectSkinAware3D(fg); sondeFin('    dont boîte d’un modèle importé', _t); return b; } : null);
     // Un modèle importé COUCHÉ : même protection que le Personnage, mais mesurée plutôt que retenue
     // à la construction, sa pose peut changer sans que le rig soit reconstruit. Rend `undefined`
     // pour tout le reste, donc aucun autre type d'Élément n'est touché.
@@ -2481,6 +2486,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   });
   // Les sources posées de CETTE Case, allumées, et toutes les autres éteintes. Voir le plan pur et
   // sa raison d'être dans light-source-3d.js : la scène Three.js est partagée entre les Cases.
+  jalon('  2. Éléments (rigs et placement)');
   appliquerLumieresPosees3D(_planLumieres, _posLumieres3D, _ombresDeLaCase,
     champVisibleDeCase3D(panel, page));
   // Render merged wall groups: a single BoxGeometry per colinear chain.
@@ -2557,6 +2563,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // Render the Slabs (polygonal floor/ceiling created by the Build tool).
   // Each slab is a THREE.Mesh with a THREE.ShapeGeometry rotated -PI/2 around X,
   // cached in slabMeshCache3D by the element's id.
+  jalon('  3. lumières posées, murs fusionnés, jonctions');
   slabMeshCache3D.forEach(mesh => { mesh.visible = false; });
   const slabElements = panelOwnedElements3D(panel, page).filter(o => o.objType === 'dalle' && o.polygon && o.polygon.length >= 3);
   slabElements.forEach(o => {
@@ -2637,6 +2644,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // ── Traces (Roads / Paths / Zones): flat planes at Ground level ────────────────────────
   // Cache: Map<id, { group: THREE.Group, sigKey }>, one group per trace (1 or 2 meshes).
   // Hide all groups; the active ones for this panel are reactivated below.
+  jalon('  4. dalles');
   tracéMeshCache3D.forEach(e => { e.group.visible = false; });
   const panelTracés3D = page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id);
   const _tTraces = sondeDebut();
@@ -2954,6 +2962,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // d'être construits à la demande, quelques centaines de lignes au-dessus : appelé en tête du
   // rendu — ce qu'il faisait —, il manquait tout rig créé pendant CE rendu, c'est à dire tous au
   // premier affichage d'une Case. L'image sans ombre partait ensuite dans le cache.
+  jalon('  5. Traces, cadrage final');
   if (_ombresDeLaCase) marquerProjectionDOmbre3D();
   // ⚠️ LE FOND EST UN CIEL DEPUIS #429, ET IL L'EST AVEC LA MÊME LIGNE. L'opacité forcée reste
   // indispensable pour la raison écrite au-dessus — sans elle les pixels au-dessus de l'horizon
