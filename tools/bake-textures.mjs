@@ -260,6 +260,28 @@ export function contrasteLocal3D(gris, taille){
  * Relevé sur les quatre matières d'essai : 0,99 à 1,10, y compris sur une trame régulière de jean,
  * qui était le cas le plus exposé — un tissage ne pardonne pas un décalage d'un pixel.
  */
+/**
+ * Le bord de la tuile tombe-t-il sur une ligne que le motif porte AUSSI ailleurs ? Fonction PURE.
+ *
+ * ⚠️ LA MESURE DE COUTURE DONNE DES FAUX POSITIFS, ET ELLE M'A FAIT ÉCARTER UN PARQUET SAIN. Elle
+ * compare l'écart entre bords opposés au contraste MOYEN de l'image. Or un parquet carrelable pose
+ * ses joints exactement sur le bord de la tuile : l'écart y est grand, mais pas plus grand que sur
+ * n'importe quel autre joint. Relevé sur WoodFloor040 : 69,4 au bord gauche/droit, 66,2 entre deux
+ * colonnes voisines au milieu. Couture annoncée 2,62 pour un seuil de 1,25, et un carrelage 2×2
+ * parfaitement raccordé à l'œil. Deux sources de plancher ont été écartées ainsi, à tort.
+ *
+ * On compare donc l'écart du bord au PLUS GRAND écart entre lignes voisines à l'intérieur, dans le
+ * même sens. Un vrai raccord raté dépasse tout ce que l'image contient ; un joint, non.
+ */
+export function coutureSurUnJoint3D(gris, taille, marge = 1.1){
+  const t = taille;
+  const ecartColonnes = (x1, x2) => { let s = 0; for (let y = 0; y < t; y++) s += Math.abs(gris[y * t + x1] - gris[y * t + x2]); return s / t; };
+  const ecartLignes = (y1, y2) => { let s = 0; for (let x = 0; x < t; x++) s += Math.abs(gris[y1 * t + x] - gris[y2 * t + x]); return s / t; };
+  let maxV = 0, maxH = 0;
+  for (let i = 0; i + 1 < t; i++) { maxV = Math.max(maxV, ecartColonnes(i, i + 1)); maxH = Math.max(maxH, ecartLignes(i, i + 1)); }
+  return ecartColonnes(0, t - 1) <= marge * maxV && ecartLignes(0, t - 1) <= marge * maxH;
+}
+
 export function coutureCarrelage3D(gris, taille){
   const interne = contrasteLocal3D(gris, taille);
   if (interne <= 0) return 0;
@@ -801,7 +823,11 @@ async function main(){
     console.log(`  gain      ${gain.toFixed(2)}   contraste ${contraste.toFixed(2)} / ${CONTRASTE_CIBLE}`);
   }
   console.log(`  couture   ${couture.toFixed(2)}   (1,0 = raccord invisible)`);
-  if (couture > COUTURE_SUSPECTE) {
+  if (couture > COUTURE_SUSPECTE && coutureSurUnJoint3D(mesure, TAILLE_GRAIN)) {
+    console.log(`  ℹ️  ${couture.toFixed(2)} > ${COUTURE_SUSPECTE}, mais le bord tombe sur un JOINT du motif :`);
+    console.log('      son écart ne dépasse pas celui des autres lignes de l\'image. Faux positif probable,');
+    console.log('      fréquent sur un parquet ou un carrelage. Vérifiez sur un carrelage 2×2.');
+  } else if (couture > COUTURE_SUSPECTE) {
     console.warn(`  ⚠️  ${couture.toFixed(2)} > ${COUTURE_SUSPECTE} : cette texture NE SE CARRELLE PAS.`);
     console.warn(`      Le dessin centre la tuile sur la Bulle, donc rien ne se voit tant qu'une`);
     console.warn(`      Bulle reste plus petite que ${TAILLE_GRAIN} px. Au-delà, le raccord apparaîtra.`);

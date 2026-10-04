@@ -65,7 +65,7 @@ import {
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
   classerCartes3D, regimeDeCuisson3D, reliefAmbigu3D, rolesEnDouble3D, nomDuGrain3D,
-  TAILLE_GRAIN_SOL, tailleDuGrain3D, reduireDeMoitie3D, versReference3D,
+  TAILLE_GRAIN_SOL, tailleDuGrain3D, reduireDeMoitie3D, versReference3D, coutureSurUnJoint3D,
   natureDeLaTexture3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
 import { natureDuNom3D } from '../src/bubble-texture.js';
@@ -980,5 +980,42 @@ describe('Deux jeux de cartes dans un dossier : on refuse, on ne choisit pas l�
     assert.deepEqual(rolesEnDouble3D(['denim_ao_4k.jpg', 'denim_diff_4k.jpg', 'denim_nor_gl_4k.png']), []);
     assert.deepEqual(rolesEnDouble3D([]), []);
     assert.deepEqual(rolesEnDouble3D(undefined), []);
+  });
+});
+
+describe('La couture d’un parquet : un joint au bord n’est pas un raccord raté', () => {
+  /**
+   * ⚠️ DEUX SOURCES DE PLANCHER ONT ÉTÉ ÉCARTÉES SUR UN FAUX POSITIF. La couture compare l'écart
+   * entre bords opposés au contraste MOYEN ; un parquet carrelable pose ses joints sur le bord, si
+   * bien que l'écart y est grand sans être anormal. Vu à l'œil sur un carrelage 2×2 : raccord parfait.
+   */
+  const T = 64;
+  const parquet = () => {
+    // Des lames de 16 px, joints sombres en colonnes 0, 16, 32, 48 : le bord gauche EST un joint.
+    const g = new Float64Array(T * T);
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) g[y * T + x] = (x % 16 === 0) ? 30 : 160 + ((y * 7 + x * 3) % 11);
+    return g;
+  };
+
+  test('⚠️ UN BORD POSÉ SUR UN JOINT EST RECONNU COMME TEL', () => {
+    assert.equal(coutureSurUnJoint3D(parquet(), T), true);
+  });
+
+  test('le garde-fou : un vrai raccord raté n’est PAS excusé', () => {
+    // Un dégradé lisse : aucune ligne intérieure n'approche l'écart entre ses deux bords.
+    const g = new Float64Array(T * T);
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) g[y * T + x] = x * 3 + y * 2;
+    assert.equal(coutureSurUnJoint3D(g, T), false);
+  });
+
+  test('et un parquet dont un seul sens raccorde mal reste dénoncé', () => {
+    // Joints corrects en colonnes, mais un DÉGRADÉ du haut vers le bas : la tuile ne revient pas à
+    // son point de départ, ce qui fait un vrai raccord raté entre le bas et le haut.
+    // ⚠️ MA PREMIÈRE FIXTURE SURÉLEVAIT LA SEULE DERNIÈRE LIGNE, ce qui créait aussi une rupture à
+    // L'INTÉRIEUR, entre l'avant-dernière et la dernière : la fonction la trouvait, et excusait le
+    // bord à juste titre. La fixture mesurait un état qu'aucune vraie texture ne produit.
+    const g = parquet();
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) g[y * T + x] += y * 2;
+    assert.equal(coutureSurUnJoint3D(g, T), false);
   });
 });
