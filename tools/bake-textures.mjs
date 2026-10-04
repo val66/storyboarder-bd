@@ -138,6 +138,34 @@ export function tailleDuGrain3D(id, idsDuSol = []){
   return (idsDuSol || []).includes(id) ? TAILLE_GRAIN_SOL : TAILLE_GRAIN;
 }
 
+/**
+ * Les identifiants cuits en TAILLE_GRAIN_SOL : les matières du Sol, et depuis #437 celles des
+ * Traces, qui se regardent d'aussi près (un muret ou une clôture à côté d'un personnage). Le
+ * Terrain n'a pas de grain à lui : il emprunte ceux du Sol. Fonction PURE.
+ */
+export function idsEnGrandFormat3D(groundDefs, tracéDefaults){
+  return [
+    ...(groundDefs || []).map(d => d.id),
+    ...Object.keys(tracéDefaults || {}).filter(id => id !== 'terrain'),
+  ];
+}
+
+/**
+ * Comment ramener une carte au carré du grain. Fonction PURE.
+ *
+ * ⚠️ UNE MATIÈRE SE DÉFORME, UNE IMAGE SE RECADRE (#437). Le recadrage au carré central avait été
+ * écrit pour une panoramique de ciel en 2:1, qu'on ne voulait pas écraser. Appliqué à une MATIÈRE
+ * non carrée, il casse le carrelage : la source de briques du muret fait 2048 × 1024, une période
+ * entière dans chaque sens ; son carré central n'en garde qu'une demi-période en largeur, et chaque
+ * raccord horizontal aurait montré une couture. On l'étire donc au carré, ce qui garde une période
+ * entière dans les deux sens, et le RAPPORT est imprimé pour que la tuile 3D le rende.
+ */
+export function cadrageDeLaCarte3D(largeur, hauteur, regime){
+  const rapport = largeur / hauteur;
+  if (largeur === hauteur) return { mode: 'tel-quel', rapport: 1 };
+  return { mode: regime === 'image' ? 'recadrer' : 'etirer', rapport };
+}
+
 /** Réduction 2×2 par moyenne, ce que fait un niveau de mipmap. Fonction PURE. */
 export function reduireDeMoitie3D(g, taille){
   const h = Math.floor(taille / 2), o = new Float64Array(h * h);
@@ -668,7 +696,7 @@ export function nomDuGrain3D(id, nature = 'gris'){
  * justement pouvoir tester sans rien lancer. C'est la même garde que `fetch-fonts.mjs` emploie
  * pour ne pas télécharger onze familles à chaque `npm test`.
  */
-async function chargerCarte(chemin, taille = TAILLE_GRAIN){
+async function chargerCarte(chemin, taille = TAILLE_GRAIN, regime = 'matiere'){
   const { nativeImage } = await import('electron');
   const img = nativeImage.createFromPath(chemin);
   if (img.isEmpty()) throw new Error(`carte illisible : ${chemin}`);
@@ -679,7 +707,8 @@ async function chargerCarte(chemin, taille = TAILLE_GRAIN){
   // la bande la moins étirée par la projection.
   const { width, height } = img.getSize();
   const cote = Math.min(width, height);
-  const carre = (width === height) ? img
+  // Une matière non carrée est étirée, pas recadrée : voir cadrageDeLaCarte3D.
+  const carre = cadrageDeLaCarte3D(width, height, regime).mode !== 'recadrer' ? img
     : img.crop({ x: Math.floor((width - cote) / 2), y: Math.floor((height - cote) / 2),
                  width: cote, height: cote });
   const redim = carre.resize({ width: taille, height: taille, quality: 'best' });
@@ -759,12 +788,16 @@ async function main(){
   // ⚠️ RECADRÉ AU CARRÉ AVANT TOUT, et ce n'est pas cosmétique. Une panoramique fait 2:1 ; la
   // redimensionner en 512² l'écraserait du double dans un sens. C'est l'erreur exacte qui avait
   // déformé ma première planche de comparaison, signalée à l'époque.
-  const { GROUND_TYPE_DEFS } = await import('../src/constants.js');
-  const taille = tailleDuGrain3D(id, GROUND_TYPE_DEFS.map(d => d.id));
+  const { GROUND_TYPE_DEFS, TRACÉ_DEFAULTS } = await import('../src/constants.js');
+  const taille = tailleDuGrain3D(id, idsEnGrandFormat3D(GROUND_TYPE_DEFS, TRACÉ_DEFAULTS));
   const aRef = (g) => versReference3D(g, taille, TAILLE_GRAIN);
-  const relief = grisDepuisRgba(await chargerCarte(join(dossier, cartes.relief), taille));
-  const normale = cartes.normale ? await chargerCarte(join(dossier, cartes.normale), taille) : null;
-  const albedoRgba = cartes.albedo ? await chargerCarte(join(dossier, cartes.albedo), taille) : null;
+  const regime = cartes.regime === 'image' ? 'image' : 'matiere';
+  const relief = grisDepuisRgba(await chargerCarte(join(dossier, cartes.relief), taille, regime));
+  const normale = cartes.normale ? await chargerCarte(join(dossier, cartes.normale), taille, regime) : null;
+  const albedoRgba = cartes.albedo ? await chargerCarte(join(dossier, cartes.albedo), taille, regime) : null;
+  const { nativeImage } = await import('electron');
+  const dim = nativeImage.createFromPath(join(dossier, cartes.relief)).getSize();
+  const cadrage = cadrageDeLaCarte3D(dim.width, dim.height, regime);
   const teinte = albedoRgba ? teinteDominante3D(albedoRgba) : '#FFFFFF';
 
   // ⚠️ LA NATURE SE MESURE SUR LES CARTES D'ORIGINE, PAS SUR LE GRAIN. Le grain est normalisé à
@@ -810,6 +843,10 @@ async function main(){
     ? 'IMAGE — la luminance tient lieu de relief, pas de terme directionnel'
     : 'matière — relief + normale'}`);
   console.log(`  relief    ${cartes.relief}`);
+  if (cadrage.mode === 'etirer') {
+    console.log(`  rapport   ${cadrage.rapport.toFixed(2)}:1 (${dim.width} × ${dim.height}), ÉTIRÉ au carré pour garder le carrelage :`);
+    console.log('            la tuile 3D doit rendre ce rapport, sinon le motif paraîtra écrasé.');
+  }
   if (cartes.normale) console.log(`  normale   ${cartes.normale}`);
   console.log(`  teinte    ${teinte}${cartes.albedo ? '' : '  (aucun albédo : blanc par défaut)'}`);
   // ⚠️ LA NATURE ET SA MESURE SONT IMPRIMÉES ENSEMBLE. Le verdict seul ne se relit pas : c'est le

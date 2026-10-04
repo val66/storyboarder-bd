@@ -65,7 +65,7 @@ import {
   contrasteLocal3D, coutureCarrelage3D, partAEchelleDeTuile3D,
   ombrageDepuisNormale3D, grainNormalise3D, teinteDominante3D,
   classerCartes3D, regimeDeCuisson3D, reliefAmbigu3D, rolesEnDouble3D, nomDuGrain3D,
-  TAILLE_GRAIN_SOL, tailleDuGrain3D, reduireDeMoitie3D, versReference3D, coutureSurUnJoint3D,
+  TAILLE_GRAIN_SOL, tailleDuGrain3D, idsEnGrandFormat3D, cadrageDeLaCarte3D, reduireDeMoitie3D, versReference3D, coutureSurUnJoint3D,
   natureDeLaTexture3D, MARGE_NATURE,
 } from '../tools/bake-textures.mjs';
 import { natureDuNom3D } from '../src/bubble-texture.js';
@@ -935,6 +935,25 @@ describe('Le Sol cuit en 1024, et décide toujours en 512', () => {
     assert.equal(tailleDuGrain3D('papier-froisse', sol), TAILLE_GRAIN);
     assert.equal(tailleDuGrain3D('herbe', []), TAILLE_GRAIN);
     assert.equal(tailleDuGrain3D('herbe', undefined), TAILLE_GRAIN);
+  });
+
+  test('⚠️ LES TRACES CUISENT EN 1024 COMME LE SOL, LE TERRAIN N’A PAS DE GRAIN À LUI (#437)', async () => {
+    const { GROUND_TYPE_DEFS, TRACÉ_DEFAULTS } = await import('../src/constants.js');
+    const ids = idsEnGrandFormat3D(GROUND_TYPE_DEFS, TRACÉ_DEFAULTS);
+    for (const id of ['route', 'chemin', 'muret', 'cloture', 'haie', 'barriere', 'herbe']) {
+      assert.equal(tailleDuGrain3D(id, ids), TAILLE_GRAIN_SOL, id);
+    }
+    assert.ok(!ids.includes('terrain'), 'le Terrain emprunte les grains du Sol');
+    assert.equal(tailleDuGrain3D('papier-froisse', ids), TAILLE_GRAIN);
+    assert.deepEqual(idsEnGrandFormat3D(undefined, undefined), []);
+  });
+
+  test('⚠️ UNE MATIÈRE NON CARRÉE S’ÉTIRE, UNE IMAGE SE RECADRE (#437)', () => {
+    // Recadrer une matière 2:1 ne gardait qu'une demi-période en largeur : couture assurée.
+    assert.deepEqual(cadrageDeLaCarte3D(2048, 1024, 'matiere'), { mode: 'etirer', rapport: 2 });
+    assert.deepEqual(cadrageDeLaCarte3D(4096, 2048, 'image'), { mode: 'recadrer', rapport: 2 });
+    assert.deepEqual(cadrageDeLaCarte3D(1024, 1024, 'matiere'), { mode: 'tel-quel', rapport: 1 });
+    assert.equal(cadrageDeLaCarte3D(1024, 2048, 'matiere').rapport, 0.5);
   });
 
   test('la taille du Sol est la référence multipliée par une puissance de deux', () => {
