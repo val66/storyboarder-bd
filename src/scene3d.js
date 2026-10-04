@@ -2247,7 +2247,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   if (groundMesh3D) {
     // Low-angle shot: hide the ground when the camera goes below the floor.
     groundMesh3D.visible = !_camBelowGround;
-    if (!_camBelowGround) applyGroundType(panel); // matière + rugosité ; plus de déplacement depuis #435b
+    if (!_camBelowGround) applyGroundType(panel, _eclairage.ciel); // matière + rugosité ; plus de déplacement depuis #435b
   }
   // Centers a rig's TRUE bounding box (not its local origin) on (targetX, targetY, targetZ),
   // with an ALWAYS uniform scale. Needed because many rigs (e.g. Plants/furniture) have their

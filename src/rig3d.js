@@ -26,6 +26,7 @@ import { S, currentVolume, tr } from './state.js';
 import { appliquerTeinteAuMotif3D, natureDuNom3D, rvbDeCouleur3D } from './bubble-texture.js';
 import { grainCharge3D } from './bubble-grain.js';
 import { installerPavage3D } from './ground-tiling-3d.js';
+import { installerEau3D } from './ground-water-3d.js';
 // ⚠️ LES INTENSITÉS DE RÉFÉRENCE VIENNENT DE LÀ, ET C'EST #415 QUI L'A IMPOSÉ. Elles étaient
 // écrites en clair ici ET dans lighting-3d.js, soit deux exemplaires de la même promesse : « Jour
 // vaut exactement l'éclairage d'origine » (cf. docs/en/lighting.md). Une mutation l'a montré, en
@@ -554,6 +555,9 @@ export let groundMesh3D = null;
  */
 export function _poserSolPourTests3D(mesh){ groundMesh3D = mesh; }
 
+/** Les uniformes de l'eau, lus par les tests pour vérifier ce qu'`applyGroundType` y écrit. */
+export function _uniformesEauPourTests3D(){ return _uniformesEau; }
+
 /**
  * Vide le cache des textures du Sol. Sans appelant dans l'application, par construction.
  *
@@ -630,6 +634,18 @@ let _modulationSol3D = null;
 const _uniformesPavage = {
   uPavage: { value: 0 },
   uPavageMoyenne: { value: null },
+};
+
+/** Le ciel reflété par l'eau quand la Case n'en fournit pas. */
+export const EAU_CIEL_DEFAUT_3D = 0x9cc8e8;
+
+/**
+ * Les uniformes de l'eau, sur le même principe et pour la même raison. Le ciel reçoit sa couleur
+ * dès la naissance : un uniforme `null` à la première compilation ferait échouer son téléversement.
+ */
+const _uniformesEau = {
+  uEau: { value: 0 },
+  uEauCiel: { value: null },
 };
 
 /**
@@ -1163,7 +1179,7 @@ export function buildGroundTexture(type) {
  * n'avait rien signalé en quatre versions : dès qu'une Case contenait un bâtiment, une piscine ou
  * une route, le décalage disparaissait.
  */
-export function applyGroundType(panel) {
+export function applyGroundType(panel, ciel) {
   if (!groundMesh3D) return;
   const type = panel.groundType || 'herbe';
   const def = GROUND_TYPE_DEFS.find(d => d.id === type) || GROUND_TYPE_DEFS[0];
@@ -1179,6 +1195,13 @@ export function applyGroundType(panel) {
   if (pave) {
     if (!_uniformesPavage.uPavageMoyenne.value) _uniformesPavage.uPavageMoyenne.value = new THREE.Vector3();
     _uniformesPavage.uPavageMoyenne.value.set(...entreeSol.moyenne);
+  }
+  // L'eau est un calcul, pas une photographie : elle remplace la couleur et la normale du Sol, et
+  // reflète le ciel de LA Case, d'où le paramètre. Sans ciel connu, un bleu de jour neutre.
+  _uniformesEau.uEau.value = def.eau ? 1 : 0;
+  if (def.eau) {
+    if (!_uniformesEau.uEauCiel.value) _uniformesEau.uEauCiel.value = new THREE.Color();
+    _uniformesEau.uEauCiel.value.set(ciel != null ? ciel : EAU_CIEL_DEFAUT_3D);
   }
   // ⚠️ LE SOL EST LA SURFACE LA PLUS RASANTE DE L'APPLICATION, et c'est le cas d'école du filtrage
   // anisotrope : la même note existe depuis #? dans model-cache.js pour les modèles importés, et le
@@ -1706,6 +1729,10 @@ export function ensurePersonaScene3D(){
   // première compilation ferait échouer son téléversement.
   _uniformesPavage.uPavageMoyenne.value = new THREE.Vector3(0.5, 0.5, 0.5);
   installerPavage3D(groundMesh3D.material, _uniformesPavage);
+  // ⚠️ L'EAU S'INSTALLE APRÈS LE PAVAGE, ET L'ENCHAÎNE. Voir installerEau3D : elle conserve le
+  // `onBeforeCompile` déjà posé au lieu de l'écraser.
+  _uniformesEau.uEauCiel.value = new THREE.Color(EAU_CIEL_DEFAUT_3D);
+  installerEau3D(groundMesh3D.material, _uniformesEau);
   groundMesh3D.rotation.x = -Math.PI / 2; // perpendicular to the Y axis (XZ plane, horizontal)
   groundMesh3D.position.set(0, GROUND_Y_DEFAULT_3D, 0);
   groundMesh3D.visible = false;

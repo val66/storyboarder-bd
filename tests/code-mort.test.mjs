@@ -44,7 +44,7 @@ const DEHORS = ['main.js', 'preload.js', 'index.html']
 const SEAUX_DE_TEST = [
   '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
   '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
-  '_setImageCacheEntry', 'fermeturesEnregistrees', '_poserSolPourTests3D', '_viderTexturesDuSol3D', '_poserWebGL2PourTests3D',
+  '_setImageCacheEntry', 'fermeturesEnregistrees', '_poserSolPourTests3D', '_viderTexturesDuSol3D', '_poserWebGL2PourTests3D', '_uniformesEauPourTests3D',
   // #431b2 — `bubble-grain.js` garde deux Map de module : les grains chargés et les motifs
   // composés. Sans ces deux seaux, aucun test ne pourrait ni repartir d'un état propre entre deux
   // cas, ni injecter un grain sans réseau — donc aucun ne pourrait tenir l'éviction du cache.
@@ -308,6 +308,9 @@ const EN_ATTENTE = {
   grilleTriangulaire3D: '#435l — modèle JS du GLSL de pavage, éprouvé par les tests',
   poidsAiguises3D: '#435l — modèle JS du GLSL de pavage, éprouvé par les tests',
   melangePreservant3D: '#435l — modèle JS du GLSL de pavage, éprouvé par les tests',
+  // #435m : le MODÈLE du shader de l'eau, pour la même raison : les vagues sont calculées par le
+  // GLSL, généré depuis les mêmes constantes ; ce modèle sert à en éprouver la pente et l'effacement.
+  vagues3D: '#435m : modèle JS du GLSL de l’eau, éprouvé par les tests',
 };
 
 function exportsSansAppelant(){
@@ -400,7 +403,11 @@ describe('Aucun export de src/ ne reste sans appelant', () => {
     // seulement : l'axe revient dans la fiche, ou l'on décide de supprimer le module pour de bon.
     // Tant que ni l'un ni l'autre n'arrive, la ligne reste sous les yeux — c'est ce qu'on lui
     // demande.
-    assert.equal(Object.keys(EN_ATTENTE).length, 10,
+    //
+    // Remonté à 11 en #435m, et ce n'est pas un report non plus : `vagues3D` est le modèle du
+    // shader de l'eau, comme les trois du pavage avant lui. Il n'aura jamais d'appelant, c'est le
+    // GLSL qui calcule, et il est tenu par les tests de tests/ground-3d.test.mjs.
+    assert.equal(Object.keys(EN_ATTENTE).length, 11,
       'une décision de plus a été REPORTÉE au lieu d\'être prise');
   });
 });

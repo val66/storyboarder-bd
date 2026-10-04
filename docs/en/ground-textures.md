@@ -167,6 +167,23 @@ camera distance (#435j, reverted): a Panel is not a still image WHILE it is bein
 tiling slid at every scroll step, by up to 375 in a single step. And the detail map, the industry's
 complete answer, stays in reserve: it requires touching the shader.
 
+## Water, computed rather than photographed
+
+Water has no grain: no tileable water texture holds up, since a water surface IS its reflection.
+It is computed per pixel, after what Rare described for Sea of Thieves (SIGGRAPH 2018): a colour
+going from deep blue to a "subsurface" turquoise on crests, driven by view angle, sun and a wave
+peak mask; a little foam at the peaks; the Panel's sky reflected according to Fresnel. The code
+lives in `src/ground-water-3d.js`.
+
+⚠️ **THEIR WAVES MOVE THE GEOMETRY, OURS DO NOT.** The Ground has one vertex every 120 m (#435b):
+waves are therefore normals, fourteen sine trains from 12 m down to 12 cm, on a slightly warped
+plane that bends the wave fronts. Six trains drew a grid, seen on the test bench.
+
+⚠️ **A WAVE SHORTER THAN FOUR PIXELS FADES OUT**, according to the pixel footprint on the ground
+measured by derivatives: an analytic mipmap, without which water would crackle when zooming out.
+
+A Panel is a still image: waves are not animated.
+
 ## What is held in reserve, with its trigger
 
 **Detail map.** A high-frequency texture overlaid on top, serving the extreme close-up. The
@@ -193,3 +210,4 @@ about rendering.
 - [Compressed textures and memory, three.js forum](https://discourse.threejs.org/t/compressed-textures-using-more-memory-than-uncompressed-textures/30077)
 - [Reduce ground texture repetition, Blender](https://3dskillup.art/reduce-ground-texture-repetition-blender/)
 - [Cel shading, Wikipedia](https://en.wikipedia.org/wiki/Cel_shading)
+- [The Technical Art of Sea of Thieves, SIGGRAPH 2018](https://history.siggraph.org/wp-content/uploads/2022/09/2018-Talks-Ang_The-Technical-Art-of-Sea-of-Thieves.pdf)

@@ -171,6 +171,23 @@ distance de la caméra (#435j, révoqué) : une Case n'est pas une image fixe PE
 et la répétition glissait à chaque cran de molette, jusqu'à 375 d'écart en un cran. Et la carte de
 détail, réponse complète de l'industrie, reste en réserve : elle demande de toucher au shader.
 
+## L'eau, calculée et non photographiée
+
+L'eau n'a pas de grain : aucune texture d'eau carrelable ne tient, puisqu'une surface d'eau EST
+son reflet. Elle est calculée par pixel, d'après ce que Rare a décrit pour Sea of Thieves
+(SIGGRAPH 2018) : une couleur qui passe du bleu profond au turquoise de « sous-surface » sur les
+crêtes, selon l'angle de vue, le soleil et un masque des sommets de vagues ; un peu d'écume au
+sommet ; le ciel de la Case reflété selon Fresnel. Le code est dans `src/ground-water-3d.js`.
+
+⚠️ **LEURS VAGUES DÉPLACENT LA GÉOMÉTRIE, LES NÔTRES NON.** Le Sol a un sommet tous les 120 m
+(#435b) : les vagues sont donc des normales, quatorze trains sinusoïdaux de 12 m à 12 cm, sur un
+plan légèrement déformé pour courber les fronts. Six trains dessinaient un quadrillage, vu au banc.
+
+⚠️ **UNE VAGUE PLUS COURTE QUE QUATRE PIXELS S'EFFACE**, selon l'empreinte du pixel au sol mesurée
+par les dérivées : c'est un mipmap analytique, sans lequel l'eau crépiterait en reculant.
+
+Une Case est une image fixe : les vagues ne s'animent pas.
+
 ## Ce qui reste en réserve, avec son déclencheur
 
 **Carte de détail.** Une texture haute fréquence surimposée, qui sert le très gros plan. La réponse
@@ -197,3 +214,4 @@ composition, pas de rendu.
 - [Compressed textures et mémoire, forum three.js](https://discourse.threejs.org/t/compressed-textures-using-more-memory-than-uncompressed-textures/30077)
 - [Réduire la répétition d'un sol, Blender](https://3dskillup.art/reduce-ground-texture-repetition-blender/)
 - [Cel shading, Wikipedia](https://en.wikipedia.org/wiki/Cel_shading)
+- [The Technical Art of Sea of Thieves, SIGGRAPH 2018](https://history.siggraph.org/wp-content/uploads/2022/09/2018-Talks-Ang_The-Technical-Art-of-Sea-of-Thieves.pdf)

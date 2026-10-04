@@ -24,6 +24,10 @@ export function moduleSansExports(source){
 }
 
 function main(){
+  // ⚠️ LE MODE EAU, AJOUTÉ POUR #435m : même banc, même raison. Le shader de l'eau ne s'exécute pas
+  // plus sous Node que celui du pavage, et sa couleur dépend de la direction du soleil : on la
+  // montre donc en contre-jour et soleil dans le dos, au plan large et au gros plan.
+  if (process.argv.includes('--eau')) return mainEau();
   const grain = process.argv[2] || 'sable';
   const fichier = ['.png', '.couleur.png'].map(s => join(RACINE, 'assets', 'textures', grain + s)).find(existsSync);
   if (!fichier) throw new Error(`aucun grain cuit pour « ${grain} » dans assets/textures/`);
@@ -95,6 +99,56 @@ img.onload = () => {
 img.src = '${image}';
 </script>`;
   const sortie = join(RACINE, 'apercus', 'banc-pavage.html');
+  mkdirSync(dirname(sortie), { recursive: true });
+  writeFileSync(sortie, html);
+  console.log(`écrit : ${sortie}  (${(html.length / 1048576).toFixed(1)} Mo)`);
+}
+
+function mainEau(){
+  const three = readFileSync(join(RACINE, 'node_modules', 'three', 'build', 'three.min.js'), 'utf8');
+  const pavage = moduleSansExports(readFileSync(join(RACINE, 'src', 'ground-tiling-3d.js'), 'utf8'));
+  const eau = moduleSansExports(readFileSync(join(RACINE, 'src', 'ground-water-3d.js'), 'utf8'));
+  const html = `<!DOCTYPE html><meta charset="utf-8"><title>Banc de l'eau</title>
+<style>body{margin:0;background:#222;color:#eee;font:13px sans-serif}#etat{padding:6px 8px}
+.l{display:flex;justify-content:space-between;padding:2px 8px;color:#aaa}</style>
+<div id="etat">chargement…</div>
+<script>${three}</script>
+<script>
+${pavage}
+${eau}
+const etat = document.getElementById('etat');
+window.onerror = (m) => { etat.style.color = '#f66'; etat.textContent = 'ERREUR : ' + m; };
+const L = 780, H = 300, CIEL = 0x9cc8e8;
+const titre = (t) => { const d = document.createElement('div'); d.className = 'l';
+  d.innerHTML = '<span>' + t + ', soleil en CONTRE-JOUR</span><span>soleil DANS LE DOS</span>'; document.body.appendChild(d); };
+const scene = new THREE.Scene(); scene.background = new THREE.Color(CIEL);
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+const soleil = new THREE.DirectionalLight(0xffffff, 0.55); scene.add(soleil); scene.add(soleil.target);
+const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0 });
+const uPav = { uPavage: { value: 0 }, uPavageMoyenne: { value: new THREE.Vector3(0.5, 0.5, 0.5) } };
+const uEau = { uEau: { value: 1 }, uEauCiel: { value: new THREE.Color(CIEL) } };
+installerPavage3D(mat, uPav);
+installerEau3D(mat, uEau);
+const sol = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000), mat);
+sol.rotation.x = -Math.PI / 2; scene.add(sol);
+const plans = [
+  ['plan large', (() => { const c = new THREE.PerspectiveCamera(40, (L/2)/H, 0.1, 5000); c.position.set(0, 18, 40); c.lookAt(0, 0, 0); return c; })()],
+  ['gros plan', (() => { const c = new THREE.PerspectiveCamera(40, (L/2)/H, 0.05, 500); c.position.set(0, 2.5, 5); c.lookAt(0, 0, 0); return c; })()],
+];
+for (const [nom, cam] of plans) {
+  titre(nom);
+  const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(L, H); document.body.appendChild(r.domElement);
+  r.debug.checkShaderErrors = true; r.setScissorTest(true);
+  // Contre-jour : le soleil derrière la scène, face à la caméra. Dans le dos : derrière la caméra.
+  for (const [cote, z] of [[0, -60], [1, 60]]) {
+    soleil.position.set(10, 25, z);
+    r.setViewport(cote * L / 2, 0, L / 2, H); r.setScissor(cote * L / 2, 0, L / 2, H);
+    r.render(scene, cam);
+  }
+}
+etat.textContent = 'rendu OK, eau';
+</script>`;
+  const sortie = join(RACINE, 'apercus', 'banc-eau.html');
   mkdirSync(dirname(sortie), { recursive: true });
   writeFileSync(sortie, html);
   console.log(`écrit : ${sortie}  (${(html.length / 1048576).toFixed(1)} Mo)`);

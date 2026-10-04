@@ -1263,3 +1263,221 @@ describe('Sol : qui se pave, et quand', () => {
     assert.ok(GROUND_TYPE_DEFS.filter(d => d.pavage).length >= 3, 'presque plus rien ne se pave');
   });
 });
+
+import {
+  EAU_VAGUES, EAU_PIXELS_MIN, EAU_DEFORMATION, EAU_AMPLITUDE_TOTALE, EAU_PROFONDE, EAU_SOUS_SURFACE,
+  parametresDeVague3D, effacementDeVague3D, vagues3D, ondeDeDeformation3D, installerEau3D,
+  GLSL_EAU_DECLARATIONS, GLSL_EAU_COULEUR, GLSL_EAU_NORMALE,
+} from '../src/ground-water-3d.js';
+import { _uniformesEauPourTests3D, EAU_CIEL_DEFAUT_3D } from '../src/rig3d.js';
+
+describe('Sol : l’eau, son modèle', () => {
+  /**
+   * Le GLSL de l'eau ne s'exécute pas sous Node. `vagues3D` en est le MODÈLE, écrit avec les mêmes
+   * constantes, et c'est sur lui qu'on éprouve les deux propriétés qui comptent : une pente qui est
+   * VRAIMENT celle de la hauteur, sans quoi les reflets ne tomberaient pas sur les crêtes qu'on
+   * voit, et un effacement qui retire les vagues trop courtes pour le pixel.
+   */
+  test('⚠️ LA PENTE EST LA DÉRIVÉE DE LA HAUTEUR, DÉFORMATION COMPRISE', () => {
+    // Le piège est la déformation : sans la jacobienne, la pente resterait celle du plan déformé.
+    // Vérifié par différences finies en des points quelconques, sur les deux axes.
+    const h = 1e-5;
+    let pire = 0;
+    for (const [x, z] of [[0, 0], [3.2, -1.7], [-41.3, 17.9], [120.5, 88.25], [-7.77, -230.1]]) {
+      const a = vagues3D(x, z), bx = vagues3D(x + h, z), bz = vagues3D(x, z + h);
+      pire = Math.max(pire, Math.abs(a.dhdx - (bx.h - a.h) / h), Math.abs(a.dhdz - (bz.h - a.h) / h));
+    }
+    assert.ok(pire < 1e-3, `écart à la dérivée numérique : ${pire}`);
+  });
+
+  test('le garde-fou : la déformation agit vraiment, et la jacobienne n’est donc pas décorative', () => {
+    // Sans ceci, le test précédent passerait aussi avec une ampleur nulle, où la jacobienne vaut
+    // l'identité et où l'oublier ne coûte rien.
+    const sans = { ampleur: 0, ondes: EAU_DEFORMATION.ondes };
+    let ecart = 0;
+    for (const [x, z] of [[3.2, -1.7], [-41.3, 17.9], [120.5, 88.25]]) {
+      ecart = Math.max(ecart, Math.abs(vagues3D(x, z).h - vagues3D(x, z, 0, EAU_VAGUES, sans).h));
+    }
+    assert.ok(EAU_DEFORMATION.ampleur > 0);
+    assert.ok(ecart > 0.01, `la déformation ne change presque rien : ${ecart}`);
+  });
+
+  test('⚠️ UNE VAGUE PLUS COURTE QUE QUELQUES PIXELS S’EFFACE, sinon elle scintille', () => {
+    // C'est l'équivalent analytique d'un mipmap. Pleine à 2 × EAU_PIXELS_MIN pixels par longueur
+    // d'onde, nulle à EAU_PIXELS_MIN, et monotone entre les deux.
+    assert.equal(effacementDeVague3D(1, 1 / (2 * EAU_PIXELS_MIN)), 1);
+    assert.equal(effacementDeVague3D(1, 1 / EAU_PIXELS_MIN), 0);
+    let precedent = 2;
+    for (let e = 0.05; e < 0.3; e += 0.01) {
+      const f = effacementDeVague3D(1, e);
+      assert.ok(f <= precedent, `l’effacement remonte à l’empreinte ${e}`);
+      precedent = f;
+    }
+    // Une entrée absurde ne fait pas disparaître l'eau du gros plan.
+    assert.equal(effacementDeVague3D(1, 0), 1);
+    assert.equal(effacementDeVague3D(1, undefined), 1);
+  });
+
+  test('⚠️ VUE DE TRÈS LOIN, L’EAU REDEVIENT PLANE, au lieu de crépiter', () => {
+    const loin = vagues3D(12.3, -4.5, 100);
+    assert.equal(loin.h, 0); assert.equal(loin.dhdx, 0); assert.equal(loin.dhdz, 0);
+    // Et de près, toutes les vagues sont là : le masque des crêtes se normalise sur leur somme.
+    const somme = EAU_VAGUES.reduce((a, v) => a + parametresDeVague3D(v).amplitude, 0);
+    assert.equal(EAU_AMPLITUDE_TOTALE, somme);
+    let max = 0;
+    for (let i = 0; i < 400; i++) max = Math.max(max, Math.abs(vagues3D(i * 1.37, i * -0.91, 0.001).h));
+    assert.ok(max <= somme && max > 0.4 * somme, `hauteur maximale ${max} pour une somme de ${somme}`);
+  });
+
+  test('⚠️ LES TRAINS SONT ÉPARPILLÉS, pas alignés : six directions voisines dessinaient un quadrillage', () => {
+    const dirs = EAU_VAGUES.map(v => v.direction);
+    assert.ok(EAU_VAGUES.length >= 10, 'trop peu de trains, le motif redevient périodique (cf. banc)');
+    assert.ok(Math.max(...dirs) - Math.min(...dirs) >= 120, 'les directions sont trop serrées');
+    // Deux trains de même longueur et même direction ne seraient qu'un seul train plus fort.
+    const cles = new Set(EAU_VAGUES.map(v => `${v.longueur}/${v.direction}`));
+    assert.equal(cles.size, EAU_VAGUES.length);
+  });
+
+  test('la sous-surface est plus claire que le fond, c’est tout l’effet recherché', () => {
+    const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    assert.ok(lum(EAU_SOUS_SURFACE) > 2 * lum(EAU_PROFONDE));
+  });
+});
+
+describe('Sol : l’eau, son GLSL', () => {
+  test('⚠️ LE GLSL EST GÉNÉRÉ DEPUIS LES CONSTANTES DU MODÈLE, train par train', () => {
+    // Le modèle ne prouve rien s'il peut diverger du shader. Chaque nombre d'onde, chaque amplitude
+    // et chaque pente doivent apparaître tels que le modèle les calcule.
+    for (const v of EAU_VAGUES) {
+      const { k, amplitude } = parametresDeVague3D(v);
+      assert.ok(GLSL_EAU_DECLARATIONS.includes(`${k.toFixed(6)} * dot( d, p ) + ${v.phase.toFixed(4)}`), `k de ${v.longueur}`);
+      assert.ok(GLSL_EAU_DECLARATIONS.includes(`f * ${amplitude.toFixed(6)} * sin( ph )`), `amplitude de ${v.longueur}`);
+      assert.ok(GLSL_EAU_DECLARATIONS.includes(`f * ${(amplitude * k).toFixed(6)} * cos( ph ) * d`), `pente de ${v.longueur}`);
+      assert.ok(GLSL_EAU_DECLARATIONS.includes(`( ${v.longueur.toFixed(4)} / e - ${EAU_PIXELS_MIN.toFixed(1)} )`), `effacement de ${v.longueur}`);
+    }
+    for (const o of EAU_DEFORMATION.ondes.map(ondeDeDeformation3D)) {
+      assert.ok(GLSL_EAU_DECLARATIONS.includes(`vec2( ${o.ax.toFixed(6)}, ${o.az.toFixed(6)} )`), 'onde de déformation');
+    }
+    assert.ok(GLSL_EAU_DECLARATIONS.includes('r.yz = r.yz * J;'), 'la jacobienne n’est pas appliquée');
+    assert.ok(GLSL_EAU_COULEUR.includes(EAU_AMPLITUDE_TOTALE.toFixed(6)), 'le masque des crêtes ne se normalise pas sur la somme');
+  });
+
+  test('⚠️ LA JACOBIENNE DU GLSL EST CELLE DU MODÈLE, rangement par colonnes compris', () => {
+    // GLSL range une mat2 par colonnes et `v * M` vaut transpose(M) * v. Une erreur de rangement
+    // donnerait une pente fausse sans erreur de compilation. On rejoue donc l'expression GLSL telle
+    // qu'écrite, en JavaScript, et on la compare au modèle.
+    const [o1, o2] = EAU_DEFORMATION.ondes.map(ondeDeDeformation3D);
+    const W = EAU_DEFORMATION.ampleur;
+    const x = 17.3, z = -5.1;
+    const s1 = o1.ax * x + o1.az * z + o1.phase, s2 = o2.ax * x + o2.az * z + o2.phase;
+    // mat2( c0x, c0y, c1x, c1y ) : colonnes (c0x, c0y) et (c1x, c1y), comme dans le GLSL.
+    const c0 = [1 + W * Math.cos(s1) * o1.ax, W * Math.cos(s2) * o2.ax];
+    const c1 = [W * Math.cos(s1) * o1.az, 1 + W * Math.cos(s2) * o2.az];
+    assert.ok(GLSL_EAU_DECLARATIONS.includes('mat2( cos( s1 ) * a1.x, cos( s2 ) * a2.x, cos( s1 ) * a1.y, cos( s2 ) * a2.y )'));
+    // Pente au point déformé, sans jacobienne : celle du modèle avec une déformation figée.
+    const px = x + W * Math.sin(s1), pz = z + W * Math.sin(s2);
+    const brut = vagues3D(px, pz, 0, EAU_VAGUES, { ampleur: 0, ondes: EAU_DEFORMATION.ondes });
+    // v * M : la composante i est le produit scalaire de v avec la COLONNE i.
+    const gx = brut.dhdx * c0[0] + brut.dhdz * c0[1];
+    const gz = brut.dhdx * c1[0] + brut.dhdz * c1[1];
+    const m = vagues3D(x, z);
+    assert.ok(Math.abs(gx - m.dhdx) < 1e-9 && Math.abs(gz - m.dhdz) < 1e-9, `${gx}/${m.dhdx}, ${gz}/${m.dhdz}`);
+  });
+
+  const installe = () => {
+    const pav = { uPavage: { value: 0 }, uPavageMoyenne: { value: new THREE.Vector3() } };
+    const eau = { uEau: { value: 0 }, uEauCiel: { value: new THREE.Color() } };
+    const mat = new THREE.MeshStandardMaterial();
+    installerPavage3D(mat, pav);
+    installerEau3D(mat, eau);
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.physical.vertexShader,
+      fragmentShader: THREE.ShaderLib.physical.fragmentShader };
+    mat.onBeforeCompile(shader);
+    return { mat, shader, pav, eau };
+  };
+
+  test('⚠️ LES ANCRES EXISTENT DANS LE SHADER RÉEL, ET CHAQUE INSERTION A LIEU', () => {
+    // `String.replace` sur une ancre absente ne fait rien et ne dit rien : l'eau disparaîtrait.
+    const v = THREE.ShaderLib.physical.vertexShader, f = THREE.ShaderLib.physical.fragmentShader;
+    for (const a of ['#include <common>', '#include <begin_vertex>']) assert.equal(v.split(a).length, 2, a);
+    for (const a of ['#include <common>', '#include <color_fragment>', '#include <normal_fragment_maps>']) assert.equal(f.split(a).length, 2, a);
+    const { shader } = installe();
+    assert.ok(shader.vertexShader.includes('vSolMonde = ( modelMatrix * vec4( transformed, 1.0 ) ).xz;'));
+    assert.equal(shader.vertexShader.split('varying vec2 vSolMonde;').length, 2);
+    assert.ok(shader.fragmentShader.includes('vec3 eauVagues('));
+    assert.ok(shader.fragmentShader.includes('normal = eauNormaleVue;'));
+    assert.ok(shader.fragmentShader.includes('totalEmissiveRadiance += uEauCiel'));
+  });
+
+  test('⚠️ L’ORDRE DANS LE SHADER : chaque morceau vient après ce qu’il lit, et avant ce qui le lit', () => {
+    // La couleur écrase `diffuseColor` APRÈS la carte (sinon la carte la remultiplierait), lit
+    // `totalEmissiveRadiance` déjà déclaré, et la normale est posée après celle de three.js.
+    const f = installe().shader.fragmentShader;
+    const i = (s) => { const n = f.indexOf(s); assert.ok(n >= 0, s); return n; };
+    assert.ok(i('vec3 totalEmissiveRadiance') < i('vec3 eauNormaleVue'));
+    assert.ok(i('diffuseColor *= texelColor;') < i('vec3 eauNormaleVue'), 'la carte passerait après l’eau');
+    assert.ok(i('vec3 eauNormaleVue') < i('#include <color_fragment>'));
+    assert.ok(i('#include <normal_fragment_maps>') < i('normal = eauNormaleVue;'));
+    assert.ok(i('normal = eauNormaleVue;') < i('#include <lights_fragment_begin>'), 'l’éclairage ne verrait pas les vagues');
+    assert.ok(i('#include <lights_pars_begin>') < i('vec3 eauNormaleVue'), 'directionalLights serait lu avant sa déclaration');
+  });
+
+  test('⚠️ L’EAU ENCHAÎNE LE PAVAGE AU LIEU DE L’ÉCRASER', () => {
+    // Le pavage occupait `onBeforeCompile` le premier. L'écraser le supprimerait sans un message,
+    // et les tests du pavage ne le verraient pas puisqu'ils l'installent seul.
+    const { shader, mat, pav, eau } = installe();
+    assert.ok(shader.fragmentShader.includes('pavageMap'), 'le pavage a disparu');
+    assert.ok(shader.fragmentShader.includes('eauVagues'), 'l’eau a disparu');
+    assert.equal(shader.uniforms.uPavage, pav.uPavage);
+    assert.equal(shader.uniforms.uEau, eau.uEau);
+    assert.equal(shader.uniforms.uEauCiel, eau.uEauCiel);
+    assert.equal(mat.customProgramCacheKey(), 'sol-pavage-1+eau-1');
+    assert.equal(mat.extensions.derivatives, true);
+    assert.equal(mat.extensions.shaderTextureLOD, true, 'l’eau a effacé une extension du pavage');
+  });
+
+  test('chaque recompilation se raccroche aux mêmes uniformes', () => {
+    const { mat, eau } = installe();
+    const b = { uniforms: {}, vertexShader: THREE.ShaderLib.physical.vertexShader,
+      fragmentShader: THREE.ShaderLib.physical.fragmentShader };
+    mat.onBeforeCompile(b);
+    assert.equal(b.uniforms.uEau, eau.uEau);
+    assert.equal(b.uniforms.uEauCiel, eau.uEauCiel);
+  });
+
+  test('éteinte, l’eau ne touche ni la couleur ni la normale', () => {
+    // Le matériau est partagé par toutes les matières : hors de l'eau, rien ne doit changer.
+    assert.ok(/if \( uEau > 0\.5 \) \{[\s\S]*diffuseColor\.rgb =/.test(GLSL_EAU_COULEUR));
+    assert.ok(GLSL_EAU_NORMALE.includes('if ( uEau > 0.5 ) normal = eauNormaleVue;'));
+  });
+});
+
+describe('Sol : qui est de l’eau', () => {
+  test('⚠️ SEULE L’EAU ALLUME L’EAU, et applyGroundType lui passe le ciel de la Case', () => {
+    solDEssai();
+    const u = _uniformesEauPourTests3D();
+    for (const def of GROUND_TYPE_DEFS) {
+      applyGroundType({ groundType: def.id }, '#123456');
+      assert.equal(u.uEau.value, def.id === 'eau' ? 1 : 0, def.id);
+    }
+    applyGroundType({ groundType: 'eau' }, '#123456');
+    assert.equal(u.uEauCiel.value.getHex(), 0x123456);
+    applyGroundType({ groundType: 'eau' }, '#abcdef');
+    assert.equal(u.uEauCiel.value.getHex(), 0xabcdef, 'le ciel ne suit pas la Case');
+    applyGroundType({ groundType: 'eau' });
+    assert.equal(u.uEauCiel.value.getHex(), EAU_CIEL_DEFAUT_3D, 'sans ciel, le défaut');
+  });
+
+  test('l’eau est un diélectrique : un métal ne reflète pas le ciel selon Fresnel', () => {
+    const def = GROUND_TYPE_DEFS.find(d => d.id === 'eau');
+    assert.equal(def.eau, true);
+    assert.equal(def.metalness, 0);
+    assert.equal(GROUND_TYPE_DEFS.filter(d => d.eau).length, 1);
+  });
+
+  test('⚠️ LE RENDU D’UNE CASE PASSE BIEN SON CIEL', () => {
+    // Sans ce fil, l'eau refléterait toujours le bleu par défaut, même sous un ciel de nuit.
+    const scene = readFileSync(join(RACINE, 'src', 'scene3d.js'), 'utf8');
+    assert.ok(scene.includes('applyGroundType(panel, _eclairage.ciel)'));
+  });
+});
