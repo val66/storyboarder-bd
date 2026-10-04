@@ -70,7 +70,7 @@ import {
   allerALaPlanche,
 } from './project-tree.js';
 import {
-  grainsDuSol3D,
+  grainsDuSol3D, grainsDesTraces3D,
   EMOTIONS, HAND_STATES, POSITIONS, FIXED_SHAPE, FIXED_COLOR, PANEL_CAM_REF_DIST_3D,
   PANEL_CAM_DEFAULT_DIST_3D, BUILD_WALL_DEFAULT_HEIGHT, BUILD_SNAP_ANGLE_DEG, BUILD_CLOSE_DIST, MAX_UNDO,
   WALL_OPENING_MAGNET_TYPES, WALL_TYPES, TRAVERSANT_TYPES, WALL_OPENING_MARGIN_FRAC,
@@ -8491,7 +8491,7 @@ if (window.document && document.fonts && document.fonts.load) {
 // donneraient deux redessins et deux occasions d'oublier le second ; et le magasin de grains est
 // commun, puisque c'est le même mécanisme de chargement pour la même sorte de fichier.
 if (window.document) {
-  prechargerGrains3D([...grainsAPrecharger3D(), ...grainsDuSol3D()], drawCurrentPage);
+  prechargerGrains3D([...grainsAPrecharger3D(), ...grainsDuSol3D(), ...grainsDesTraces3D()], drawCurrentPage);
 }
 
 // ── Collapsible sections of the right-hand menu ────────────────────────────────────────────────────

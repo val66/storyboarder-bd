@@ -11,6 +11,7 @@
  * Callbacks injected by app.js (setScene3DCallbacks) to avoid circular imports:
  * drawCurrentPage, refreshCameraSliders, renderSideCameraGizmo.
  */
+import { materiauDeTrace3D, grainDeTracePret3D } from './trace-textures-3d.js';
 import { poserCiel3D, retirerCiel3D, abaissementDeLHorizon3D } from './sky-3d.js';
 import {
   BUILD_WALL_DEFAULT_HEIGHT, BUILD_WALL_THICKNESS_RATIO_3D, CAM_SMOOTH_EPS, CAM_SMOOTH_FACTOR, CAM_SMOOTH_FACTOR_PAN, PANEL_CAM_DEFAULT_DIST_3D, PANEL_CAM_REF_DIST_3D, PERSONA_REAL_HEIGHT_M,
@@ -1540,8 +1541,8 @@ export function buildMuretGroup3D(o, holes){
   const group = new THREE.Group();
   const geo = buildTracéWallGeometry3D(o.world.pts, wallH, wallT, GROUND_Y_DEFAULT_3D, holes);
   if (geo) {
-    group.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      color: new THREE.Color(col), roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
+    group.add(new THREE.Mesh(geo, materiauDeTrace3D('muret', o.color, {
+      couleurAplat: col, plaquage: 'trace', roughness: 0.95, metalness: 0, side: THREE.DoubleSide,
     })));
   }
   // Fix 31 : jambs/lintel/sill around each Opening (see buildOpeningRevealGroup3D).
@@ -1639,10 +1640,14 @@ export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) 
   // Each "strip" between pts[i] and pts[i+1] can be cut
   // vertically into sub-strips (below the hole / in the hole / above).
   // Each sub-strip emits 8 independent vertices + 3 pairs of faces.
-  const positions = [], indices = [];
+  const positions = [], indices = [], uvs = [];
   let vIdx = 0;
 
   // Emits a sub-strip between points i and i+1, from height ya to yb.
+  // ⚠️ #437 : LES COORDONNÉES DE TEXTURE SONT EN MÈTRES, LE LONG DU TRACÉ. u = l'abscisse curviligne
+  // (`arc`), v = la hauteur sur les faces, l'écart à l'axe sur le dessus et le dessous. Un plaquage
+  // par projection sur les axes dédoublait le motif sur un mur en biais ; celui-ci suit le tracé,
+  // courbes comprises. Le shader divise par la taille réelle de la tuile.
   // emitBottom: also emits the lower horizontal face (lintel soffit).
   // emitTop    : also emits the upper horizontal face (window sill / wall top).
   function emitStrip(i, ya, yb, emitBottom, emitTop) {
@@ -1667,18 +1672,22 @@ export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) 
       ...L(pj, nj, yb),  // 6: j-left-top
       ...R(pj, nj, yb),  // 7: j-right-top
     );
+    uvs.push(pi.arc, ya,  pi.arc, ya,  pi.arc, yb,  pi.arc, yb,
+             pj.arc, ya,  pj.arc, ya,  pj.arc, yb,  pj.arc, yb);
     vIdx += 8;
     indices.push(base+0, base+2, base+4,  base+4, base+2, base+6);  // front face
     indices.push(base+1, base+5, base+3,  base+5, base+7, base+3);  // back face
     if (emitTop) {
       const t = vIdx;
       positions.push(...L(pi, ni, yb), ...R(pi, ni, yb), ...L(pj, nj, yb), ...R(pj, nj, yb));
+      uvs.push(pi.arc, hw,  pi.arc, -hw,  pj.arc, hw,  pj.arc, -hw);
       vIdx += 4;
       indices.push(t+0, t+1, t+2,  t+2, t+1, t+3);                  // top (crest / sill)
     }
     if (emitBottom) {
       const b = vIdx;
       positions.push(...L(pi, ni, ya), ...R(pi, ni, ya), ...L(pj, nj, ya), ...R(pj, nj, ya));
+      uvs.push(pi.arc, hw,  pi.arc, -hw,  pj.arc, hw,  pj.arc, -hw);
       vIdx += 4;
       indices.push(b+0, b+2, b+1,  b+2, b+3, b+1);                  // bottom (lintel soffit)
     }
@@ -1703,6 +1712,7 @@ export function buildTracéWallGeometry3D(worldPts, wallH, wallT, yBase, holes) 
   if (positions.length === 0) return null;
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.setIndex(indices);
   geo.computeVertexNormals();
   return geo;
@@ -1888,7 +1898,7 @@ function computePanelSceneSignature3D(panel, page, styleKey){
   // and would needlessly invalidate the cache on every camera rotation.
   const tracéPart = JSON.stringify(
     page.objects.filter(o => o.type === 'tracé' && o.panelId === panel.id)
-      .map(o => ({ tt: o.tracéType, c: o.color, tt2: o.terrainType, w: o.width, world: o.world }))
+      .map(o => ({ tt: o.tracéType, c: o.color, tt2: o.terrainType, w: o.width, world: o.world, g: grainDeTracePret3D(o.tracéType) }))
   );
   return camPart + '||' + parts.join('|') + '||t:' + tracéPart + '||m:' + modelPart + '||l:' + lumierePart;
 }
@@ -2636,7 +2646,8 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
           .filter(c => c.type === 'objet3d' && c.magnetWallId === o.id && TRAVERSANT_TYPES.includes(c.objType))
           .map(c => ({ f: c.wallAlongFrac, y: c.wallYFrac, w: c.w, h: c.h }))
       : null;
-    const sigKey = JSON.stringify({ tt: o.tracéType, c: o.color, tt2: o.terrainType, wh: o.wallHeight, world: o.world, holes: _tmHoleSig });
+    // #437 : l'arrivée du grain refait la Trace, qui passe de l'aplat à sa texture.
+    const sigKey = JSON.stringify({ tt: o.tracéType, c: o.color, tt2: o.terrainType, wh: o.wallHeight, world: o.world, holes: _tmHoleSig, g: grainDeTracePret3D(o.tracéType) });
     let entry = tracéMeshCache3D.get(o.id);
     if (!entry || entry.sigKey !== sigKey) {
       // Release the old group if present.
@@ -2701,8 +2712,8 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
         // ── Fence: 2 horizontal rails + vertical posts ─────────────────
         const col = o.color || '#7A5230';
         const wallH = tracéWallHeight3D(o);
-        const fenceMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(col), roughness: 0.97, metalness: 0, side: THREE.DoubleSide,
+        const fenceMat = materiauDeTrace3D('cloture', o.color, {
+          couleurAplat: col, roughness: 0.97, metalness: 0, side: THREE.DoubleSide,
         });
         // Two horizontal rails at 35% and 82% of the height
         for (const frac of [0.35, 0.82]) {
@@ -2747,14 +2758,15 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
         // to remain correct after loadSceneIntoPanel scaling (wallHeight *= s).
         const hedgeGeo = buildTracéWallGeometry3D(w.pts, wallH, wallH * 0.611, GROUND_Y_DEFAULT_3D, _tmHoles);
         if (hedgeGeo) {
-          group.add(new THREE.Mesh(hedgeGeo, new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#2A5C2A'), roughness: 1.0, metalness: 0, side: THREE.DoubleSide,
+          // La couche intérieure, plus sombre : la même matière, à l'ombre.
+          group.add(new THREE.Mesh(hedgeGeo, materiauDeTrace3D('haie', o.color, {
+            couleurAplat: '#2A5C2A', ombre: 0.7, plaquage: 'trace', roughness: 1.0, metalness: 0, side: THREE.DoubleSide,
           })));
         }
         const hedgeGeo2 = buildTracéWallGeometry3D(w.pts, wallH * 0.97, wallH * 0.422, GROUND_Y_DEFAULT_3D + 0.02, _tmHoles);
         if (hedgeGeo2) {
-          group.add(new THREE.Mesh(hedgeGeo2, new THREE.MeshStandardMaterial({
-            color: new THREE.Color(col), roughness: 0.97, metalness: 0, side: THREE.DoubleSide,
+          group.add(new THREE.Mesh(hedgeGeo2, materiauDeTrace3D('haie', o.color, {
+            couleurAplat: col, plaquage: 'trace', roughness: 0.97, metalness: 0, side: THREE.DoubleSide,
           })));
         }
         if (group.children.length === 0) return;
@@ -2771,14 +2783,15 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
         // stripe 0.02/0.3025≈0.066) to remain correct after loadSceneIntoPanel scaling.
         const topGeo = buildTracéWallGeometry3D(w.pts, topH, topH * 0.529, GROUND_Y_DEFAULT_3D + baseH, _tmHoles);
         if (topGeo) {
-          group.add(new THREE.Mesh(topGeo, new THREE.MeshStandardMaterial({
-            color: new THREE.Color(col), roughness: 0.90, metalness: 0.05, side: THREE.DoubleSide,
+          group.add(new THREE.Mesh(topGeo, materiauDeTrace3D('barriere', o.color, {
+            couleurAplat: col, plaquage: 'trace', roughness: 0.90, metalness: 0.05, side: THREE.DoubleSide,
           })));
         }
         const baseGeo = buildTracéWallGeometry3D(w.pts, baseH, baseH * 1.212, GROUND_Y_DEFAULT_3D, _tmHoles);
         if (baseGeo) {
-          group.add(new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({
-            color: new THREE.Color('#909090'), roughness: 0.93, metalness: 0.05, side: THREE.DoubleSide,
+          // La base, un ton plus sombre que le haut : la même matière, à l'ombre.
+          group.add(new THREE.Mesh(baseGeo, materiauDeTrace3D('barriere', o.color, {
+            couleurAplat: '#909090', ombre: 0.85, plaquage: 'trace', roughness: 0.93, metalness: 0.05, side: THREE.DoubleSide,
           })));
         }
         // Yellow stripe on the upper part
@@ -2797,8 +2810,8 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
         // Main mesh: the road's body.
         const roadGeo = buildTracéRouteGeometry3D(w.pts, w.width, GROUND_Y_DEFAULT_3D + 0.007);
         if (roadGeo) {
-          const roadMat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(col), roughness: isRoute ? 0.85 : 0.99, metalness: 0,
+          const roadMat = materiauDeTrace3D(isRoute ? 'route' : 'chemin', o.color, {
+            couleurAplat: col, roughness: isRoute ? 0.85 : 0.99, metalness: 0,
             side: THREE.DoubleSide,
             polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
           });

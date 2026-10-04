@@ -414,6 +414,47 @@ export const TRACÉ_DEFAULTS = {
   barriere: { color: '#A8A8A8', width: 5,  wallHeight: 0.55 },
 };
 
+/**
+ * Les TEXTURES des Traces (#437) : un grain cuit par `tools/bake-textures.mjs` (1024², comme le
+ * Sol), sa teinte NATURELLE relevée à la cuisson, et la taille réelle d'une tuile en mètres,
+ * largeur × hauteur. Le Terrain n'y figure pas : il emprunte les matières du Sol.
+ *
+ * ⚠️ LA COULEUR PAR DÉFAUT D'UNE TRACE AFFICHE LA TEXTURE AU NATUREL. Une Trace porte la couleur de
+ * TRACÉ_DEFAULTS tant qu'on ne l'a pas changée, et les Projets existants la portent aussi ; la
+ * reconnaître comme « pas de choix » rend la photo telle qu'elle est. Toute autre couleur la teinte
+ * (voir `couleurDeTrace3D`), selon la règle des Bulles : un rapport pour une image couleur, un
+ * écart pour un grain gris.
+ *
+ * ⚠️ LE MURET EST EN 2:1. Sa source fait 2048 × 1024, une période dans chaque sens ; le cuiseur
+ * l'étire au carré pour garder le carrelage, et c'est ici que la tuile rend ce rapport.
+ */
+export const TRACÉ_TEXTURES = {
+  route:    { grain: 'route',            teinte: '#555147', tuile: [4.0, 4.0] },
+  chemin:   { grain: 'chemin.couleur',   teinte: '#B39872', tuile: [3.0, 3.0] },
+  muret:    { grain: 'muret.couleur',    teinte: '#817459', tuile: [2.4, 1.2] },
+  cloture:  { grain: 'cloture.couleur',  teinte: '#C6A67C', tuile: [1.5, 1.5] },
+  haie:     { grain: 'haie',             teinte: '#40481D', tuile: [1.2, 1.2] },
+  barriere: { grain: 'barriere.couleur', teinte: '#BDBDBD', tuile: [2.0, 2.0] },
+};
+
+/** Les grains des Traces, pour le préchargement. Fonction PURE. */
+export function grainsDesTraces3D(){
+  return Object.values(TRACÉ_TEXTURES).map(t => t.grain);
+}
+
+/**
+ * La teinte à appliquer à la texture d'une Trace : la naturelle si sa couleur est absente ou celle
+ * de TRACÉ_DEFAULTS, la sienne sinon. `null` pour un type sans texture. Fonction PURE.
+ */
+export function couleurDeTrace3D(type, couleur){
+  const tex = TRACÉ_TEXTURES[type];
+  if (!tex) return null;
+  const defaut = TRACÉ_DEFAULTS[type] && TRACÉ_DEFAULTS[type].color;
+  const c = typeof couleur === 'string' ? couleur.trim() : '';
+  if (!c || (defaut && c.toLowerCase() === defaut.toLowerCase())) return tex.teinte;
+  return c;
+}
+
 // Emoji for each type, used in the sidebar.
 export const TRACÉ_EMOJI = {
   route: '🛣️', chemin: '🟤', terrain: '🌿',
