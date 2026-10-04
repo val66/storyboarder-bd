@@ -31,8 +31,26 @@
 /** Où vivent les panoramas, déposés par `tools/bake-ciel.mjs`. */
 export const DOSSIER_CIELS = 'assets/textures/';
 
-/** Les panoramas, par mode d'éclairage. Un mode absent d'ici reçoit le ciel calculé. */
-export const CIEL_PANORAMAS = { jour: 'ciel-jour.jpg', nuit: 'ciel-nuit.jpg' };
+/**
+ * Les panoramas, par mode d'éclairage. Un mode absent d'ici reçoit le ciel calculé.
+ *
+ * ⚠️ UN PANORAMA DÉPOSÉ N'EST QUE SA MOITIÉ HAUTE, en `largeur × largeur / 4`. Le bas est toujours
+ * caché par le Sol ; le stocker coûtait la moitié de la mémoire pour des pixels jamais vus.
+ *
+ * ⚠️ LA LARGEUR N'EST PAS LA MÊME POUR LES DEUX, ET C'EST LE CŒUR DE #436b. Vue à l'écran en 4K,
+ * chaque ciel était flou : une Case d'environ 2000 pixels couvre 66° de large, soit 750 pixels d'une
+ * image de 4096 qui fait le tour complet. Agrandie 2,7 fois.
+ *   - le JOUR passe à 8192 : 1 500 pixels pour 2 000, un agrandissement de 1,35 que des nuages aux
+ *     bords doux supportent. 16K aurait été net, mais 340 Mo de mémoire graphique et une texture
+ *     plus large que ce que bien des cartes acceptent ;
+ *   - la NUIT ne peut PAS être nette en photo, à aucune taille raisonnable : une étoile est un point.
+ *     Le panorama est donc réduit à 1024, où les étoiles se fondent en une lueur, celle de la Voie
+ *     lactée, et les étoiles du ciel calculé, nettes à toute taille, sont dessinées par-dessus.
+ */
+export const CIEL_PANORAMAS = {
+  jour: { fichier: 'ciel-jour.jpg', largeur: 8192, etoiles: 0 },
+  nuit: { fichier: 'ciel-nuit.jpg', largeur: 1024, etoiles: 1 },
+};
 
 /** Le panorama d'un mode, ou `null` pour le ciel calculé. Fonction PURE. */
 export function panoramaDuMode3D(mode){
@@ -70,10 +88,11 @@ export function etoilesDuCiel3D(intensite){
 
 /**
  * Le soleil d'un panorama, trouvé dans ses pixels, ou `null`. Fonction PURE.
- * `lum` est la luminance (0 à 255) d'une version réduite, rangée ligne par ligne depuis le haut.
+ * `lum` est la luminance (0 à 255) d'une version réduite de la MOITIÉ HAUTE déposée, rangée ligne
+ * par ligne depuis le zénith ; sa dernière ligne est l'horizon.
  *
  * ⚠️ UN SOLEIL EST UNE TACHE SATURÉE ET COMPACTE, et les deux conditions comptent. Relevé sur les
- * deux panoramas du dépôt, réduits à 512 × 256 : le jour a 44 pixels au-dessus de 97 % du maximum,
+ * deux premiers panoramas du dépôt, réduits à 512 de large : le jour a 44 pixels au-dessus de 97 % du maximum,
  * étalés sur 2 pixels ; la nuit en a UN, une étoile, à 127 sur 255. Un nuage blanc saturé serait
  * nombreux mais étalé : on refuse alors de deviner, et le panorama n'est pas tourné.
  *
@@ -101,8 +120,8 @@ export function soleilDuPanorama3D(lum, largeur, hauteur){
   if (etalementU > SOLEIL_ETALEMENT_MAX || etalementV > SOLEIL_ETALEMENT_MAX) return null;
   let u = Math.atan2(sy, sx) / (2 * Math.PI);
   if (u < 0) u += 1;
-  const v = 1 - (moyV + 0.5) / hauteur;
-  return { u, v, elevation: (v - 0.5) * 180 };
+  const elevation = (1 - (moyV + 0.5) / hauteur) * 90;
+  return { u, v: 0.5 + elevation / 180, elevation };
 }
 
 /**
@@ -170,11 +189,25 @@ float cielFbm( vec2 p ) {
   return s;
 }
 
+// Des étoiles PONCTUELLES, calculées : nettes à toute taille, ce qu'aucune photo n'est (#436b).
+vec3 cielEtoiles( vec3 d, float couv ) {
+  if ( uEtoiles <= 0.0 || d.y <= 0.0 ) return vec3( 0.0 );
+  vec2 g = d.xz / ( d.y + 1.0 ) * 220.0;
+  vec2 ci = floor( g );
+  vec2 o = vec2( cielHasard( ci + 1.3 ), cielHasard( ci + 9.1 ) );
+  float pt = smoothstep( 0.18, 0.0, length( fract( g ) - o ) ) * step( 0.93, cielHasard( ci + 7.0 ) );
+  float bord = smoothstep( 0.0, 0.25, d.y );
+  return vec3( 0.9, 0.95, 1.0 ) * pt * ( 1.0 - couv ) * bord * ( 0.4 + 0.6 * cielHasard( ci + 3.3 ) );
+}
+
 void main() {
   if ( uPanorama > 0.5 ) {
     // ⚠️ 1 − u : la SphereGeometry de three.js tourne dans le sens inverse de la convention
     // équirectangulaire. Sans ce retournement, le ciel serait vu en miroir.
-    gl_FragColor = vec4( texture2D( uCarte, vec2( 1.0 - vUv.x, vUv.y ) ).rgb, 1.0 );
+    // L'image ne porte que la moitié haute : v de 0,5 à 1 s'étale sur toute sa hauteur, et sous
+    // l'horizon on répète sa dernière ligne, que le Sol cache de toute façon.
+    vec3 p = texture2D( uCarte, vec2( 1.0 - vUv.x, max( vUv.y * 2.0 - 1.0, 0.0 ) ) ).rgb;
+    gl_FragColor = vec4( p + cielEtoiles( normalize( vDir ), 0.0 ) * uEtoiles, 1.0 );
     return;
   }
   vec3 d = normalize( vDir );
@@ -196,13 +229,7 @@ void main() {
     nuage += uSoleilCoul * 0.35 * pow( s, 8.0 );
     disque *= 1.0 - couv;
     c = mix( c, nuage, couv * 0.92 );
-    if ( uEtoiles > 0.0 ) {
-      vec2 g = d.xz / ( d.y + 1.0 ) * 220.0;
-      vec2 ci = floor( g );
-      vec2 o = vec2( cielHasard( ci + 1.3 ), cielHasard( ci + 9.1 ) );
-      float pt = smoothstep( 0.18, 0.0, length( fract( g ) - o ) ) * step( 0.93, cielHasard( ci + 7.0 ) );
-      c += vec3( 0.9, 0.95, 1.0 ) * pt * uEtoiles * ( 1.0 - couv ) * bord * ( 0.4 + 0.6 * cielHasard( ci + 3.3 ) );
-    }
+    c += cielEtoiles( d, couv ) * uEtoiles;
   }
   c += uSoleilCoul * disque * 1.5;
   gl_FragColor = vec4( c, 1.0 );
@@ -258,11 +285,11 @@ function chargerPanorama3D(nom, apres){
   const THREE = globalThis.THREE;
   if (typeof Image === 'undefined' || !THREE || !THREE.TextureLoader) { _panoramas[nom] = { etat: 'absent' }; return; }
   _panoramas[nom] = { etat: 'en-cours' };
-  new THREE.TextureLoader().load(DOSSIER_CIELS + CIEL_PANORAMAS[nom], (texture) => {
+  new THREE.TextureLoader().load(DOSSIER_CIELS + CIEL_PANORAMAS[nom].fichier, (texture) => {
     _panoramas[nom] = { etat: 'charge', texture, soleil: soleilDeLImage3D(texture.image) };
     if (typeof apres === 'function') apres();
   }, undefined, () => {
-    console.warn(`[ciel] introuvable : ${DOSSIER_CIELS}${CIEL_PANORAMAS[nom]}, le ciel calculé le remplace. `
+    console.warn(`[ciel] introuvable : ${DOSSIER_CIELS}${CIEL_PANORAMAS[nom].fichier}, le ciel calculé le remplace. `
       + 'Déposez le panorama avec : npm run bake-ciel');
     _panoramas[nom] = { etat: 'absent' };
     if (typeof apres === 'function') apres();
@@ -271,7 +298,7 @@ function chargerPanorama3D(nom, apres){
 
 function soleilDeLImage3D(image){
   try {
-    const l = 512, h = 256;
+    const l = 512, h = 128;
     const cv = document.createElement('canvas'); cv.width = l; cv.height = h;
     const ctx = cv.getContext('2d');
     ctx.drawImage(image, 0, 0, l, h);
@@ -295,6 +322,7 @@ export function poserCiel3D(scene, eclairage, apres){
   if (pano && pano.etat === 'charge') {
     u.uPanorama.value = 1;
     u.uCarte.value = pano.texture;
+    u.uEtoiles.value = CIEL_PANORAMAS[nom].etoiles;
     // Seul un panorama AVEC soleil se tourne : celui de nuit n'en a pas, il garde son orientation.
     sphere.rotation.y = lacetDuPanorama3D(pano.soleil, eclairage.soleil.direction);
   } else {

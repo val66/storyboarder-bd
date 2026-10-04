@@ -196,13 +196,23 @@ celui de la scène, pas changer sa hauteur ni sa couleur. Or Jour et Nuit sont d
 et seul Personnalisé déplace le soleil. La photo va donc là où elle est juste, le ciel calculé
 (`src/sky-3d.js`) là où rien d'autre ne peut suivre. Le ciel est un fond, pas une lumière.
 
-**Sourcer un panorama :** un HDRI de Poly Haven ou d'ambientCG, au format « JPG tonemappé », en
-4K. Un seul JPEG dans `assets/textures/sources/ciel-jour/` ou `ciel-nuit/`, puis
-`npm run bake-ciel`, qui vérifie et dépose `assets/textures/ciel-<mode>.jpg`.
+**Sourcer un panorama :** un HDRI de Poly Haven ou d'ambientCG, au format « JPG tonemappé ». Un
+seul JPEG dans `assets/textures/sources/ciel-jour/` ou `ciel-nuit/`, puis `npm run bake-ciel`, qui
+en garde la moitié haute (le Sol cache l'autre), la réduit et dépose `assets/textures/ciel-<mode>.jpg`.
 
-⚠️ **4K AU PLUS, 2K AU MOINS.** Décodée, une 4K pèse 45 Mo de mémoire graphique avec ses mipmaps,
-une 8K quatre fois plus. Et un champ de 36° ne reçoit qu'un dixième de l'image : 400 pixels en 4K
-pour toute la largeur d'une Case, 200 en 2K. L'outil refuse en dehors.
+⚠️ **J'AI D'ABORD LIVRÉ DU 4K, ET C'ÉTAIT FLOU À L'ÉCRAN (#436b).** Ma planche de comparaison était
+rendue à 420 pixels de large, une Case en fait 2 000. Elle couvre environ 66°, donc 750 pixels
+d'une 4K qui fait le tour complet : agrandie 2,7 fois. D'où deux traitements :
+- le JOUR en **8K** (source 8K ou 16K, déposé en 8192 × 2048) : agrandissement de 1,35, 85 Mo de
+  mémoire graphique. 16K aurait été net, mais 340 Mo et une texture trop large pour bien des cartes ;
+- la NUIT ne sera jamais nette en photo, une étoile est un point. Le panorama est réduit à 1024 et
+  ses étoiles EFFACÉES par une ouverture morphologique : il n'en reste que la lueur, la Voie
+  lactée. Les étoiles du ciel calculé, nettes à toute taille, sont dessinées par-dessus.
+
+⚠️ **UNE CASE NE MONTRE QUE LES 15 PREMIERS DEGRÉS AU-DESSUS DE L'HORIZON** dans un cadrage
+habituel. Le premier ciel de jour y était une brume grise, son bleu ne commençant qu'à 25° : la
+Case ne montrait que du gris. L'outil mesure la saturation de cette bande et prévient sous 35 ;
+cherchez un ciel aux nuages bas.
 
 ⚠️ **LE SOLEIL DU PANORAMA EST RETROUVÉ DANS SES PIXELS**, une tache saturée et compacte, et le
 panorama est tourné pour le poser dans la direction du soleil de la scène. Sa HAUTEUR ne se corrige

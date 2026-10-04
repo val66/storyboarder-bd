@@ -20,7 +20,10 @@ import {
   SOLEIL_PIXELS_MIN,
 } from '../src/sky-3d.js';
 import { resoudreEclairage3D, CLE_ACTUELLE, directionSoleil3D, PRESETS_LUMIERE } from '../src/lighting-3d.js';
-import { dimensionsJpeg, refusDuPanorama, sourceUnique, LARGEUR_MAX } from '../tools/bake-ciel.mjs';
+import {
+  refusDuPanorama, sourceUnique, decoupeDuPanorama, saturationDeLaBandeBasse, LARGEUR_SOURCE_MAX,
+  SATURATION_BANDE_MIN, ouvertureMorphologique, RAYON_OUVERTURE,
+} from '../tools/bake-ciel.mjs';
 
 const THREE = globalThis.THREE;
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -83,7 +86,8 @@ describe('Ciel : le ciel calculé', () => {
 });
 
 describe('Ciel : le soleil d’un panorama', () => {
-  const L = 512, H = 256;
+  // La MOITIÉ HAUTE réduite à 512 de large, comme la lit l'application : dernière ligne = horizon.
+  const L = 512, H = 128;
   const image = (taches, fond = 140) => {
     const lum = new Float32Array(L * H).fill(fond);
     for (const { x, y, r, v } of taches) {
@@ -97,12 +101,14 @@ describe('Ciel : le soleil d’un panorama', () => {
   };
 
   test('une tache saturée et compacte est un soleil, retrouvé à sa place', () => {
+    // Ligne 71,5 sur 128 depuis le zénith : 40° au-dessus de l'horizon.
     const s = soleilDuPanorama3D(image([{ x: 256, y: 71, r: 3, v: 255 }]), L, H);
     assert.ok(s, 'soleil non trouvé');
     assert.ok(Math.abs(s.u - 256.5 / L) < 0.002, `u ${s.u}`);
-    assert.ok(Math.abs(s.v - (1 - 71.5 / H)) < 0.002, `v ${s.v}`);
-    // Relevé sur le panorama de jour du dépôt : v = 0,72 environ, soit 40° de hauteur.
-    assert.ok(Math.abs(s.elevation - (s.v - 0.5) * 180) < 1e-9);
+    assert.ok(Math.abs(s.elevation - (1 - 71.5 / H) * 90) < 0.01, `élévation ${s.elevation}`);
+    assert.ok(Math.abs(s.elevation - 39.7) < 0.1);
+    // v est rendu dans la convention de la sphère ENTIÈRE, celle du lacet et de three.js.
+    assert.ok(Math.abs(s.v - (0.5 + s.elevation / 180)) < 1e-9);
   });
 
   test('⚠️ UN SOLEIL SUR LA COUTURE RESTE SUR LA COUTURE', () => {
@@ -179,7 +185,8 @@ describe('Ciel : la rotation du panorama, sur la VRAIE géométrie de la sphère
       assert.ok(Math.min(d, 1 - d) < 1e-6, `u au sommet ${i}`);
       assert.ok(Math.abs(uv.getY(i) - (Math.asin(Math.max(-1, Math.min(1, y))) / Math.PI + 0.5)) < 1e-6, `v au sommet ${i}`);
     }
-    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec2( 1.0 - vUv.x, vUv.y )'));
+    // Et l'image ne porte que la moitié haute : v de 0,5 à 1 couvre toute sa hauteur.
+    assert.ok(GLSL_CIEL_FRAGMENT.includes('vec2( 1.0 - vUv.x, max( vUv.y * 2.0 - 1.0, 0.0 ) )'));
   });
 
   test('sans soleil, le panorama garde son orientation', () => {
@@ -201,9 +208,24 @@ describe('Ciel : posé pour le rendu, retiré après', () => {
     assert.equal(sphere.parent, scene);
     assert.equal(sphere.material.uniforms.uPanorama.value, 1);
     assert.equal(sphere.material.uniforms.uCarte.value, texture);
+    assert.equal(sphere.material.uniforms.uEtoiles.value, 0, 'des étoiles sur le ciel de jour');
     assert.equal(sphere.rotation.y, lacetDuPanorama3D({ u: 0.4, v: 0.72 }, e.soleil.direction));
     retirerCiel3D(scene);
     assert.equal(sphere.parent, null, 'le ciel est resté dans la scène partagée');
+    _viderCiel3D();
+  });
+
+  test('⚠️ LA NUIT PHOTOGRAPHIÉE REÇOIT LES ÉTOILES CALCULÉES, nettes à toute taille', () => {
+    // Une étoile photographiée est un point : agrandie, elle devient une tache (#436b). Le panorama
+    // de nuit ne garde que sa lueur, et les points viennent du calcul.
+    _viderCiel3D();
+    _poserPanoramaPourTests3D('nuit', new THREE.Texture(), null);
+    const sphere = poserCiel3D(new THREE.Scene(), eclairage('nuit'));
+    assert.equal(sphere.material.uniforms.uPanorama.value, 1);
+    assert.equal(sphere.material.uniforms.uEtoiles.value, 1);
+    assert.equal(sphere.rotation.y, 0, 'sans soleil, pas de rotation');
+    assert.ok(/uPanorama > 0\.5[\s\S]*cielEtoiles\( normalize\( vDir \), 0\.0 \) \* uEtoiles[\s\S]*return;/.test(GLSL_CIEL_FRAGMENT),
+      'la branche du panorama n’ajoute pas les étoiles');
     _viderCiel3D();
   });
 
@@ -266,28 +288,82 @@ describe('Ciel : le fil jusqu’au rendu d’une Case', () => {
 });
 
 describe('Ciel : l’outil qui dépose les panoramas', () => {
-  const entete = (largeur, hauteur, marqueur = 0xC0) => Uint8Array.from([
-    0xFF, 0xD8,
-    0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00, // un APP0 réduit, à sauter
-    0xFF, 0xC4, 0x00, 0x04, 0x00, 0x00, // une table de Huffman : C4 n'est PAS un SOF
-    0xFF, marqueur, 0x00, 0x11, 0x08, hauteur >> 8, hauteur & 255, largeur >> 8, largeur & 255, 0x03,
-    0, 0, 0, 0, 0, 0, 0, 0, 0,
-  ]);
-
-  test('les dimensions se lisent dans le SOF, après les segments qui le précèdent', () => {
-    assert.deepEqual(dimensionsJpeg(entete(4096, 2048)), { largeur: 4096, hauteur: 2048 });
-    assert.deepEqual(dimensionsJpeg(entete(2048, 1024, 0xC2)), { largeur: 2048, hauteur: 1024 }, 'JPEG progressif');
-    assert.equal(dimensionsJpeg(Uint8Array.from([0x89, 0x50, 0x4E, 0x47])), null, 'un PNG n’est pas un JPEG');
+  test('⚠️ LE JOUR DEMANDE 8K, LA NUIT 1K, ET L’OUTIL REFUSE PLUS PETIT', () => {
+    // 4K agrandissait le jour 2,7 fois dans une Case de 2000 pixels (#436b). La nuit, elle, est
+    // VOLONTAIREMENT réduite : ses étoiles se fondent en lueur, les points viennent du calcul.
+    assert.equal(CIEL_PANORAMAS.jour.largeur, 8192);
+    assert.equal(CIEL_PANORAMAS.nuit.largeur, 1024);
+    assert.equal(refusDuPanorama({ largeur: 8192, hauteur: 4096 }, 8192), null);
+    assert.equal(refusDuPanorama({ largeur: 16384, hauteur: 8192 }, 8192), null);
+    assert.match(refusDuPanorama({ largeur: 4096, hauteur: 2048 }, 8192), /8K/);
+    assert.equal(refusDuPanorama({ largeur: 4096, hauteur: 2048 }, 1024), null);
+    assert.match(refusDuPanorama({ largeur: 32768, hauteur: 16384 }, 8192), /16K/);
+    assert.match(refusDuPanorama({ largeur: 8192, hauteur: 8192 }, 8192), /2:1/);
+    assert.ok(refusDuPanorama(null, 8192));
+    assert.equal(LARGEUR_SOURCE_MAX, 16384);
   });
 
-  test('⚠️ SEUL UN PANORAMA 2:1 ENTRE 2K ET 4K EST ACCEPTÉ', () => {
-    assert.equal(refusDuPanorama({ largeur: 4096, hauteur: 2048 }), null);
-    assert.equal(refusDuPanorama({ largeur: 2048, hauteur: 1024 }), null);
-    assert.match(refusDuPanorama({ largeur: 8192, hauteur: 4096 }), /4K/);
-    assert.match(refusDuPanorama({ largeur: 1024, hauteur: 512 }), /2K/);
-    assert.match(refusDuPanorama({ largeur: 4096, hauteur: 4096 }), /2:1/);
-    assert.ok(refusDuPanorama(null));
-    assert.equal(LARGEUR_MAX, 4096);
+  test('⚠️ ON NE GARDE QUE LA MOITIÉ HAUTE, en largeur × largeur / 4', () => {
+    const { rectangle, taille } = decoupeDuPanorama({ largeur: 16384, hauteur: 8192 }, 8192);
+    assert.deepEqual(rectangle, { x: 0, y: 0, width: 16384, height: 4096 });
+    assert.deepEqual(taille, { width: 8192, height: 2048 });
+    // Le rapport est celui d'une demi-sphère équirectangulaire : 360° sur 90°.
+    assert.equal(taille.width / taille.height, 360 / 90);
+  });
+
+  test('la saturation se mesure sur la seule bande qu’une Case montre, de 2 à 15°', () => {
+    // Une image grise partout sauf une bande bleue saturée de 30 à 60° : rien dans la bande basse.
+    const l = 64, h = 90; // une ligne par degré, la dernière à l'horizon
+    const bgra = new Uint8Array(l * h * 4);
+    for (let y = 0; y < h; y++) {
+      const elev = 90 - (y + 0.5);
+      const bleu = elev > 30 && elev < 60;
+      for (let x = 0; x < l; x++) {
+        const i = 4 * (y * l + x);
+        bgra[i] = bleu ? 220 : 150; bgra[i + 1] = bleu ? 140 : 150; bgra[i + 2] = bleu ? 60 : 150; bgra[i + 3] = 255;
+      }
+    }
+    assert.equal(saturationDeLaBandeBasse(bgra, l, h), 0);
+    // La même bande bleue posée de 3 à 14° : la mesure la voit, au-dessus du seuil.
+    for (let y = 0; y < h; y++) {
+      const elev = 90 - (y + 0.5), bleu = elev > 3 && elev < 14;
+      for (let x = 0; x < l; x++) { const i = 4 * (y * l + x); if (bleu) { bgra[i] = 220; bgra[i + 1] = 140; bgra[i + 2] = 60; } }
+    }
+    assert.ok(saturationDeLaBandeBasse(bgra, l, h) > SATURATION_BANDE_MIN);
+  });
+
+  test('⚠️ L’OUVERTURE EFFACE LES ÉTOILES ET GARDE LA LUEUR', () => {
+    const l = 40, h = 20, fond = 30;
+    const bgra = new Uint8Array(l * h * 4);
+    const pose = (x, y, v) => { const i = 4 * (y * l + x); bgra[i] = bgra[i + 1] = bgra[i + 2] = v; bgra[i + 3] = 255; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < l; x++) pose(x, y, fond);
+    pose(5, 5, 255); pose(6, 5, 255);                       // une étoile de deux pixels
+    for (let y = 8; y < 18; y++) for (let x = 15; x < 30; x++) pose(x, y, 90); // une lueur large
+    pose(0, 12, 255);                                        // une étoile SUR la couture
+    for (let x = 2; x < 14; x++) pose(x, 2, 255);            // une traînée fine, horizontale
+    const o = ouvertureMorphologique(bgra, l, h);
+    const lit = (x, y) => o[4 * (y * l + x)];
+    assert.equal(lit(5, 5), fond, 'l’étoile a survécu');
+    assert.equal(lit(0, 12), fond, 'l’étoile de la couture a survécu');
+    // Assez large pour passer le minimum horizontal : seul le VERTICAL l'efface. Les deux passes
+    // comptent, et le haut d'un panorama, près du zénith, est fait de ces traînées étirées.
+    assert.equal(lit(8, 2), fond, 'la traînée horizontale a survécu');
+    assert.equal(lit(22, 12), 90, 'la lueur a été effacée');
+    assert.equal(lit(15, 8), 90, 'la lueur a perdu ses bords');
+    assert.equal(o[3], 255, 'l’opacité doit rester pleine');
+    assert.equal(RAYON_OUVERTURE, 2);
+  });
+
+  test('le garde-fou : l’horizontale boucle, sans quoi la couture rognerait la lueur', () => {
+    // Une lueur de cinq pixels, exactement la taille du carré, à cheval sur la couture : bouclée,
+    // elle survit entière ; bornée aux bords, ses deux pixels de droite disparaîtraient.
+    const l = 16, h = 7;
+    const bgra = new Uint8Array(l * h * 4).fill(10);
+    const i = (x, y) => 4 * (y * l + x);
+    for (let y = 0; y < h; y++) for (const x of [l - 2, l - 1, 0, 1, 2]) bgra[i(x, y)] = 200;
+    const o = ouvertureMorphologique(bgra, l, h, 2);
+    for (const x of [l - 2, l - 1, 0, 1, 2]) assert.equal(o[i(x, 3)], 200, `x = ${x}`);
+    assert.equal(o[i(l - 3, 3)], 10);
   });
 
   test('un dossier doit contenir UN seul JPEG, et le dit sinon', () => {

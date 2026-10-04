@@ -192,13 +192,22 @@ raised, lowered or tinted. Day and Night are fixed moods, and only Custom moves 
 photograph therefore goes where it is right, the computed sky (`src/sky-3d.js`) where nothing else
 can follow. The sky is a background, not a light.
 
-**Sourcing a panorama:** an HDRI from Poly Haven or ambientCG, as a "tonemapped JPG", in 4K. A
-single JPEG in `assets/textures/sources/ciel-jour/` or `ciel-nuit/`, then `npm run bake-ciel`,
-which checks it and drops `assets/textures/ciel-<mode>.jpg`.
+**Sourcing a panorama:** an HDRI from Poly Haven or ambientCG, as a "tonemapped JPG". A single
+JPEG in `assets/textures/sources/ciel-jour/` or `ciel-nuit/`, then `npm run bake-ciel`, which keeps
+its upper half (the Ground hides the rest), resizes it and drops `assets/textures/ciel-<mode>.jpg`.
 
-⚠️ **4K AT MOST, 2K AT LEAST.** Decoded, a 4K image weighs 45 MB of GPU memory with its mipmaps,
-an 8K four times more. And a 36° field receives a tenth of the image: 400 pixels in 4K for the
-whole width of a Panel, 200 in 2K. The tool refuses outside that range.
+⚠️ **I FIRST SHIPPED 4K, AND IT WAS BLURRY ON SCREEN (#436b).** My comparison sheet was rendered
+420 pixels wide, a Panel is 2,000. It spans about 66°, so 750 pixels of a 4K image covering the
+full turn: magnified 2.7 times. Hence two treatments:
+- DAY in **8K** (8K or 16K source, dropped as 8192 × 2048): 1.35 magnification, 85 MB of GPU
+  memory. 16K would have been sharp, but 340 MB and a texture too wide for many cards;
+- NIGHT will never be sharp as a photograph, a star is a point. The panorama is reduced to 1024 and
+  its stars ERASED by a morphological opening: only the glow remains, the Milky Way. The computed
+  sky's stars, sharp at any size, are drawn on top.
+
+⚠️ **A PANEL ONLY SHOWS THE FIRST 15 DEGREES ABOVE THE HORIZON** in a usual framing. The first day
+sky was a grey haze there, its blue only starting at 25°: the Panel showed nothing but grey. The
+tool measures the saturation of that band and warns below 35; look for a sky with low clouds.
 
 ⚠️ **THE PANORAMA'S SUN IS FOUND IN ITS PIXELS**, a saturated, compact spot, and the panorama is
 rotated to put it in the direction of the scene's sun. Its HEIGHT cannot be corrected: pick a day
