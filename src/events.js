@@ -147,6 +147,9 @@ import {
 } from './draw.js';
 import { setI18nCallbacks, applyI18n } from './i18n.js';
 import {
+  menuGaucheOuvert, memoriserMenuGauche, sectionDroitePliee, memoriserSectionDroite, oublierAnciennesCles,
+} from './section-memory.js';
+import {
   setSidebarCallbacks, isSceneTopDownView, homeOwningPanel, exitCameraMode, elementsInPanel,
   getRoomConnectedComponents, updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
   refreshSceneTopDownBtn, closeRightPanelMenu, afficherManuelLateral, masquerManuelLateral,
@@ -505,13 +508,16 @@ function undo(){
 }
 
 // ---------- DROPDOWNS ----------
+// #441 : l'état ouvert ou fermé de chaque menu se mémorise, et survit à la fermeture de l'application.
 function setupDropdown(triggerId, panelId){
   const trigger = document.getElementById(triggerId);
   const panel = document.getElementById(panelId);
+  panel.classList.toggle('open', menuGaucheOuvert(localStorage, panelId, panel.classList.contains('open')));
   trigger.classList.toggle('open', panel.classList.contains('open'));
   trigger.onclick = () => {
     panel.classList.toggle('open');
     trigger.classList.toggle('open', panel.classList.contains('open'));
+    memoriserMenuGauche(localStorage, panelId, panel.classList.contains('open'));
   };
 }
 setupDropdown('treeTrigger', 'treePanel');
@@ -8521,65 +8527,28 @@ if (window.document) {
 }
 
 // ── Collapsible sections of the right-hand menu ────────────────────────────────────────────────────
-// The collapsed state is saved in localStorage under the key:
-//   'sc:{entityId}:{sectionId}'
-// entityId = ID of the selected Panel / Bubble / Page (or 'help' for the Manual).
-// This way each entity keeps its own collapse preferences, independent of the others.
-
-function scEntityId() {
-  if (typeof S.selectedId !== 'undefined' && S.selectedId) {
-    // If the selected element is a Panel's Element (perso / objet3d / bulle / tracé),
-    // use the owning panel's ID: the right-hand menu always shows the Panel's menu in this
-    // context, so the collapsed state must stay the Panel's, not the Element's.
-    // Without this lookup, clicking an Element in the list changed S.selectedId → the Element had
-    // no localStorage entry → restoreSectionCollapseStates forced everything to expanded.
-    try {
-      const page = currentPage();
-      const sel = page && page.objects.find(o => o.id === S.selectedId);
-      if (sel && (sel.type === 'perso' || sel.type === 'objet3d' || sel.type === 'bulle' || sel.type === 'tracé')) {
-        const ownerId = sel.homePanelId || sel.panelId;
-        const owner = ownerId && page.objects.find(o => o.id === ownerId && o.type === 'panel');
-        if (owner) return owner.id;
-      }
-    } catch(e) {}
-    return S.selectedId;
-  }
-  try {
-    const p = currentPageData();
-    if (p && p.id) return 'page:' + p.id;
-  } catch(e) {}
-  return '__global__';
-}
-
-// Restores the collapsed state of all visible sections of the right-hand panel for the current
-// entity. Called at the end of updateSidePanel() via the wrapper below.
+// #441 : chaque section du panneau de droite se souvient d'elle-même, quelle que soit l'entité
+// sélectionnée, et d'une séance à l'autre (cf. src/section-memory.js, qui dit pourquoi l'état
+// n'est plus rangé par Case, Bulle ou Page). Appelée à la fin de chaque updateSidePanel().
 function restoreSectionCollapseStates() {
-  const entityId = scEntityId();
   document.querySelectorAll('#rightPanel .side-section[id]').forEach(sec => {
     // Sections hidden by updateSidePanel (display:none): no need to restore.
     if (sec.style.display === 'none') return;
-    const saved = localStorage.getItem('sc:' + entityId + ':' + sec.id);
-    // saved==='1' → collapsed, saved==='0' or absent → expanded (cleanly resets on entity change:
-    // a new Panel always starts expanded by default).
-    sec.classList.toggle('collapsed', saved === '1');
+    sec.classList.toggle('collapsed', sectionDroitePliee(localStorage, sec.id));
   });
 }
 
 // Scoped to #rightPanel only (the left-hand menu also uses .side-section, without a direct h2).
-// FIX (pre-existing bug, regression from the B.12 extraction): this block used to try reassigning
-// `updateSidePanel` (`updateSidePanel = function(){...}`) to hook restoreSectionCollapseStates onto
-// it, but updateSidePanel is now an ES import from sidebar.js (a read-only binding), so this
-// reassignment threw a TypeError on every page load. restoreSectionCollapseStates is now injected
-// into sidebar.js via setSidebarCallbacks (cf. the final wiring block further below):
-// updateSidePanel() calls it itself internally, no more need to "graft" it on from here.
+// restoreSectionCollapseStates is injected into sidebar.js via setSidebarCallbacks (cf. the final
+// wiring block further below): updateSidePanel() calls it itself internally.
 (function initRightPanelCollapse() {
+  oublierAnciennesCles(localStorage);
   document.querySelectorAll('#rightPanel .side-section > h2').forEach(h2 => {
     h2.addEventListener('click', () => {
       const sec = h2.closest('.side-section');
       sec.classList.toggle('collapsed');
       if (!sec.id) return; // no persistence without an ID
-      localStorage.setItem('sc:' + scEntityId() + ':' + sec.id,
-        sec.classList.contains('collapsed') ? '1' : '0');
+      memoriserSectionDroite(localStorage, sec.id, sec.classList.contains('collapsed'));
     });
   });
 })();
