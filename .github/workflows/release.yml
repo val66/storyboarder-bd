@@ -94,7 +94,7 @@ jobs:
         # remplace les espaces des noms téléversés, et `latest.yml` ne nommerait plus le bon fichier.
         shell: bash
         run: gh release upload "${{ github.ref_name }}"
-             dist/Storyboard-BD-Setup-*.exe
-             dist/Storyboard-BD-Setup-*.exe.blockmap
+             dist/Storyboarder-BD-Setup-*.exe
+             dist/Storyboarder-BD-Setup-*.exe.blockmap
              dist/latest.yml
              --clobber

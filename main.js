@@ -26,6 +26,32 @@ const ancienDefaultProjectsDir = dossiersProjets.ancienDossierParDefaut({
   packaged: app.isPackaged, exeDir: path.dirname(app.getPath('exe')),
 });
 
+// #448 : l'application s'appelait « Storyboard BD ». Ses réglages vivaient dans
+// %APPDATA%/Storyboard BD ; sous le nouveau nom, le dossier est neuf. Au premier lancement renommé,
+// on recopie ce qui compte (projects-dir.js, DONNEES_A_RECOPIER), AVANT de lire le moindre réglage.
+// En développement, le dossier vient du champ `name` (storyboard-bd), qui ne change pas : rien à faire.
+function recupererDonneesAncienNom() {
+  if (!app.isPackaged) return;
+  try {
+    const appData = app.getPath('appData');
+    const nouveau = app.getPath('userData');
+    const source = dossiersProjets.donneesARecuperer({
+      appData,
+      anciensExistants: dossiersProjets.ANCIENS_NOMS.map(n => path.join(appData, n)).filter(d => fs.existsSync(d)),
+      nouveauARéglages: fs.existsSync(path.join(nouveau, 'settings.json')),
+    });
+    if (!source) return;
+    fs.mkdirSync(nouveau, { recursive: true });
+    for (const element of dossiersProjets.DONNEES_A_RECOPIER) {
+      const de = path.join(source, element);
+      if (fs.existsSync(de)) fs.cpSync(de, path.join(nouveau, element), { recursive: true, errorOnExist: false });
+    }
+  } catch (err) {
+    console.error('Récupération des réglages de l\'ancien nom impossible :', err);
+  }
+}
+recupererDonneesAncienNom();
+
 // Mémorise le chemin du dernier fichier de Projet ouvert/enregistré, ainsi que les réglages de
 // l'Application (cf. modale Configuration dans index.html : délai de sauvegarde automatique, dossier
 // des Projets personnalisé, thème) dans le dossier de données utilisateur de l'app, sur demande
@@ -54,22 +80,31 @@ function dossierNonVide(d) {
 // déjà ce déménagement avant de désinstaller l'ancienne version (build/installer.nsh) ; ceci couvre
 // ce qu'il n'aurait pas pu faire. Une panne ne doit jamais empêcher de démarrer : on journalise.
 function migrerAncienDossierProjets() {
+  // Deux anciens emplacements, dans cet ordre : à côté du programme (#447), puis Documents sous
+  // l'ancien nom de l'application (#448). Le second arrivé trouve la place prise s'il y a déjà
+  // quelque chose : il va dans « Projets (anciens) », rien n'est écrasé.
+  const anciens = [ancienDefaultProjectsDir];
+  if (app.isPackaged) anciens.push(...dossiersProjets.anciensDossiersDocuments(app.getPath('documents')));
+  anciens.filter(Boolean).forEach(migrerUnAncienDossier);
+}
+
+function migrerUnAncienDossier(ancien) {
   try {
     const reglages = readSettings();
     const plan = dossiersProjets.planMigration({
-      ancien: ancienDefaultProjectsDir, nouveau: defaultProjectsDir,
-      ancienContenu: !!ancienDefaultProjectsDir && dossierNonVide(ancienDefaultProjectsDir),
+      ancien, nouveau: defaultProjectsDir,
+      ancienContenu: dossierNonVide(ancien),
       nouveauContenu: dossierNonVide(defaultProjectsDir), reglages,
     });
     if (plan.deplacer) {
       fs.mkdirSync(path.dirname(plan.cible), { recursive: true });
       try {
-        fs.renameSync(ancienDefaultProjectsDir, plan.cible);
+        fs.renameSync(ancien, plan.cible);
       } catch (err) {
         // Autre volume, ou fichier verrouillé : on copie, et l'on n'efface l'original qu'une fois
         // la copie faite. Un échec de copie laisse l'original en place.
-        fs.cpSync(ancienDefaultProjectsDir, plan.cible, { recursive: true, errorOnExist: false });
-        fs.rmSync(ancienDefaultProjectsDir, { recursive: true, force: true });
+        fs.cpSync(ancien, plan.cible, { recursive: true, errorOnExist: false });
+        fs.rmSync(ancien, { recursive: true, force: true });
       }
     }
     const modifs = Object.keys(plan.reglages);
@@ -205,7 +240,7 @@ ipcMain.handle('project:saveAs', async (event, json, suggestedName) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
     defaultPath: path.join(getProjectsDir(), suggestedName || 'Projet.json'),
-    filters: [{ name: 'Projet Storyboard BD', extensions: ['json'] }],
+    filters: [{ name: 'Projet Storyboarder BD', extensions: ['json'] }],
   });
   if (canceled || !filePath) return { canceled: true };
   await fs.promises.writeFile(filePath, json, 'utf-8');
@@ -269,7 +304,7 @@ ipcMain.handle('project:open', async (event) => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
     defaultPath: getProjectsDir(),
     properties: ['openFile'],
-    filters: [{ name: 'Projet Storyboard BD', extensions: ['json'] }],
+    filters: [{ name: 'Projet Storyboarder BD', extensions: ['json'] }],
   });
   if (canceled || !filePaths || !filePaths.length) return { canceled: true };
   try {

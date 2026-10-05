@@ -1,10 +1,10 @@
 {
   "name": "storyboard-bd",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "engines": {
     "node": ">=22"
   },
-  "description": "Storyboard BD — Découpage de planches BD",
+  "description": "Storyboarder BD — Découpage de planches BD",
   "main": "main.js",
   "author": "Valentin",
   "license": "UNLICENSED",
@@ -35,7 +35,7 @@
   },
   "build": {
     "appId": "com.valentin.storyboardbd",
-    "productName": "Storyboard BD",
+    "productName": "Storyboarder BD",
     "files": [
       "main.js",
       "preload.js",
@@ -70,8 +70,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Storyboard BD",
-      "artifactName": "Storyboard-BD-Setup-${version}.${ext}"
+      "shortcutName": "Storyboarder BD",
+      "artifactName": "Storyboarder-BD-Setup-${version}.${ext}"
     },
     "electronFuses": {
       "runAsNode": false,

@@ -1,4 +1,4 @@
-# Textures bundled with Storyboard BD
+# Textures bundled with Storyboarder BD
 
 Every texture in this folder is BAKED by `tools/bake-textures.mjs` from a set of PBR maps
 (colour, height, OpenGL normal) downloaded from one of two banks. Both publish every asset

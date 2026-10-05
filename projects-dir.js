@@ -101,6 +101,47 @@ function planMigration({ ancien, nouveau, ancienContenu, nouveauContenu, reglage
   return plan;
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LE RENOMMAGE (#448) : « Storyboard BD » devient « Storyboarder BD »
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *
+ * Le nom du produit nomme deux dossiers de l'utilisateur : ses DONNÉES (%APPDATA%/<nom> : réglages,
+ * attestation des mises à jour, mémoire des menus) et ses PROJETS (Documents/<nom>/Projets, #447).
+ * Changer de nom en crée deux neufs, vides : sans migration, l'application renommée oublierait tout.
+ * L'identifiant `appId` ne change PAS : Windows et la chaîne de mise à jour reconnaissent la même
+ * application.
+ */
+const ANCIENS_NOMS = ['Storyboard BD'];
+
+/**
+ * Ce qu'on recopie des anciennes données. Pas le dossier entier : il contient aussi les caches de
+ * Chromium, lourds, inutiles, et parfois verrouillés. `Local Storage` porte la mémoire des menus
+ * (#441) et les filtres ; `maj` l'attestation gardée (#442), sans laquelle le premier lancement
+ * renommé exigerait une connexion.
+ */
+const DONNEES_A_RECOPIER = ['settings.json', 'maj', 'Local Storage'];
+
+/**
+ * Faut-il recopier les données d'un ancien nom ? Seulement si le nouveau dossier n'a pas encore de
+ * réglages (premier lancement sous le nouveau nom) : ne jamais écraser ce qui a été vécu depuis.
+ * Rend le premier ancien dossier qui existe, ou null.
+ */
+function donneesARecuperer({ appData, anciensExistants, nouveauARéglages }){
+  if (nouveauARéglages) return null;
+  for (const nom of ANCIENS_NOMS) {
+    const d = sys(appData).join(appData, nom);
+    if (anciensExistants.includes(d)) return d;
+  }
+  return null;
+}
+
+/** Les anciens dossiers de Projets sous Documents, un par ancien nom. */
+function anciensDossiersDocuments(documents){
+  return ANCIENS_NOMS.map(nom => sys(documents).join(documents, nom, 'Projets'));
+}
+
 module.exports = {
+  ANCIENS_NOMS, DONNEES_A_RECOPIER, donneesARecuperer, anciensDossiersDocuments,
   DOSSIER_RECUPERE, dossierParDefaut, ancienDossierParDefaut, dansLeDossier, relocaliser, planMigration,
 };

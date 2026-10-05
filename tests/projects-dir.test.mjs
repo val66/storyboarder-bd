@@ -12,16 +12,16 @@ import { readFileSync } from 'node:fs';
 import dossiers from '../projects-dir.js';
 
 const {
-  DOSSIER_RECUPERE, dossierParDefaut, ancienDossierParDefaut, dansLeDossier, relocaliser, planMigration,
+  ANCIENS_NOMS, DONNEES_A_RECOPIER, donneesARecuperer, anciensDossiersDocuments, DOSSIER_RECUPERE, dossierParDefaut, ancienDossierParDefaut, dansLeDossier, relocaliser, planMigration,
 } = dossiers;
 const lire = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 
 const ANCIEN = 'C:\\Users\\v\\AppData\\Local\\Programs\\storyboard-bd\\Projets';
-const NOUVEAU = 'C:\\Users\\v\\Documents\\Storyboard BD\\Projets';
+const NOUVEAU = 'C:\\Users\\v\\Documents\\Storyboarder BD\\Projets';
 
 describe('où vivent les Projets', () => {
   test('installée : dans Documents, au nom de l\'application', () => {
-    assert.equal(dossierParDefaut({ packaged: true, documents: 'C:\\Users\\v\\Documents', nomApp: 'Storyboard BD', appDir: 'x' }), NOUVEAU);
+    assert.equal(dossierParDefaut({ packaged: true, documents: 'C:\\Users\\v\\Documents', nomApp: 'Storyboarder BD', appDir: 'x' }), NOUVEAU);
   });
   test('en développement : le dossier du dépôt, comme avant', () => {
     assert.equal(dossierParDefaut({ packaged: false, documents: 'C:\\Users\\v\\Documents', nomApp: 'X', appDir: 'C:\\WebProjects\\Storyboarder' }),
@@ -71,7 +71,7 @@ describe('le plan du démarrage', () => {
   test('nouveau déjà occupé : rien n\'est écrasé, l\'ancien va dans « Projets (anciens) »', () => {
     const p = planMigration({ ancien: ANCIEN, nouveau: NOUVEAU, ancienContenu: true, nouveauContenu: true,
       reglages: { projectsDir: ANCIEN, lastFilePath: ANCIEN + '\\a.json' } });
-    const cible = 'C:\\Users\\v\\Documents\\Storyboard BD\\' + DOSSIER_RECUPERE;
+    const cible = 'C:\\Users\\v\\Documents\\Storyboarder BD\\' + DOSSIER_RECUPERE;
     assert.equal(p.cible, cible);
     assert.deepEqual(p.reglages, { projectsDir: cible, lastFilePath: cible + '\\a.json' });
   });
@@ -89,6 +89,40 @@ describe('le plan du démarrage', () => {
     const p = planMigration({ ancien: ANCIEN, nouveau: NOUVEAU, ancienContenu: false, nouveauContenu: false,
       reglages: { projectsDir: 'C:\\WebProjects\\Storyboarder\\Projets', lastFilePath: 'C:\\WebProjects\\Storyboarder\\Projets\\a.json' } });
     assert.deepEqual(p.reglages, {});
+  });
+});
+
+describe('le renommage (#448)', () => {
+  const APPDATA = 'C:\\Users\\v\\AppData\\Roaming';
+  const ANCIEN_APPDATA = APPDATA + '\\Storyboard BD';
+  test('l\'ancien nom est connu, et l\'on ne recopie que ce qui compte', () => {
+    assert.deepEqual(ANCIENS_NOMS, ['Storyboard BD']);
+    assert.deepEqual(DONNEES_A_RECOPIER, ['settings.json', 'maj', 'Local Storage']);
+  });
+  test('premier lancement renommé : on récupère les anciennes données', () => {
+    assert.equal(donneesARecuperer({ appData: APPDATA, anciensExistants: [ANCIEN_APPDATA], nouveauARéglages: false }), ANCIEN_APPDATA);
+  });
+  test('jamais par-dessus des réglages déjà vécus sous le nouveau nom', () => {
+    assert.equal(donneesARecuperer({ appData: APPDATA, anciensExistants: [ANCIEN_APPDATA], nouveauARéglages: true }), null);
+  });
+  test('rien à récupérer si l\'ancien dossier n\'existe pas', () => {
+    assert.equal(donneesARecuperer({ appData: APPDATA, anciensExistants: [], nouveauARéglages: false }), null);
+  });
+  test('les anciens Projets sous Documents', () => {
+    assert.deepEqual(anciensDossiersDocuments('C:\\Users\\v\\Documents'), ['C:\\Users\\v\\Documents\\Storyboard BD\\Projets']);
+  });
+  test('main.js : les données sont récupérées AVANT la première lecture des réglages', () => {
+    const main = lire('main.js');
+    assert.ok(main.indexOf('recupererDonneesAncienNom();') < main.indexOf("const settingsFilePath = path.join(app.getPath('userData')"));
+    assert.match(main, /if \(!app\.isPackaged\) return;\n  try \{\n    const appData/);
+    assert.match(main, /anciens\.push\(\.\.\.dossiersProjets\.anciensDossiersDocuments\(app\.getPath\('documents'\)\)\)/);
+  });
+  test('le nom du produit a changé, son identifiant non', () => {
+    const pkg = JSON.parse(lire('package.json'));
+    assert.equal(pkg.build.productName, 'Storyboarder BD');
+    assert.equal(pkg.build.appId, 'com.valentin.storyboardbd');
+    assert.equal(pkg.name, 'storyboard-bd', 'le dossier de développement en dépend');
+    assert.equal(pkg.productName, undefined, 'un productName à la racine renommerait aussi le dossier de développement');
   });
 });
 

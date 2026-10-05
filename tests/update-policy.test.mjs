@@ -166,17 +166,17 @@ describe('latest.yml', () => {
   const YML = [
     'version: 1.9.0',
     'files:',
-    '  - url: Storyboard-BD-Setup-1.9.0.exe',
+    '  - url: Storyboarder-BD-Setup-1.9.0.exe',
     '    sha512: AAA==',
     '    size: 130180869',
-    'path: Storyboard-BD-Setup-1.9.0.exe',
+    'path: Storyboarder-BD-Setup-1.9.0.exe',
     'sha512: BBB==',
     "releaseDate: '2026-10-05T09:25:15.283Z'",
   ].join('\n');
   test('lu tel qu\'electron-builder l\'écrit', () => {
     assert.deepEqual(lireLatestYml(YML),
-      { version: '1.9.0', fichier: 'Storyboard-BD-Setup-1.9.0.exe', sha512: 'BBB==', taille: 130180869 });
-    assert.deepEqual(lireLatestYml(YML.replace(/\n/g, '\r\n')).fichier, 'Storyboard-BD-Setup-1.9.0.exe');
+      { version: '1.9.0', fichier: 'Storyboarder-BD-Setup-1.9.0.exe', sha512: 'BBB==', taille: 130180869 });
+    assert.deepEqual(lireLatestYml(YML.replace(/\n/g, '\r\n')).fichier, 'Storyboarder-BD-Setup-1.9.0.exe');
   });
   test('incomplet ou douteux : null', () => {
     assert.equal(lireLatestYml(null), null);
@@ -185,15 +185,15 @@ describe('latest.yml', () => {
     assert.equal(lireLatestYml(YML.replace(/^sha512:.*$/m, '')), null);
     assert.equal(lireLatestYml(YML.replace('size: 130180869', 'size: 0')), null);
     assert.equal(lireLatestYml(YML.replace(/^path:.*$/m, 'path: ../../x.exe')), null);
-    assert.equal(lireLatestYml(YML.replace(/^path:.*$/m, 'path: Storyboard BD Setup 1.9.0.exe')), null);
+    assert.equal(lireLatestYml(YML.replace(/^path:.*$/m, 'path: Storyboarder BD Setup 1.9.0.exe')), null);
     assert.equal(lireLatestYml(YML.replace(/^path:.*$/m, 'path: script.bat')), null);
   });
 });
 
 describe('le reste', () => {
   test('l\'adresse de l\'installeur', () => {
-    assert.equal(urlInstalleur('1.9.0', 'Storyboard-BD-Setup-1.9.0.exe'),
-      'https://github.com/val66/storyboarder-bd/releases/download/v1.9.0/Storyboard-BD-Setup-1.9.0.exe');
+    assert.equal(urlInstalleur('1.9.0', 'Storyboarder-BD-Setup-1.9.0.exe'),
+      'https://github.com/val66/storyboarder-bd/releases/download/v1.9.0/Storyboarder-BD-Setup-1.9.0.exe');
     assert.equal(urlInstalleur('v1.9.0', 'a.exe'), 'https://github.com/val66/storyboarder-bd/releases/download/v1.9.0/a.exe');
   });
   test('la taille lisible', () => {

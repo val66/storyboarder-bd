@@ -169,9 +169,9 @@ describe('la publication', () => {
   const RELEASE = sansCommentaires(lire('.github/workflows/release.yml'));
   const ATTESTATION = sansCommentaires(lire('.github/workflows/attestation.yml'));
   test('l\'installeur porte un nom sans espace, celui que la release téléverse', () => {
-    assert.equal(PKG.build.nsis.artifactName, 'Storyboard-BD-Setup-${version}.${ext}');
+    assert.equal(PKG.build.nsis.artifactName, 'Storyboarder-BD-Setup-${version}.${ext}');
     assert.match(RELEASE, /npx electron-builder --win --publish never/);
-    for (const f of ['dist/Storyboard-BD-Setup-\\*\\.exe', 'dist/Storyboard-BD-Setup-\\*\\.exe\\.blockmap', 'dist/latest\\.yml']) {
+    for (const f of ['dist/Storyboarder-BD-Setup-\\*\\.exe', 'dist/Storyboarder-BD-Setup-\\*\\.exe\\.blockmap', 'dist/latest\\.yml']) {
       assert.match(RELEASE, new RegExp(f));
     }
     assert.match(RELEASE, /needs: publier/);

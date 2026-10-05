@@ -11,7 +11,7 @@ Models and images are not stored next to the Project file, but in the `Modeles` 
 folders of the **Projects folder** set in Settings. That folder differs from one launch to another:
 
 - with `npm start`, it is `Projets` at the root of the repository;
-- once installed, it is `Documents\Storyboard BD\Projets` (#447), and the installed version has its own
+- once installed, it is `Documents\Storyboarder BD\Projets` (#447), and the installed version has its own
   settings.
 
 A Project opened "from the other side" therefore showed up riddled with "Image not found" and

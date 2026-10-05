@@ -843,7 +843,7 @@ export async function saveProjectFlow(){
   try {
     const handle = await window.showSaveFilePicker({
       suggestedName: `${S.projectName || 'projet'}.json`,
-      types: [{ description: 'Projet Storyboard BD', accept: { 'application/json': ['.json'] } }],
+      types: [{ description: 'Projet Storyboarder BD', accept: { 'application/json': ['.json'] } }],
     });
     S.projectFileHandle = handle;
     applyProjectNameFromFileName(handle.name);
@@ -905,7 +905,7 @@ export async function loadExistingProjectFlow(){
   if (S.projectDirty && !await confirmAction(tr('The current project has unsaved changes. Continue without saving?', 'Le Projet actuel contient des modifications non enregistrées. Continuer sans les enregistrer ?'))) return;
   try {
     const [handle] = await window.showOpenFilePicker({
-      types: [{ description: 'Projet Storyboard BD', accept: { 'application/json': ['.json'] } }],
+      types: [{ description: 'Projet Storyboarder BD', accept: { 'application/json': ['.json'] } }],
     });
     const file = await handle.getFile();
     const text = await file.text();

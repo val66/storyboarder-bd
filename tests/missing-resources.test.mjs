@@ -77,12 +77,12 @@ describe('chemins', () => {
 describe('le contenu de la modale', () => {
   const manquantes = { modeles: ['a.glb', 'b.glb'], images: ['x.png'] };
   test('combien, où l\'on a cherché, et comment corriger', () => {
-    const c = contenuRessources({ manquantes, dossierProjets: 'C:\\Programmes\\Storyboard BD\\Projets', cheminProjet: null, t: fr });
+    const c = contenuRessources({ manquantes, dossierProjets: 'C:\\Programmes\\Storyboarder BD\\Projets', cheminProjet: null, t: fr });
     assert.equal(c.titre, 'Ressources introuvables');
     assert.match(c.intro, /2 modèle\(s\) 3D et 1 image\(s\)/);
     assert.deepEqual(c.cherche, [
-      { libelle: 'Modèles', chemin: 'C:\\Programmes\\Storyboard BD\\Projets\\Modeles' },
-      { libelle: 'Images', chemin: 'C:\\Programmes\\Storyboard BD\\Projets\\Images' },
+      { libelle: 'Modèles', chemin: 'C:\\Programmes\\Storyboarder BD\\Projets\\Modeles' },
+      { libelle: 'Images', chemin: 'C:\\Programmes\\Storyboarder BD\\Projets\\Images' },
     ]);
     assert.deepEqual(c.manquants.map(m => m.noms), [['a.glb', 'b.glb'], ['x.png']]);
     assert.equal(c.correctifs.length, 2);

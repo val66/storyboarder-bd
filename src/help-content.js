@@ -40,7 +40,7 @@ export const HELP_MANUAL_EN = [
     '"Delete project" erases its .json file from disk, FOR GOOD: there is no bin and no undo. You must type DELETE in capitals for the button to become active. Your imported models and their mappings are shared by every project and are never touched.',
     'Once a .json file has been chosen, the Project is saved automatically every minute if it has been modified.',
     'If there are unsaved changes, a confirmation is shown when closing the application.',
-    'Loading, saving and autosaving require the Storyboard BD application (launched via its shortcut or executable); they do not work if index.html is opened directly in a regular browser.',
+    'Loading, saving and autosaving require the Storyboarder BD application (launched via its shortcut or executable); they do not work if index.html is opened directly in a regular browser.',
     'The application reopens at the size and position where you left it, maximised if it was maximised. If the screen it was sitting on is no longer connected, it reopens at its default size.',
     'Everything the application displays is bundled with it, fonts included: a page exported as PNG looks exactly the same online and offline.',
     'Settings offer a dark and a light theme, an "Increased contrast" option that combines with either, and four interface sizes. None of it touches your Pages, which keep their own look and their own zoom.',
@@ -52,7 +52,7 @@ export const HELP_MANUAL_EN = [
     'The application works offline for up to 14 days in a row. Beyond that, and on the very first launch, it asks for a connection to check that no required update is waiting. Your Projects are never affected.',
   ]},
   { id: 'ressources', title: 'Missing files', paragraphs: [
-    'Imported 3D models and panel images are not stored inside the Project file, but in the Modeles and Images folders of the Projects folder chosen in Settings. By default, that folder is Documents\\Storyboard BD\\Projets, out of reach of updates.',
+    'Imported 3D models and panel images are not stored inside the Project file, but in the Modeles and Images folders of the Projects folder chosen in Settings. By default, that folder is Documents\\Storyboarder BD\\Projets, out of reach of updates.',
     'If an opened Project uses files missing from those folders, a window says so: how many, where the application looked, and how to fix it. Most often, choosing the right Projects folder in Settings is enough: the files come back right away.',
   ]},
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
@@ -255,7 +255,7 @@ export const HELP_MANUAL_FR = [
     '« Supprimer le projet » efface son fichier .json du disque, DÉFINITIVEMENT : ni corbeille ni annulation. Écrivez SUPPRIMER en majuscules pour activer le bouton. Vos modèles importés et leurs correspondances, partagés par tous vos Projets, ne sont jamais touchés.',
     'Une fois un fichier .json choisi, le Projet est sauvegardé automatiquement chaque minute s\'il a été modifié.',
     "Si des modifications n'ont pas été enregistrées, une confirmation s'affiche à la fermeture de l'application.",
-    "Le chargement, l'enregistrement et la sauvegarde automatique nécessitent l'application Storyboard BD : ils ne fonctionnent pas si index.html est ouvert dans un navigateur.",
+    "Le chargement, l'enregistrement et la sauvegarde automatique nécessitent l'application Storyboarder BD : ils ne fonctionnent pas si index.html est ouvert dans un navigateur.",
     "L'application rouvre à la taille et à la position où vous l'avez laissée, en plein écran si elle y était. Si l'écran qu'elle occupait n'est plus branché, elle rouvre à sa taille par défaut.",
     "Tout ce que l'application affiche est embarqué avec elle, polices comprises : une Planche exportée a le même aspect en ligne et hors ligne.",
     "La Configuration propose un thème sombre et un clair, une option « Contraste renforcé » qui se combine aux deux, et quatre tailles d'interface. Rien de tout cela ne touche vos Planches, qui gardent leur aspect et leur propre zoom.",
@@ -267,7 +267,7 @@ export const HELP_MANUAL_FR = [
     "L'application fonctionne hors ligne jusqu'à 14 jours d'affilée. Au-delà, et au tout premier lancement, elle demande une connexion pour vérifier qu'aucune mise à jour obligatoire n'attend. Vos Projets ne sont jamais touchés.",
   ]},
   { id: 'ressources', title: 'Fichiers introuvables', paragraphs: [
-    "Les modèles 3D et les images de Case ne sont pas rangés dans le fichier du Projet, mais dans les dossiers Modeles et Images du dossier des Projets choisi dans la Configuration. Par défaut, ce dossier est Documents\\Storyboard BD\\Projets, hors de portée des mises à jour.",
+    "Les modèles 3D et les images de Case ne sont pas rangés dans le fichier du Projet, mais dans les dossiers Modeles et Images du dossier des Projets choisi dans la Configuration. Par défaut, ce dossier est Documents\\Storyboarder BD\\Projets, hors de portée des mises à jour.",
     "Si un Projet ouvert cite des fichiers absents de ces dossiers, une fenêtre le signale : combien, où l'application a cherché, et comment corriger. Le plus souvent, il suffit de choisir le bon dossier des Projets dans la Configuration : les fichiers reviennent aussitôt.",
   ]},
   { id: 'tomes', title: 'Tomes & planches', paragraphs: [

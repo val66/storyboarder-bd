@@ -192,7 +192,7 @@ function simulation(nom, version, maintenant){
       version: `${maj}.${min + 1}.${5 - i}`, obligatoire: i === 5, notes: notesLongues(`${maj}.${min + 1}.${5 - i}`),
     }));
   }
-  const latest = { version: nom === 'obligatoireLong' ? `${maj}.${min + 1}.5` : encore, fichier: 'Storyboard-BD-Setup-simulation.exe', sha512: 'simulation', taille: 130180869 };
+  const latest = { version: nom === 'obligatoireLong' ? `${maj}.${min + 1}.5` : encore, fichier: 'Storyboarder-BD-Setup-simulation.exe', sha512: 'simulation', taille: 130180869 };
   if (nom === 'disponible') return { decision: { etat: 'libre', charge }, latest };
   if (nom === 'obligatoire' || nom === 'obligatoireLong') return { decision: { etat: 'obligatoire', versionMinimale: suivante, enLigne: true, charge }, latest };
   if (nom === 'obligatoireHorsLigne') return { decision: { etat: 'obligatoire', versionMinimale: suivante, enLigne: false, charge }, latest: null };
