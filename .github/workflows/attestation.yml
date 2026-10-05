@@ -55,13 +55,13 @@ jobs:
         if: env.ATTESTATION_CLE_PRIVEE == ''
         run: echo "::notice::Secret ATTESTATION_CLE_PRIVEE absent, aucune attestation signée (cf. npm run cles-attestation)."
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # Les tags `obligatoire/v*` sont lus dans l'historique : un checkout superficiel n'en
           # verrait aucun, et l'attestation dirait qu'aucune version n'est obligatoire.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
 

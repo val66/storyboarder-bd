@@ -47,18 +47,19 @@ jobs:
     name: Lint + tests (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
-      # `fail-fast: false` : si Node 20 échoue, on veut quand même savoir ce que fait Node 22.
+      # `fail-fast: false` : si Node 22 échoue, on veut quand même savoir ce que fait Node 24.
       # L'inverse cacherait la moitié de l'information au moment précis où elle est utile.
       fail-fast: false
       matrix:
-        # Les deux lignes LTS maintenues. Node 18 est en fin de vie depuis avril 2025 — les README
-        # l'annonçaient encore ; ils ont été corrigés en même temps que ce fichier.
-        node: ['20', '22']
+        # Les deux lignes LTS maintenues. Node 20 est en fin de vie depuis avril 2026, et
+        # Electron 42 exige Node 22.12 pour s'installer : la CI le testait encore, et il échouait
+        # (#442b). Node 18 était parti de la même façon en avril 2025.
+        node: ['22', '24']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           cache: npm

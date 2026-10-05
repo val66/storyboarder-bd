@@ -83,7 +83,7 @@ diff dit déjà quoi.
 
 ## Ouvrir une pull request
 
-La CI lance lint et tests sous Linux, Node 20 et 22. Le développement se fait sous Windows : c'est
+La CI lance lint et tests sous Linux, Node 22 et 24. Le développement se fait sous Windows : c'est
 aussi ce qui attrape les hypothèses de chemin qui ne tiennent que d'un côté.
 
 Si quelque chose ici est faux ou manquant, cela mérite une pull request à soi seul.

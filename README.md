@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.8.9**
+**Version 1.8.10**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -98,7 +98,7 @@
 ## 🚀 Getting started
 
 ### Prerequisites
-- [Node.js LTS](https://nodejs.org) (v20 or higher; v18 reached end of life in April 2025)
+- [Node.js LTS](https://nodejs.org) (v22 or higher; v20 reached end of life in April 2026)
 
 ### Run in development
 ```bash

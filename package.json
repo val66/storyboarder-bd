@@ -1,8 +1,8 @@
 {
   "name": "storyboard-bd",
-  "version": "1.8.9",
+  "version": "1.8.10",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "description": "Storyboard BD — Découpage de planches BD",
   "main": "main.js",

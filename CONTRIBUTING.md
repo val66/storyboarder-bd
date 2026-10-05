@@ -76,7 +76,7 @@ Commit messages: whichever language you think in. Say **why**, not what — the 
 
 ## Opening a pull request
 
-CI runs lint and tests on Linux, Node 20 and 22. Development happens on Windows, so CI is also what
+CI runs lint and tests on Linux, Node 22 and 24. Development happens on Windows, so CI is also what
 catches path assumptions that only hold on one side.
 
 If something here is wrong or missing, that is worth a pull request on its own.

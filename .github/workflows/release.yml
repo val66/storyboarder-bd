@@ -36,14 +36,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # `fetch-depth: 0` est INDISPENSABLE ici. Par défaut, actions/checkout ne récupère qu'un
           # seul commit : `git describe` ne verrait alors aucun tag antérieur, et la note publiée
           # annoncerait une première version à chaque fois. C'est le piège classique de ce workflow.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -66,9 +66,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
