@@ -8333,7 +8333,7 @@ document.getElementById('projectsDirBrowse').onclick = async () => {
     rafraichirApresChangementDeDossier(prechargerEnCascade3D);
   }
 };
-// Returns to the default folder (next to the executable) by clearing the custom setting.
+// Returns to the default folder (Documents/<application>/Projets since #447) by clearing the custom setting.
 document.getElementById('projectsDirReset').onclick = async () => {
   if (!hasElectronAPI()) return;
   await window.storyboarderAPI.setSetting('projectsDir', null);
@@ -8366,8 +8366,10 @@ async function loadAppSettings(){
   await loadModelRenames();
   buildPersonaPositionOptions();
   if (!hasElectronAPI()) { applyI18n(S.appLang); rafraichirListesTraduites(); return; }
+  let reglagesLus = null;   // relus après la langue, pour l'annonce de #447
   try {
     const settings = await window.storyboarderAPI.getSettings();
+    reglagesLus = settings;
     if (settings && typeof settings.autosaveIntervalMs === 'number') {
       S.autosaveIntervalMs = settings.autosaveIntervalMs;
     }
@@ -8419,6 +8421,16 @@ async function loadAppSettings(){
   // #442 : après la langue, pour que le bouton « Mise à jour » naisse dans la bonne. Sans attendre :
   // l'état est déjà décidé côté processus principal, la demande ne retarde pas le démarrage.
   initialiserMiseAJour();
+  // #447 : le processus principal a déménagé l'ancien dossier des Projets (à côté du programme,
+  // effacé par chaque mise à jour) vers Documents. On le dit une fois, puis on l'oublie.
+  if (reglagesLus && reglagesLus.projetsDeplaces && reglagesLus.projetsDeplaces.vers) {
+    const { de, vers } = reglagesLus.projetsDeplaces;
+    alertAction(tr(
+      `Your Projects folder has been moved to ${vers}. It used to be next to the program (${de}), where updates would have erased it. Your Projects, models and images are all there.`,
+      `Votre dossier des Projets a été déplacé dans ${vers}. Il se trouvait à côté du programme (${de}), où les mises à jour l'auraient effacé. Vos Projets, modèles et images y sont tous.`,
+    ), tr('Projects folder moved', 'Dossier des Projets déplacé'));
+    if (hasElectronAPI()) window.storyboarderAPI.setSetting('projetsDeplaces', null);
+  }
   // #443 : la simulation de la modale des ressources introuvables, après la langue elle aussi.
   if (simulationRessources(location.search)) verifierRessources();
 }

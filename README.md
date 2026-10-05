@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.9.1**
+**Version 1.9.2**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -82,6 +82,7 @@
 
 ### Project & saving
 - 💾 **JSON** project format, human-readable and versionable
+- 📁 Projects kept in **Documents\Storyboard BD\Projets** by default, out of reach of updates and uninstalls
 - ⏱️ Configurable auto-save
 - 🗑️ **Delete a project**, confirmed by typing the word
 - 🖼️ Export pages as **PNG** or **PDF**

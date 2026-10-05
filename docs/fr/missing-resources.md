@@ -12,7 +12,7 @@ Les modèles et les images ne sont pas rangés à côté du fichier du Projet, m
 lancement à l'autre :
 
 - avec `npm start`, c'est `Projets` à la racine du dépôt ;
-- une fois installée, c'est `Projets` à côté du programme, et la version installée a ses propres
+- une fois installée, c'est `Documents\Storyboard BD\Projets` (#447), et la version installée a ses propres
   réglages.
 
 Un Projet ouvert « de l'autre côté » s'affichait donc criblé de « Image introuvable » et de boîtes

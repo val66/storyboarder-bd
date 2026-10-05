@@ -81,6 +81,11 @@ sinon, tout le monde serait bloqué devant un écran sans rien à télécharger.
 - **GitHub désactive les tâches planifiées** d'un dépôt public sans activité depuis 60 jours.
   L'attestation vieillirait : les utilisateurs en ligne ne sont pas touchés, ceux qui restent hors
   ligne verraient l'écran de connexion plus tôt. Réactiver le workflow dans l'onglet Actions.
+- **Le dossier des Projets ne doit jamais être dans le dossier d'installation** (#447). Chaque mise
+  à jour exécute le désinstalleur de l'ancienne version, qui vide ce dossier en entier. Jusqu'à la
+  v1.9.1, le défaut y était : il est désormais dans Documents, l'installeur déplace l'ancien avant
+  de désinstaller (`build/installer.nsh`), et l'application le fait aussi au démarrage
+  (`projects-dir.js`).
 - **Le premier lancement demande une connexion** : sans attestation gardée, il n'y a pas de bail.
 - **Les notes sont en français** : elles viennent de `CHANGELOG.md`, écrit en français seulement.
 - **Le téléchargement est complet** (environ 125 Mo), pas différentiel.

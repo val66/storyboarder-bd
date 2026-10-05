@@ -15,12 +15,16 @@ const politiqueMaj = require('./update-policy');
 const majES = require('./updater');
 const { CLE_PUBLIQUE } = require('./attestation-cle');
 
-// Dossier "Projets" proposé par défaut pour l'enregistrement/le chargement : situé à côté de
-// l'exécutable installé (donc visible/accessible facilement depuis le dossier d'installation), ou à
-// côté de main.js en développement (npm start, app non packagée).
-const defaultProjectsDir = app.isPackaged
-  ? path.join(path.dirname(app.getPath('exe')), 'Projets')
-  : path.join(__dirname, 'Projets');
+// Dossier "Projets" proposé par défaut. ⚠️ #447 : il était À CÔTÉ DE L'EXÉCUTABLE, et chaque mise à
+// jour vide le dossier d'installation. Il est désormais dans Documents, et l'ancien est déménagé au
+// démarrage (migrerAncienDossierProjets, plus bas). La décision vit dans projects-dir.js.
+const dossiersProjets = require('./projects-dir');
+const defaultProjectsDir = dossiersProjets.dossierParDefaut({
+  packaged: app.isPackaged, documents: app.getPath('documents'), nomApp: app.getName(), appDir: __dirname,
+});
+const ancienDefaultProjectsDir = dossiersProjets.ancienDossierParDefaut({
+  packaged: app.isPackaged, exeDir: path.dirname(app.getPath('exe')),
+});
 
 // Mémorise le chemin du dernier fichier de Projet ouvert/enregistré, ainsi que les réglages de
 // l'Application (cf. modale Configuration dans index.html : délai de sauvegarde automatique, dossier
@@ -38,6 +42,49 @@ function readSettings() {
 function getProjectsDir() {
   const { projectsDir } = readSettings();
   return projectsDir || defaultProjectsDir;
+}
+
+/** Un dossier existe-t-il et contient-il quelque chose ? */
+function dossierNonVide(d) {
+  try { return fs.readdirSync(d).length > 0; } catch (err) { return false; }
+}
+
+// #447 : déménage l'ancien dossier des Projets (à côté de l'exécutable) vers Documents, et réécrit
+// les réglages qui pointaient dedans. Appelé au démarrage, avant toute fenêtre. L'installeur fait
+// déjà ce déménagement avant de désinstaller l'ancienne version (build/installer.nsh) ; ceci couvre
+// ce qu'il n'aurait pas pu faire. Une panne ne doit jamais empêcher de démarrer : on journalise.
+function migrerAncienDossierProjets() {
+  try {
+    const reglages = readSettings();
+    const plan = dossiersProjets.planMigration({
+      ancien: ancienDefaultProjectsDir, nouveau: defaultProjectsDir,
+      ancienContenu: !!ancienDefaultProjectsDir && dossierNonVide(ancienDefaultProjectsDir),
+      nouveauContenu: dossierNonVide(defaultProjectsDir), reglages,
+    });
+    if (plan.deplacer) {
+      fs.mkdirSync(path.dirname(plan.cible), { recursive: true });
+      try {
+        fs.renameSync(ancienDefaultProjectsDir, plan.cible);
+      } catch (err) {
+        // Autre volume, ou fichier verrouillé : on copie, et l'on n'efface l'original qu'une fois
+        // la copie faite. Un échec de copie laisse l'original en place.
+        fs.cpSync(ancienDefaultProjectsDir, plan.cible, { recursive: true, errorOnExist: false });
+        fs.rmSync(ancienDefaultProjectsDir, { recursive: true, force: true });
+      }
+    }
+    const modifs = Object.keys(plan.reglages);
+    if (modifs.length || plan.annonce) {
+      const s = readSettings();
+      for (const cle of modifs) {
+        if (plan.reglages[cle] === null) delete s[cle]; else s[cle] = plan.reglages[cle];
+      }
+      // Le renderer l'annonce une fois, puis l'efface (cf. src/events.js, projetsDeplaces).
+      if (plan.annonce) s.projetsDeplaces = plan.annonce;
+      fs.writeFileSync(settingsFilePath, JSON.stringify(s), 'utf-8');
+    }
+  } catch (err) {
+    console.error('Déménagement du dossier des Projets impossible :', err);
+  }
 }
 
 function ensureProjectsDir() {
@@ -688,6 +735,7 @@ ipcMain.handle('maj:reessayer', async () => {
 });
 
 app.whenReady().then(async () => {
+  migrerAncienDossierProjets();
   ensureProjectsDir();
   try { etatMaj = await preparerMaj(); } catch (err) { /* une panne de vérification ne bloque pas */ }
   if (ecranBloquant(etatMaj)) fenetreBlocage = createWindow('blocage');

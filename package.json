@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "engines": {
     "node": ">=22"
   },
@@ -40,6 +40,7 @@
       "main.js",
       "preload.js",
       "window-state.js",
+      "projects-dir.js",
       "update-policy.js",
       "updater.js",
       "attestation-cle.js",

@@ -52,7 +52,7 @@ export const HELP_MANUAL_EN = [
     'The application works offline for up to 14 days in a row. Beyond that, and on the very first launch, it asks for a connection to check that no required update is waiting. Your Projects are never affected.',
   ]},
   { id: 'ressources', title: 'Missing files', paragraphs: [
-    'Imported 3D models and panel images are not stored inside the Project file, but in the Modeles and Images folders of the Projects folder chosen in Settings.',
+    'Imported 3D models and panel images are not stored inside the Project file, but in the Modeles and Images folders of the Projects folder chosen in Settings. By default, that folder is Documents\\Storyboard BD\\Projets, out of reach of updates.',
     'If an opened Project uses files missing from those folders, a window says so: how many, where the application looked, and how to fix it. Most often, choosing the right Projects folder in Settings is enough: the files come back right away.',
   ]},
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
@@ -267,7 +267,7 @@ export const HELP_MANUAL_FR = [
     "L'application fonctionne hors ligne jusqu'à 14 jours d'affilée. Au-delà, et au tout premier lancement, elle demande une connexion pour vérifier qu'aucune mise à jour obligatoire n'attend. Vos Projets ne sont jamais touchés.",
   ]},
   { id: 'ressources', title: 'Fichiers introuvables', paragraphs: [
-    "Les modèles 3D et les images de Case ne sont pas rangés dans le fichier du Projet, mais dans les dossiers Modeles et Images du dossier des Projets choisi dans la Configuration.",
+    "Les modèles 3D et les images de Case ne sont pas rangés dans le fichier du Projet, mais dans les dossiers Modeles et Images du dossier des Projets choisi dans la Configuration. Par défaut, ce dossier est Documents\\Storyboard BD\\Projets, hors de portée des mises à jour.",
     "Si un Projet ouvert cite des fichiers absents de ces dossiers, une fenêtre le signale : combien, où l'application a cherché, et comment corriger. Le plus souvent, il suffit de choisir le bon dossier des Projets dans la Configuration : les fichiers reviennent aussitôt.",
   ]},
   { id: 'tomes', title: 'Tomes & planches', paragraphs: [

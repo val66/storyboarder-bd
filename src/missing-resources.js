@@ -6,7 +6,7 @@
  * POURQUOI. Les modèles et les images ne vivent pas à côté du fichier du Projet, mais dans les
  * sous-dossiers `Modeles` et `Images` du DOSSIER DES PROJETS réglé dans la Configuration. Ce dossier
  * change d'une installation à l'autre (celui de `npm start` est dans le dépôt, celui de
- * l'application installée à côté du programme). Ouvrir un Projet depuis l'autre côté le montrait
+ * l'application installée dans Documents, cf. #447). Ouvrir un Projet depuis l'autre côté le montrait
  * criblé de « Image introuvable » et de boîtes de remplacement, sans un mot d'explication.
  * Constaté par l'utilisateur à sa première installation.
  *

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.9.1**
+**Version 1.9.2**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -87,6 +87,7 @@
   tant que vous n'enregistrez pas
 
 ### Projet & sauvegarde
+- 📁 Projets rangés par défaut dans **Documents\Storyboard BD\Projets**, hors de portée des mises à jour et des désinstallations
 - 💾 Format de projet **JSON**, lisible et versionnable
 - ⏱️ Sauvegarde automatique configurable
 - 🗑️ **Supprimer un Projet**, confirmé en écrivant le mot

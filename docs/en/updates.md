@@ -79,6 +79,10 @@ everyone would face a screen with nothing to download.
 - **GitHub disables scheduled workflows** in a public repository after 60 days without activity. The
   attestation would age: online users are not affected, those who stay offline would see the
   connection screen sooner. Re-enable the workflow in the Actions tab.
+- **The Projects folder must never live inside the installation folder** (#447). Every update runs
+  the old version's uninstaller, which empties that folder entirely. Up to v1.9.1 the default was
+  there: it now lives in Documents, the installer moves the old one before uninstalling
+  (`build/installer.nsh`), and the application does the same at startup (`projects-dir.js`).
 - **The first launch needs a connection**: with no kept attestation, there is no lease.
 - **The notes are in French**: they come from `CHANGELOG.md`, written in French only.
 - **The download is complete** (about 125 MB), not differential.
