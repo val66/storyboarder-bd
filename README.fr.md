@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.7.54**
+**Version 1.8.0**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -30,7 +30,8 @@
 - 🔒 Jour est le **réglage par défaut** et reproduit exactement l'éclairage d'origine
 - 🕹️ **Dôme d'orientation** en mode Personnalisé, avec couleur et intensité, du noir complet au
   plein jour
-- 🌤️ **Le fond suit le mode** : bleu clair de jour, bleu nuit la nuit
+- 🌤️ **Un ciel calculé suit le mode** : nuages de jour, étoiles et lune la nuit, soleil et lune
+  dessinés là d'où vient la lumière
 - 🎬 **Une Scène transmet sa lumière** à la Case qui la charge, puis les deux vies sont indépendantes
 - 💡 **Sources de lumière posées** : une sphère lumineuse qui éclaire la Case en plus du soleil,
   déplacée comme un Élément
@@ -52,8 +53,11 @@
 - 🚗 **Véhicules** (voitures, motos, camions…)
 - 🌳 **Végétation** (arbres, arbustes, fleurs…)
 - 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
-- 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures
+- 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures, en textures photographiées
+  teintées par leur couleur
 - 🌿 **Zones de terrain** colorées
+- 🏞️ **Sols photographiés** : herbe, gazon, terre, sable, gravier, bitume, béton, neige, carrelage,
+  plancher, marbre, moquette, et une eau calculée
 - 📏 **Taille au centimètre** : la hauteur réelle d'un Élément se saisit en mètres
 
 ### Modèles 3D importés

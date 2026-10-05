@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.7.54**
+**Version 1.8.0**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -29,7 +29,8 @@
 - ☀️ **Three modes** per panel and per scene: Day, Night and Custom
 - 🔒 Day is the **default** and reproduces the original lighting exactly
 - 🕹️ **Orientation dome** in Custom mode, with colour and intensity, from full black to full day
-- 🌤️ **The background follows the mode**: light blue by day, night blue by night
+- 🌤️ **A computed sky follows the mode**: clouds by day, stars and moon by night, sun and moon
+  drawn where the light comes from
 - 🎬 **A scene hands its light** to the panel that loads it, then the two live independently
 - 💡 **Placed light sources**: a glowing sphere lighting the panel on top of the sun, moved like any
   Element
@@ -49,8 +50,11 @@
 - 🚗 **Vehicles** (cars, motorcycles, trucks…)
 - 🌳 **Vegetation** (trees, shrubs, flowers…)
 - 🏠 **Buildings** with rooms, walls, doors and windows
-- 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers
+- 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers, photographed textures
+  tinted by their colour
 - 🌿 **Terrain zones** with custom colors
+- 🏞️ **Photographed grounds**: grass, lawn, dirt, sand, gravel, asphalt, concrete, snow, tiles,
+  floorboards, marble, carpet, and a computed water
 - 📏 **Size to the centimetre**: an Element's real height is typed in metres
 
 ### Imported 3D models

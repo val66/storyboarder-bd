@@ -13,6 +13,69 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.8.0
+
+**Le décor prend matière.** Le Sol, l'eau, le ciel et les Traces quittent les aplats et les
+dessins pour des matières photographiées ou calculées, nettes de près comme de loin. Et une Case
+chargée de modèles importés se redessine six fois plus vite.
+
+### Ce qui change pour vous
+
+**Douze Sols photographiés** : herbe, gazon, terre, sable, gravier, bitume, béton, neige,
+carrelage, plancher, marbre et moquette. Ils restent nets en gros plan, ne laissent plus voir de
+quadrillage quand on dézoome, et gardent du relief au loin. Les personnages et les objets reposent
+sur le Sol au lieu de flotter au-dessus, sur toutes les matières.
+
+**L'eau** est recalculée d'après Sea of Thieves : des vagues, un turquoise lumineux sur les crêtes à
+contre-jour, un peu d'écume, le ciel de la Case qui s'y reflète.
+
+**Un ciel** remplace le fond uni. Nuages de jour, nuit étoilée avec sa lune, et en Personnalisé la
+couleur de la lumière ; le soleil et la lune sont dessinés là d'où vient la lumière, donc raccord
+avec les ombres. Il est calculé, donc net à toute taille de Case. L'horizon rejoint le Sol sans
+bande grise.
+
+**Les Traces ont leur matière** : asphalte pour la Route, terre pour le Chemin, pierre pour le
+Muret, bois pour la Clôture, feuillage pour la Haie, métal pour la Barrière. À la couleur par
+défaut, la photo est affichée au naturel ; une autre couleur la teinte. La texture suit le tracé,
+courbes comprises, et garde sa taille réelle quelle que soit sa longueur.
+
+**Les grandes Scènes ne sont plus coupées au fond** : les murets et chemins lointains restaient
+tranchés net.
+
+**Plus rapide.** Sur une Scène chargée de modèles importés articulés, un rendu de Case est passé
+de 108 ms à 17 ms, et un changement de Planche de près de 200 ms à 80 ms. Les modèles dont le
+fichier porte deux fois la même image ne la chargent plus qu'une fois.
+
+### Sous le capot
+
+- **Le cuiseur de textures** sert le Sol et les Traces en 1024², décide toujours à l'échelle 512
+  où ses seuils ont été calibrés, refuse deux jeux de cartes dans un même dossier, ne laisse plus
+  survivre l'ancienne texture quand une recuisson change de nature, étire au lieu de recadrer une
+  matière non carrée, et reconnaît un joint de parquet pris pour une couture.
+- **Le Sol** : couche large multi-échelles, pavage anti-répétition (Heitz et Neyret) sur les
+  matières qui l'acceptent, densité de texels commune, relief retiré (il n'existait pas et faisait
+  flotter les personnages).
+- **Le ciel** a d'abord été photographié (panoramas 4K puis 8K), puis entièrement calculé : une
+  Case de 2 000 pixels ne recevait que 750 pixels d'un panorama 4K, et les étoiles devenaient des
+  taches. Les panoramas et leur outil ont été retirés.
+- **La sonde de performance** est revenue (`sonde.demarrer()` puis `sonde.rapport()` dans la
+  console, avec une ligne de synthèse à copier). Elle a trouvé quatre coûts : la boîte d'un modèle
+  articulé recalculée à chaque rendu, les rigs masqués des autres Cases parcourus à chaque rendu,
+  la hauteur debout remesurée à chaque rendu, et les programmes de shader des Traces recompilés à
+  chaque glissé. Consigné dans la dixième campagne de `docs/fr/rendering-performance.md`.
+- **Les licences des textures** voyagent avec elles (`assets/textures/LICENSES.md`, 22 textures,
+  toutes CC0), tenues par un test.
+- **L'installeur** n'emporte plus les 145 Mo de cartes sources des textures.
+
+### Ce que ce cycle a appris
+
+Une mesure prise sur une planche réduite a fait croire un ciel photographié assez net : la
+comparaison était rendue à 420 pixels, une Case en fait 2 000. Et la première sonde de performance
+ne mesurait pas le chargement des modèles, parce qu'elle avait été démarrée après l'ouverture du
+Projet ; un Projet lourd a été généré pour mesurer dans des conditions reproductibles.
+
+---
+
 ## v1.7.0
 
 **Une Bulle cesse d'être un ovale avec un triangle.** Elle a maintenant une forme, une pointe, une
