@@ -59,7 +59,10 @@ treats it as a free precedent:
   `tests/model-store.test.mjs` guards both halves.
 
 Current membership: `models:*` (imported 3D models), `images:*` (panel images, see
-[panel-images.md](panel-images.md)), `skeletons:*` (the shared mapping file), and `project:delete`.
+[panel-images.md](panel-images.md)), `skeletons:*` (the shared mapping file), `project:delete`, and
+`maj:*` (built-in updates, see [updates.md](updates.md)). The last one also adds files next to
+`main.js`: `update-policy.js` decides, `updater.js` does the I/O, and `preload-blocage.js` is the
+bridge of the blocking screen. Downloading and launching an installer has no possible home in `src/`.
 
 Anything that can be decided in `src/` still belongs in `src/`. The criterion is narrow on purpose:
 the moment a channel could be replaced by a generated file or by a decision taken in `src/`, it fails

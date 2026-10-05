@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.8.4**
+**Version 1.8.5**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -93,7 +93,8 @@
 - 🖼️ Export des planches en **PNG** ou **PDF**
 - ↩️ Annulation sur les 50 dernières actions
 - 🪟 La fenêtre **rouvre où vous l'avez laissée** : taille, position et plein écran
-- 🔌 **Fonctionne hors ligne**, polices comprises : vos Planches ont le même aspect avec ou sans connexion
+- 🔌 **Fonctionne hors ligne** jusqu'à 14 jours d'affilée, polices comprises : vos Planches ont le même aspect avec ou sans connexion
+- ⬆️ **Mises à jour intégrées** : un bouton « Mise à jour » apparaît quand une version plus récente est publiée, avec les nouveautés et le poids du téléchargement ; une mise à jour obligatoire ouvre l'application sur un écran plein tant qu'elle n'est pas installée
 - 🌗 **Thèmes sombre et clair**, plus une option **contraste renforcé** qui se combine aux deux
 - 🔎 **Taille de l'interface** en quatre crans, de Compacte à Très grande. La Planche garde son propre zoom
 - 🧠 **Planches en mémoire**, réglable de 0 à 900 Mo : celles que vous venez de consulter reviennent instantanément au lieu d'être redessinées
@@ -118,6 +119,8 @@ npm start
 npm run dist
 ```
 L'installeur apparaît dans le dossier `dist/`. Il crée des raccourcis Bureau et Menu Démarrer.
+Les versions publiées sont construites par GitHub Actions, et l'application installée se met à jour
+d'elle-même : voir [docs/fr/updates.md](docs/fr/updates.md).
 
 ### Contribuer
 

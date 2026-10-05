@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Storyboard BD</title>
+<!-- L'ÉCRAN BLOQUANT (#442) : mise à jour obligatoire, ou connexion requise. Plein écran, sans
+     menus : rien d'autre n'est chargé que ce qu'il faut pour expliquer et télécharger. Les couleurs
+     viennent de style.css (variables de thème), pour suivre le thème choisi par l'utilisateur. -->
+<link rel="stylesheet" href="style.css">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; align-items: center; justify-content: center; background: var(--paper); color: var(--ink); overflow: auto; }
+  .blocage { width: min(640px, 90vw); padding: 32px 0; }
+  .blocage h1 { font-size: 13px; letter-spacing: 2px; color: var(--ink-soft); margin: 0 0 24px; }
+  .blocage h2 { font-size: 24px; margin: 0 0 16px; }
+  .blocage p { line-height: 1.5; margin: 0 0 12px; }
+  .blocage .maj-notes { max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0; background: var(--paper-dark); }
+  .blocage .maj-notes h3 { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
+  .blocage .actions { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+  .blocage .actions button { padding: 10px 22px; font-size: 14px; }
+  .blocage .message { color: var(--ink-soft); }
+  .blocage .message.erreur { color: var(--danger); }
+  .blocage progress { width: 100%; margin-top: 16px; accent-color: var(--accent); }
+</style>
+</head>
+<body>
+<main class="blocage">
+  <h1>STORYBOARD BD</h1>
+  <h2 id="blocageTitre"></h2>
+  <div id="blocageTexte"></div>
+  <div id="blocageNotes" class="maj-notes" hidden>
+    <h3 id="blocageNotesTitre"></h3>
+    <div id="blocageNotesCorps"></div>
+  </div>
+  <progress id="blocageProgression" max="100" value="0" hidden></progress>
+  <div class="actions">
+    <button id="blocageAction" class="project-modal-btn" type="button"></button>
+    <span id="blocageMessage" class="message"></span>
+  </div>
+</main>
+<script type="module" src="src/update-screen.js"></script>
+</body>
+</html>

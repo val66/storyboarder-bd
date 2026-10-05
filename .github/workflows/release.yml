@@ -8,9 +8,15 @@
 # MINEURES et MAJEURES (cf. docs/en/versioning.md) : les correctifs, eux, n'en produisent pas — trente
 # releases pour trente commits n'informeraient personne.
 #
-# CE QU'IL NE FAIT PAS : construire l'installeur. Cela demande Windows et plusieurs minutes, pour
-# une chaîne qui ne change presque jamais (cf. ci.yml, même raisonnement). La release décrit le
-# contenu, elle ne le distribue pas encore.
+# L'INSTALLEUR (#442). Depuis les mises à jour intégrées, une release doit DISTRIBUER, pas seulement
+# décrire : l'application télécharge `latest.yml` puis l'installeur qu'il nomme. Le second job
+# construit l'installeur sous Windows et attache les trois fichiers à la release. Quelques minutes
+# par version, c'est le prix d'une mise à jour sans rien à faire à la main.
+#
+# ⚠️ `--publish never`, puis `gh release upload` : electron-builder sait publier lui-même, mais il
+# crée par défaut un BROUILLON, invisible pour l'application, et ses règles de reprise d'une release
+# existante sont subtiles. Téléverser nous-mêmes sur la release que le premier job vient de créer
+# ne laisse aucune ambiguïté.
 
 name: Release
 
@@ -53,3 +59,35 @@ jobs:
              --title "${{ github.ref_name }}"
              --notes-file NOTE.md
              --verify-tag
+
+  installeur:
+    name: Installeur Windows de ${{ github.ref_name }}
+    needs: publier
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installer les dépendances (verrou strict)
+        run: npm ci
+
+      - name: Construire l'installeur
+        run: npx electron-builder --win --publish never
+
+      - name: Attacher l'installeur à la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Les trois fichiers vont ensemble : `latest.yml` nomme l'installeur et donne son empreinte,
+        # le `.blockmap` l'accompagne. `artifactName` (package.json) les nomme sans espace : GitHub
+        # remplace les espaces des noms téléversés, et `latest.yml` ne nommerait plus le bon fichier.
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}"
+             dist/Storyboard-BD-Setup-*.exe
+             dist/Storyboard-BD-Setup-*.exe.blockmap
+             dist/latest.yml
+             --clobber

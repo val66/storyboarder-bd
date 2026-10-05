@@ -72,3 +72,7 @@ apercus/
 # Rapport de cuisson produit par la commande en une ligne donnée à l utilisateur : un fichier de
 # travail, relu puis jeté, et que `git add -A` avait ramassé une fois dans un commit.
 cuisson.txt
+
+# Documentation interne gardée hors du dépôt public (#442) : ce qui touche à la sécurité des
+# mises à jour et n'a pas à être lu par tout le monde. Sauvegardée à part par l'utilisateur.
+docs-privees/

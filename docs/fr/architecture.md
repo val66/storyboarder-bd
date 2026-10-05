@@ -63,8 +63,11 @@ raisonnement, pour que personne n'y voie un précédent gratuit :
   `tests/model-store.test.mjs` garde les deux moitiés.
 
 État actuel de la liste : `models:*` (modèles 3D importés), `images:*` (images de Case, cf.
-[panel-images.md](panel-images.md)), `skeletons:*` (le fichier de correspondances partagé) et
-`project:delete`.
+[panel-images.md](panel-images.md)), `skeletons:*` (le fichier de correspondances partagé),
+`project:delete` et `maj:*` (mises à jour intégrées, cf. [updates.md](updates.md)). Ce dernier ajoute
+aussi des fichiers à côté de `main.js` : `update-policy.js` décide, `updater.js` fait les
+entrées-sorties, et `preload-blocage.js` est le pont de l'écran bloquant. Télécharger et lancer un
+installeur n'a aucune place possible dans `src/`.
 
 Tout ce qui peut se décider dans `src/` reste dans `src/`. Le critère est étroit à dessein : dès
 qu'un canal pourrait être remplacé par un fichier généré ou par une décision prise dans `src/`, il

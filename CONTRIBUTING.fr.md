@@ -35,7 +35,8 @@ tout projet déjà enregistré, et rien ne le signale. C'est la règle la plus i
 
 **2. `main.js` et `preload.js` ne se touchent jamais pour une fonctionnalité.** Ce sont les fichiers
 de processus Electron. Le code applicatif vit dans `src/*.js`. Voir
-[`docs/fr/architecture.md`](docs/fr/architecture.md).
+[`docs/fr/architecture.md`](docs/fr/architecture.md), qui liste les quelques exceptions admises
+(accès disque des modèles et des images, mises à jour intégrées) et le critère qu'elles remplissent.
 
 **3. Une modification visible par l'utilisateur met à jour quatre choses dans le même commit :**
 `README.md`, `README.fr.md`, le manuel intégré `src/help-content.js` **dans ses deux langues**, et

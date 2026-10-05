@@ -130,7 +130,10 @@ function main(){
   const tag = process.argv[2] || git('describe', '--tags', '--exact-match');
   let previousTag = null;
   try {
-    previousTag = git('describe', '--abbrev=0', '--tags', `${tag}^`);
+    // `--match 'v*'` : depuis #442, des tags `obligatoire/vX.Y.Z` vivent à côté des tags de
+    // version. Sans ce filtre, le « tag précédent » pourrait en être un, et la note comparerait
+    // une version à un marqueur.
+    previousTag = git('describe', '--abbrev=0', '--tags', '--match', 'v*', `${tag}^`);
   } catch {
     // Première release du dépôt : il n'y a pas de tag antérieur. Ce n'est pas une erreur.
   }

@@ -42,4 +42,9 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   // enregistrer / Annuler plutôt que d'empêcher la fermeture en attendant une sauvegarde.
   onRequestQuitConfirmation: (callback) => ipcRenderer.on('app:requestQuitConfirmation', () => callback()),
   confirmQuit: () => ipcRenderer.send('app:confirmQuit'),
+  // Mises à jour (#442) : l'état décidé au démarrage par le processus principal, l'installation
+  // (téléchargement vérifié puis redémarrage), et sa progression.
+  majEtat: () => ipcRenderer.invoke('maj:etat'),
+  majInstaller: () => ipcRenderer.invoke('maj:installer'),
+  onMajProgression: (callback) => ipcRenderer.on('maj:progression', (e, recus, total) => callback(recus, total)),
 });

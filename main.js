@@ -9,6 +9,12 @@ const {
   geometrieRestaurable, etatAEnregistrer,
 } = require('./window-state');
 
+// Mises à jour (#442) : la DÉCISION est dans update-policy.js, testable sous Node nu ; les
+// entrées-sorties dans updater.js. Cf. la section MISES À JOUR en bas de ce fichier.
+const politiqueMaj = require('./update-policy');
+const majES = require('./updater');
+const { CLE_PUBLIQUE } = require('./attestation-cle');
+
 // Dossier "Projets" proposé par défaut pour l'enregistrement/le chargement : situé à côté de
 // l'exécutable installé (donc visible/accessible facilement depuis le dossier d'installation), ou à
 // côté de main.js en développement (npm start, app non packagée).
@@ -69,7 +75,10 @@ function setLastProjectPath(filePath) {
 // (déclenchée depuis le renderer lui-même) passer normalement.
 let isQuitting = false;
 
-function createWindow() {
+// `mode` vaut 'app' (l'application) ou 'blocage' (#442 : l'écran plein de mise à jour obligatoire
+// ou de connexion requise, sans menus, avec son propre pont qui n'expose QUE les mises à jour).
+function createWindow(mode = 'app') {
+  const bloque = mode === 'blocage';
   // La fenêtre renaît là où l'utilisateur l'avait laissée. Ce n'est pas qu'un confort : elle
   // naissait à 1280 × 860 et se faisait maximiser à la main juste après, ce qui obligeait le
   // renderer à recalculer son échelle et à REDESSINER toute la Planche pendant le chargement
@@ -89,7 +98,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, bloque ? 'preload-blocage.js' : 'preload.js'),
     },
     autoHideMenuBar: true,
   });
@@ -98,6 +107,8 @@ function createWindow() {
   // l'application" de la modale Projet via window.close(), etc.) pour laisser le renderer décider quoi
   // faire s'il reste des modifications non enregistrées (cf. quitConfirmModal dans index.html).
   win.on('close', (e) => {
+    // L'écran bloquant n'a pas de Projet ouvert : rien à proposer d'enregistrer.
+    if (bloque) return;
     // AVANT la garde : la fermeture peut être annulée par l'utilisateur, mais la géométrie du
     // moment est bonne à prendre dans les deux cas, et c'est le dernier instant où la fenêtre
     // existe encore.
@@ -111,6 +122,8 @@ function createWindow() {
 
   // F12 ou Ctrl+Shift+I pour ouvrir/fermer les DevTools (débogage)
   win.webContents.on('before-input-event', (event, input) => {
+    // Pas d'outils de développement sur l'écran bloquant : ils permettraient de le retirer.
+    if (bloque) return;
     if (input.key === 'F12' ||
         (input.control && input.shift && input.key.toLowerCase() === 'i')) {
       win.webContents.toggleDevTools();
@@ -122,7 +135,15 @@ function createWindow() {
   // fois, ce qui était exactement la situation d'origine.
   if (restaure && enregistre.maximized === true) win.maximize();
 
-  win.loadFile(path.join(__dirname, 'index.html'));
+  if (bloque) {
+    // L'écran bloquant ne mène nulle part : ni navigation, ni nouvelle fenêtre.
+    win.webContents.on('will-navigate', (e) => e.preventDefault());
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.loadFile(path.join(__dirname, 'blocage.html'));
+  } else {
+    win.loadFile(path.join(__dirname, 'index.html'));
+  }
+  return win;
 }
 
 // Gestion native des fichiers Projet (.json), cf. preload.js / index.html (section PROJET) : l'API web
@@ -572,9 +593,101 @@ ipcMain.on('app:confirmQuit', (event) => {
   if (win) win.close(); else app.quit();
 });
 
-app.whenReady().then(() => {
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// MISES À JOUR (#442)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+//
+// EXCEPTION ASSUMÉE à la règle n°1 d'architecture.md, documentée là-bas : télécharger un
+// installeur et le lancer ne se fait que dans ce processus. La répartition reste celle des modèles :
+// update-policy.js DÉCIDE, updater.js fait les entrées-sorties, ce fichier branche.
+//
+// Au démarrage, AVANT toute fenêtre : on vérifie, puis on ouvre soit l'application, soit l'écran
+// bloquant (mise à jour obligatoire, ou connexion requise). En développement (`npm start`), rien
+// n'est vérifié : l'application n'est pas installée. STORYBOARD_SIMULER_MAJ montre alors chaque
+// écran avec des données factices (cf. politiqueMaj.SIMULATIONS).
+const SIMULATION_MAJ = process.env.STORYBOARD_SIMULER_MAJ || '';
+let etatMaj = { decision: { etat: 'libre' }, latest: null };
+let fenetreBlocage = null;
+
+async function preparerMaj() {
+  const version = app.getVersion();
+  const simule = politiqueMaj.simulation(SIMULATION_MAJ, version, Date.now());
+  if (simule) return simule;
+  if (!app.isPackaged) return { decision: { etat: 'libre' }, latest: null };
+  const r = await majES.verifier({ version, clePublique: CLE_PUBLIQUE, dossier: path.join(app.getPath('userData'), 'maj') });
+  // Sans clé publique, la vérification obligatoire est éteinte (cf. attestation-cle.js) : on garde
+  // seulement ce qu'il faut pour proposer une mise à jour facultative.
+  if (!CLE_PUBLIQUE) return { decision: { etat: 'libre' }, latest: r.latest };
+  return r;
+}
+
+const ecranBloquant = (e) => e.decision.etat === 'obligatoire' || e.decision.etat === 'horsLigne';
+
+/** Ce que le renderer reçoit : rien de plus que ce qu'il affiche. */
+function etatPourAffichage() {
+  const version = app.getVersion();
+  const { decision, latest } = etatMaj;
+  const disponible = !!(latest && politiqueMaj.comparerVersions(latest.version, version) > 0);
+  return {
+    etat: decision.etat, raison: decision.raison || null, jours: decision.jours ?? null,
+    enLigne: decision.enLigne ?? true, versionMinimale: decision.versionMinimale || null,
+    installee: version, disponible,
+    version: latest ? latest.version : null,
+    taille: latest ? politiqueMaj.tailleLisible(latest.taille) : '',
+    notes: politiqueMaj.notesAAfficher(decision.charge, version, latest ? latest.version : null),
+    lang: readSettings().lang === 'en' ? 'en' : 'fr',
+    theme: readSettings().theme || null,
+    contraste: readSettings().contrast === true,
+    simulation: !!politiqueMaj.simulation(SIMULATION_MAJ, version, Date.now()),
+  };
+}
+
+ipcMain.handle('maj:etat', async () => etatPourAffichage());
+
+// Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on
+// joue une progression factice et on s'arrête là : `npm start` n'a rien à remplacer.
+let installationEnCours = false;
+ipcMain.handle('maj:installer', async (event) => {
+  const latest = etatMaj.latest;
+  if (installationEnCours) return { ok: false, erreur: 'enCours' };
+  if (!latest || politiqueMaj.comparerVersions(latest.version, app.getVersion()) <= 0) return { ok: false, erreur: 'aucune' };
+  installationEnCours = true;
+  const envoyer = (recus, total) => { if (!event.sender.isDestroyed()) event.sender.send('maj:progression', recus, total); };
+  try {
+    if (politiqueMaj.simulation(SIMULATION_MAJ, app.getVersion(), Date.now())) {
+      for (let i = 1; i <= 20; i++) { await new Promise(r => setTimeout(r, 100)); envoyer(latest.taille * i / 20, latest.taille); }
+      return { ok: false, erreur: 'simulation' };
+    }
+    const chemin = await majES.telechargerInstalleur(latest, envoyer);
+    majES.lancerInstalleur(chemin);
+    isQuitting = true;
+    app.quit();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: String(err && err.message || err).includes('empreinte') ? 'empreinte' : 'reseau' };
+  } finally {
+    installationEnCours = false;
+  }
+});
+
+// L'écran bloquant redemande : si la situation s'est réglée (le réseau est revenu, et rien
+// d'obligatoire n'attend), l'application s'ouvre à sa place.
+ipcMain.handle('maj:reessayer', async () => {
+  etatMaj = await preparerMaj();
+  if (!ecranBloquant(etatMaj) && fenetreBlocage) {
+    const ancienne = fenetreBlocage;
+    fenetreBlocage = null;
+    createWindow('app');
+    ancienne.destroy();
+  }
+  return etatPourAffichage();
+});
+
+app.whenReady().then(async () => {
   ensureProjectsDir();
-  createWindow();
+  try { etatMaj = await preparerMaj(); } catch (err) { /* une panne de vérification ne bloque pas */ }
+  if (ecranBloquant(etatMaj)) fenetreBlocage = createWindow('blocage');
+  else createWindow('app');
 });
 
 app.on('window-all-closed', () => {
@@ -582,5 +695,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) {
+    if (ecranBloquant(etatMaj)) fenetreBlocage = createWindow('blocage');
+    else createWindow('app');
+  }
 });

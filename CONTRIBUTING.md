@@ -32,7 +32,8 @@ project unreadable, and nothing signals it. This is the most important rule here
 
 **2. `main.js` and `preload.js` are never touched for an application feature.** They are the
 Electron process files. Application code lives in `src/*.js`. See
-[`docs/en/architecture.md`](docs/en/architecture.md).
+[`docs/en/architecture.md`](docs/en/architecture.md), which lists the few accepted exceptions (disk
+access for models and images, built-in updates) and the criterion they meet.
 
 **3. A user-visible change updates four things in the same commit:** `README.md`, `README.fr.md`,
 the built-in manual `src/help-content.js` **in both languages**, and `src/i18n.js` if a label is

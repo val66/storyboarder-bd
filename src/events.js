@@ -41,6 +41,7 @@ import {
 import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
+import { initialiserMiseAJour, rafraichirTextesMaj, fermerModaleMaj } from './update-button.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
@@ -8306,6 +8307,7 @@ languageSelect.addEventListener('change', () => {
   // n'indique qu'il faut la refermer pour en sortir.
   rafraichirManuelOuvert(S.appLang);
   rafraichirValeurCacheMo();   // l'unité change avec la langue, et la modale est ouverte
+  rafraichirTextesMaj();       // #442 : le bouton et la modale de mise à jour sont écrits par le code
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('lang', S.appLang);
 });
 // "Export" section : per user request: these two settings are read by exportPage() at export
@@ -8410,6 +8412,9 @@ async function loadAppSettings(){
   }
   applyI18n(S.appLang);
   rafraichirListesTraduites();
+  // #442 : après la langue, pour que le bouton « Mise à jour » naisse dans la bonne. Sans attendre :
+  // l'état est déjà décidé côté processus principal, la demande ne retarde pas le démarrage.
+  initialiserMiseAJour();
 }
 
 // ---------- START ----------
@@ -8614,6 +8619,7 @@ if (helpModalOverlay) {
   });
 }
 enregistrerFermeture('helpModal', () => closeHelpModal());
+enregistrerFermeture('majModal', fermerModaleMaj);
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));

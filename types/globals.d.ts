@@ -59,6 +59,16 @@ interface StoryboarderAPI {
   chooseProjectsDir(): Promise<{ canceled: boolean; dir?: string }>;
   onRequestQuitConfirmation(callback: () => void): void;
   confirmQuit(): void;
+  // Mises à jour (#442) : l'état décidé au démarrage par le processus principal (cf. main.js,
+  // etatPourAffichage), l'installation, et sa progression en octets.
+  majEtat(): Promise<{
+    etat: 'libre' | 'obligatoire' | 'horsLigne'; raison: string | null; jours: number | null;
+    enLigne: boolean; versionMinimale: string | null; installee: string; disponible: boolean;
+    version: string | null; taille: string; notes: { version: string; obligatoire: boolean; notes: string }[];
+    lang: 'fr' | 'en'; theme: string | null; contraste: boolean; simulation: boolean;
+  }>;
+  majInstaller(): Promise<{ ok: boolean; erreur?: string }>;
+  onMajProgression(callback: (recus: number, total: number) => void): void;
   // Modèles 3D importés. `data` voyage en Uint8Array par le clonage structuré de l'IPC : décrire
   // ici la forme des réponses évite d'aller relire main.js pour savoir si un échec se lit sur `ok`
   // ou sur `error` — la même confusion qui avait produit « un échec annoncé comme un succès ».

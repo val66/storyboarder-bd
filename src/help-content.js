@@ -42,9 +42,14 @@ export const HELP_MANUAL_EN = [
     'If there are unsaved changes, a confirmation is shown when closing the application.',
     'Loading, saving and autosaving require the Storyboard BD application (launched via its shortcut or executable); they do not work if index.html is opened directly in a regular browser.',
     'The application reopens at the size and position where you left it, maximised if it was maximised. If the screen it was sitting on is no longer connected, it reopens at its default size.',
-    'Everything the application displays is bundled with it, fonts included: it needs no internet connection, and a page exported as PNG looks exactly the same online and offline.',
+    'Everything the application displays is bundled with it, fonts included: a page exported as PNG looks exactly the same online and offline.',
     'Settings offer a dark and a light theme, an "Increased contrast" option that combines with either, and four interface sizes. None of it touches your Pages, which keep their own look and their own zoom.',
     '"Pages kept in memory" keeps the ones you leave ready, instead of redrawing their panels when you come back. Raise the slider if you often compare pages, lower it if it takes too much memory; at zero, only the page on screen is kept.',
+  ]},
+  { id: 'maj', title: 'Updates', paragraphs: [
+    'When a newer version is published, an "Update" button appears next to the version number. It shows what is new and the download size; the application saves your Project, installs the update and restarts.',
+    'A required update opens the application on a full screen, with no menus, until it is installed.',
+    'The application works offline for up to 14 days in a row. Beyond that, and on the very first launch, it asks for a connection to check that no required update is waiting. Your Projects are never affected.',
   ]},
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
     '"New volume" and "Add a page" in the left-hand menu.',
@@ -248,9 +253,14 @@ export const HELP_MANUAL_FR = [
     "Si des modifications n'ont pas été enregistrées, une confirmation s'affiche à la fermeture de l'application.",
     "Le chargement, l'enregistrement et la sauvegarde automatique nécessitent l'application Storyboard BD : ils ne fonctionnent pas si index.html est ouvert dans un navigateur.",
     "L'application rouvre à la taille et à la position où vous l'avez laissée, en plein écran si elle y était. Si l'écran qu'elle occupait n'est plus branché, elle rouvre à sa taille par défaut.",
-    "Tout ce que l'application affiche est embarqué avec elle, polices comprises : aucune connexion n'est nécessaire, et une Planche exportée a le même aspect en ligne et hors ligne.",
+    "Tout ce que l'application affiche est embarqué avec elle, polices comprises : une Planche exportée a le même aspect en ligne et hors ligne.",
     "La Configuration propose un thème sombre et un clair, une option « Contraste renforcé » qui se combine aux deux, et quatre tailles d'interface. Rien de tout cela ne touche vos Planches, qui gardent leur aspect et leur propre zoom.",
     "« Planches en mémoire » garde prêtes celles que vous quittez, au lieu de redessiner leurs Cases au retour. Montez le curseur si vous comparez souvent des Planches, baissez-le s'il prend trop de mémoire ; à zéro, seule la Planche affichée reste.",
+  ]},
+  { id: 'maj', title: 'Mises à jour', paragraphs: [
+    "Quand une version plus récente est publiée, un bouton « Mise à jour » apparaît à côté du numéro de version. Il montre les nouveautés et le poids du téléchargement ; l'application enregistre votre Projet, installe la mise à jour et redémarre.",
+    "Une mise à jour obligatoire ouvre l'application sur un écran plein, sans menus, tant qu'elle n'est pas installée.",
+    "L'application fonctionne hors ligne jusqu'à 14 jours d'affilée. Au-delà, et au tout premier lancement, elle demande une connexion pour vérifier qu'aucune mise à jour obligatoire n'attend. Vos Projets ne sont jamais touchés.",
   ]},
   { id: 'tomes', title: 'Tomes & planches', paragraphs: [
     '« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.',

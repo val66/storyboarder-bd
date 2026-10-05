@@ -1984,3 +1984,28 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
    exactement sur les 14px de `.side-section` ; un test épingle cette somme (cf.
    tests/model-library.test.mjs), car trois valeurs dans trois règles se désaccordent en silence. */
 .side-group-title:first-child { margin-top: 6px; }
+
+/* ── Mises à jour (#442) ─────────────────────────────────────────────────────────────────────
+   Le bouton du bandeau, à côté du numéro de version : visible seulement quand une version plus
+   récente existe, donc il doit se voir sans crier. La modale et l'écran bloquant (blocage.html)
+   partagent la présentation des nouveautés. */
+.maj-btn{
+  align-self:center; margin-left:8px; padding:3px 10px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent);
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
+}
+.maj-btn:hover{ background:var(--accent); color:var(--sur-accent); }
+.maj-texte p{ font-size:13px; line-height:1.45; margin:0 0 10px; }
+.maj-notes{ max-height:40vh; overflow:auto; font-size:13px; line-height:1.45; }
+.maj-notes:empty{ display:none; }
+.maj-notes .maj-version h4{ margin:10px 0 6px; font-size:13px; }
+.maj-notes .maj-version:first-child h4{ margin-top:0; }
+.maj-notes ul{ margin:0 0 8px; padding-left:18px; }
+.maj-notes p{ margin:0 0 8px; }
+.maj-badge{
+  display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px;
+  background:var(--warn); color:var(--sur-warn); vertical-align:middle;
+}
+.maj-progression{ width:100%; margin-top:10px; accent-color:var(--accent); }
+.maj-message{ font-size:12.5px; color:var(--ink-soft); min-height:1em; margin:8px 0 0; }
+.maj-message.erreur{ color:var(--danger); }

@@ -41,7 +41,8 @@ import {
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
-const SRC = ['io.js', 'events.js', 'modals.js']
+// update-button.js (#442) : la modale de mise à jour s'y câble elle-même, comme ses voisines ici.
+const SRC = ['io.js', 'events.js', 'modals.js', 'update-button.js']
   .map(f => readFileSync(join(RACINE, 'src', f), 'utf8')).join('\n');
 
 /** Les identifiants de TOUTES les modales déclarées dans index.html, la source de vérité. */

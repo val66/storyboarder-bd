@@ -32,6 +32,7 @@ down.
 | Document | Subject |
 |---|---|
 | [versioning.md](versioning.md) | `major.minor.patch` policy, git hooks, tags. |
+| [updates.md](updates.md) | Built-in updates: the signed attestation, the fourteen-day offline lease, publishing a version, making one required (task #442). |
 
 ## Design in progress
 

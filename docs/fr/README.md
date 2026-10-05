@@ -32,6 +32,7 @@ régression difficile à retrouver.
 | Document | Sujet |
 |---|---|
 | [versioning.md](versioning.md) | Politique `major.minor.correctif`, hooks git, tags. |
+| [updates.md](updates.md) | Mises à jour intégrées : l'attestation signée, le bail de quatorze jours hors ligne, publier une version, la rendre obligatoire (tâche #442). |
 
 ## Conception en cours
 

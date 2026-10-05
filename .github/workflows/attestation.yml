@@ -1,0 +1,93 @@
+# L'ATTESTATION SIGNÉE des mises à jour (#442), republiée chaque jour.
+#
+# POURQUOI CHAQUE JOUR. L'application démarre hors ligne tant que sa dernière attestation a moins de
+# quatorze jours (cf. update-policy.js). Une attestation datée du jour où l'utilisateur s'est
+# connecté lui laisse donc quatorze jours pleins. Signée une fois par release, elle vieillirait
+# entre deux versions, et des utilisateurs connectés la veille se retrouveraient bloqués.
+#
+# CE QUI LA DÉCLENCHE : chaque nuit ; après chaque release (l'installeur vient d'arriver, une
+# version obligatoire devient exigible) ; au push d'un tag `obligatoire/v*` ; à la main.
+#
+# OÙ ELLE VA : sur la branche `attestation`, réduite à un seul commit réécrit à chaque fois.
+# L'application la lit sur raw.githubusercontent.com (cf. update-policy.js, URL_ATTESTATION).
+#
+# ⚠️ GITHUB DÉSACTIVE LES TÂCHES PLANIFIÉES d'un dépôt public sans activité depuis 60 jours. Si
+# cela arrive, l'attestation vieillit : les utilisateurs EN LIGNE ne sont pas touchés (ils lisent
+# l'attestation à chaque démarrage, quel que soit son âge), mais ceux qui restent hors ligne
+# verraient l'écran « connexion requise » plus tôt. Réactiver le workflow dans l'onglet Actions
+# suffit. Cf. docs/fr/versioning.md, section « Mises à jour ».
+
+name: Attestation
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  push:
+    tags:
+      - 'obligatoire/v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Deux signatures simultanées se disputeraient la branche : la seconde attend.
+concurrency:
+  group: attestation
+  cancel-in-progress: false
+
+jobs:
+  signer:
+    name: Signer et publier l'attestation
+    runs-on: ubuntu-latest
+    # Au niveau du job pour que les `if:` ci-dessous puissent le lire : un secret ne se teste pas
+    # directement dans une condition.
+    env:
+      ATTESTATION_CLE_PRIVEE: ${{ secrets.ATTESTATION_CLE_PRIVEE }}
+
+    steps:
+      # Tant que la clé n'est pas créée (npm run cles-attestation), on le DIT et on s'arrête là,
+      # sans échouer : l'application a sa propre garde (attestation-cle.js à null = vérification
+      # éteinte), et un échec quotidien n'apprendrait rien de plus.
+      - name: Clé absente
+        if: env.ATTESTATION_CLE_PRIVEE == ''
+        run: echo "::notice::Secret ATTESTATION_CLE_PRIVEE absent, aucune attestation signée (cf. npm run cles-attestation)."
+
+      - uses: actions/checkout@v4
+        with:
+          # Les tags `obligatoire/v*` sont lus dans l'historique : un checkout superficiel n'en
+          # verrait aucun, et l'attestation dirait qu'aucune version n'est obligatoire.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Relever les releases publiées et les tags obligatoires
+        # `tojson` : une release par ligne, compacte. Sans lui, jq indente chaque objet sur
+        # plusieurs lignes et tools/attestation.mjs, qui lit ligne à ligne, ne lirait rien.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases" --paginate \
+            --jq '.[] | {tag: .tag_name, draft: .draft, prerelease: .prerelease, assets: [.assets[].name]} | tojson' > releases.jsonl
+          git tag -l 'obligatoire/v*' > obligatoires.txt
+
+      - name: Signer
+        if: env.ATTESTATION_CLE_PRIVEE != ''
+        run: node tools/attestation.mjs releases.jsonl obligatoires.txt > attestation.json
+
+      - name: Publier sur la branche attestation
+        if: env.ATTESTATION_CLE_PRIVEE != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir publication && cp attestation.json publication/
+          cd publication
+          git init -q -b attestation
+          git add attestation.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Attestation du $(date -u +%F)"
+          git push -f -q "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" attestation

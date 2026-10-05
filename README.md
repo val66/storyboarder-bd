@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.8.4**
+**Version 1.8.5**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -87,7 +87,8 @@
 - 🖼️ Export pages as **PNG** or **PDF**
 - ↩️ Undo, over the last 50 actions
 - 🪟 The window **reopens where you left it**, size, position and maximised state
-- 🔌 **Works offline**, fonts included: pages look the same with or without a connection
+- 🔌 **Works offline** for up to 14 days in a row, fonts included: pages look the same with or without a connection
+- ⬆️ **Built-in updates**: an "Update" button appears when a newer version is published, with what's new and the download size; a required update opens the application on a full screen until it is installed
 - 🌗 **Dark and light themes**, plus an **increased-contrast** option that combines with either
 - 🔎 **Interface size** in four steps, from Compact to Extra large. The Page keeps its own zoom
 - 🧠 **Pages kept in memory**, adjustable from 0 to 900 MB: pages you have just visited come back instantly instead of being redrawn
@@ -112,6 +113,8 @@ npm start
 npm run dist
 ```
 The installer appears in the `dist/` folder and creates Desktop and Start Menu shortcuts automatically.
+Published versions are built by GitHub Actions instead, and the installed application updates itself:
+see [docs/en/updates.md](docs/en/updates.md).
 
 ### Contributing
 

@@ -12,6 +12,9 @@
   <!-- Version de l'application (cf. src/version.js, généré par tools/bump-version.mjs). Frère de
        <h1> et non enfant : un span imbriqué serait effacé si l'i18n prenait un jour ce sélecteur. -->
   <span id="appVersionText" class="app-version"></span>
+  <!-- #442 : n'apparaît que si une version plus récente est publiée (cf. src/update-button.js). Son
+       texte est écrit par le code, dans la langue choisie (cf. src/update-texts.js). -->
+  <button id="majBtn" class="maj-btn" type="button" hidden></button>
   <!-- Déplacé depuis le menu de gauche (sur demande utilisateur) : le bouton Annuler se trouve
        désormais en haut à gauche du bouton "?" qui ouvre le Manuel d'utilisation, plutôt que dans
        la barre latérale, sous le sélecteur de Tomes. -->
@@ -647,6 +650,9 @@
         <button type="button" class="help-group" data-help="projet">
           <span class="help-group-title">Projet</span>
         </button>
+        <button type="button" class="help-group" data-help="maj">
+          <span class="help-group-title">Mises à jour</span>
+        </button>
         <button type="button" class="help-group" data-help="tomes">
           <span class="help-group-title">Tomes &amp; planches</span>
         </button>
@@ -1220,6 +1226,20 @@
      bouton natif de fermeture que le bouton "Fermer l'application" de la modale Projet) — sur demande
      utilisateur : propose d'enregistrer avant de quitter, de quitter sans enregistrer, ou d'annuler,
      plutôt que d'empêcher la fermeture en attendant que l'utilisateur sauvegarde. -->
+<!-- Mise à jour facultative (#442) : confirmation, poids du téléchargement, redémarrage, puis
+     progression. Tout le texte est écrit par le code (src/update-texts.js), dans la langue choisie. -->
+<div class="modal-overlay hidden" id="majModal">
+  <div class="modal-box">
+    <h3 id="majModalTitre"></h3>
+    <div id="majModalTexte" class="maj-texte"></div>
+    <div id="majModalNotes" class="maj-notes"></div>
+    <progress id="majModalProgression" class="maj-progression" max="100" value="0" hidden></progress>
+    <p id="majModalMessage" class="maj-message"></p>
+    <button class="full-btn" id="majModalInstaller" type="button"></button>
+    <button class="nav-btn" id="majModalAnnuler" type="button" style="margin-top:6px;"></button>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="quitConfirmModal">
   <div class="modal-box">
     <h3>Quitter l'application</h3>
