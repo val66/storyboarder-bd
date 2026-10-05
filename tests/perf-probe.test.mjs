@@ -91,3 +91,42 @@ describe('La sonde de performance', () => {
     assert.match(synthese('jamais démarrée'), /jamais/);
   });
 });
+
+describe('Le rendu ne parcourt plus les rigs masqués des autres Cases (#438)', () => {
+  test('⚠️ LES ENFANTS MASQUÉS SORTENT DE L’ARBRE, PUIS REVIENNENT DANS LE MÊME ORDRE', async () => {
+    await import('./helpers/dom-stub.mjs');
+    const THREE = globalThis.THREE;
+    const { sansLesEnfantsMasques3D } = await import('../src/scene3d.js');
+    const scene = new THREE.Scene();
+    const a = new THREE.Group(), b = new THREE.Group(), c = new THREE.Group();
+    b.visible = false;
+    b.add(new THREE.Mesh(), new THREE.Mesh());
+    scene.add(a, b, c);
+    const avant = [...scene.children];
+    const restaurer = sansLesEnfantsMasques3D(scene);
+    assert.equal(restaurer.ecartes, 1);
+    let parcourus = 0;
+    scene.traverse(() => { parcourus++; });
+    assert.equal(parcourus, 3, 'la scène et ses deux enfants visibles, rien du rig masqué');
+    restaurer();
+    assert.deepEqual(scene.children, avant, 'l’ordre des enfants a changé');
+    assert.equal(b.parent, scene, 'le parent du rig écarté a été touché');
+  });
+
+  test('sans enfant masqué, rien n’est échangé', async () => {
+    const THREE = globalThis.THREE;
+    const { sansLesEnfantsMasques3D } = await import('../src/scene3d.js');
+    const scene = new THREE.Scene(); scene.add(new THREE.Group());
+    const tableau = scene.children;
+    const r = sansLesEnfantsMasques3D(scene);
+    assert.equal(r.ecartes, 0);
+    assert.equal(scene.children, tableau);
+    assert.equal(sansLesEnfantsMasques3D(null).ecartes, 0);
+  });
+
+  test('⚠️ LE RENDU D’UNE CASE REMET L’ARBRE MÊME SI LE RENDU LÈVE', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+    assert.ok(/const _restaurerArbre = sansLesEnfantsMasques3D\(personaScene3D\);[\s\S]*try \{\s*personaRenderer3D\.render\(personaScene3D, personaCamera3D\);\s*\} finally \{\s*_restaurerArbre\(\);/.test(src));
+  });
+});

@@ -107,6 +107,30 @@ export function ensureElementUnits3D(o){
   return { w: (o.w || WALL_PX_PER_UNIT_3D) / factor, h: (o.h || WALL_PX_PER_UNIT_3D) / factor };
 }
 
+/**
+ * Retire de l'arbre d'une scène ses enfants DIRECTS masqués, et rend la fonction qui les remet,
+ * dans le même ordre (#438). Entre les deux, three ne les parcourt plus : ni la mise à jour des
+ * matrices, qu'il fait sur tout l'arbre sans regarder la visibilité, ni rien d'autre.
+ *
+ * ⚠️ LE RENDU EST IDENTIQUE, ET C'EST CE QUI L'AUTORISE. three ne dessine ni un objet masqué ni ses
+ * enfants ; un enfant masqué n'apporte donc rien à l'image, seulement du parcours. Les `parent`
+ * ne sont pas touchés, aucun événement n'est émis : c'est le tableau seul qu'on échange, puis
+ * qu'on rend tel qu'il était, y compris si le rendu lève (l'appelant le fait dans un `finally`).
+ * Une matrice monde d'un rig écarté peut rester périmée ; elle est recalculée au rendu suivant où il
+ * est visible, comme pour tout objet three.
+ */
+export function sansLesEnfantsMasques3D(scene){
+  if (!scene || !Array.isArray(scene.children)) { const r = () => {}; r.ecartes = 0; return r; }
+  const tous = scene.children;
+  const visibles = tous.filter(c => c.visible !== false);
+  const ecartes = tous.length - visibles.length;
+  if (!ecartes) { const r = () => {}; r.ecartes = 0; return r; }
+  scene.children = visibles;
+  const restaurer = () => { scene.children = tous; };
+  restaurer.ecartes = ecartes;
+  return restaurer;
+}
+
 export function ensureElementWorldPos3D(o, panel){
   const dist = panelDepthToDistance3D(getElementDepth(o));
   const factor = WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / dist);
@@ -2992,18 +3016,27 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // que three refait sur TOUT l'arbre à chaque rendu, rigs masqués des autres Cases compris. Mesuré
   // à part, sonde allumée seulement : la mise à jour faite ici rend celle du rendu presque gratuite,
   // donc le « WebGL » ci-dessous est un peu sous-estimé quand la sonde tourne, ce qui est nommé.
+  // ⚠️ #438 : LES RIGS MASQUÉS DES AUTRES CASES SORTENT DE L'ARBRE LE TEMPS DU RENDU. three met à
+  // jour les matrices de TOUT l'arbre à chaque rendu, sans regarder la visibilité. Mesuré sur un
+  // Projet lourd (six Cases visitées) : 20 189 nœuds dans la scène pour 3 165 visibles, et 2,8 ms
+  // de médiane, 9 ms au pire, rien que pour ces matrices. Les rigs restent en cache, ils ne sont
+  // simplement plus parcourus ; voir sansLesEnfantsMasques3D.
+  const _restaurerArbre = sansLesEnfantsMasques3D(personaScene3D);
   if (sondeActive()) {
     const _tMat = sondeDebut();
     personaScene3D.updateMatrixWorld();
-    sondeFin('  dont matrices de toute la scène (mesure à part)', _tMat);
-    let _noeuds = 0, _visibles = 0;
-    personaScene3D.traverse(n => { _noeuds++; });
-    personaScene3D.traverseVisible(n => { _visibles++; });
-    sondeValeur('nœuds dans la scène (nombre)', _noeuds);
-    sondeValeur('nœuds visibles (nombre)', _visibles);
+    sondeFin('  dont matrices de la scène (mesure à part)', _tMat);
+    let _noeuds = 0;
+    personaScene3D.traverse(() => { _noeuds++; });
+    sondeValeur('nœuds parcourus au rendu (nombre)', _noeuds);
+    sondeValeur('enfants masqués écartés (nombre)', _restaurerArbre.ecartes);
   }
   const _tGl = sondeDebut();
-  personaRenderer3D.render(personaScene3D, personaCamera3D);
+  try {
+    personaRenderer3D.render(personaScene3D, personaCamera3D);
+  } finally {
+    _restaurerArbre();
+  }
   sondeFin('  dont WebGL (render)', _tGl);
   if (sondeActive()) {
     sondeValeur('appels de dessin par rendu (nombre)', personaRenderer3D.info.render.calls);

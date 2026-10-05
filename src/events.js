@@ -8501,13 +8501,18 @@ if (typeof window !== 'undefined') {
     rapport: () => {
       const r = sondeRapport();
       if (r && typeof r === 'object') {
-        // La synthèse d'abord, sur une ligne : c'est elle qu'on copie (méd/p95/max en ms).
-        console.log(sondeSynthese(r));
         console.table(r.mesures);
         if (r.images_lentes.length) console.table(r.images_lentes);
+        // ⚠️ LA SYNTHÈSE EN DERNIER, ET SEULE SUR SA LIGNE : c'est elle qu'on copie, et elle doit être
+        // la dernière chose affichée, sous les tableaux, pour qu'on la trouve sans chercher.
+        console.log('SYNTHÈSE À COPIER ↓');
+        console.log(sondeSynthese(r));
+        // Rien n'est rendu : la console afficherait l'objet SOUS la synthèse. sonde.donnees() le donne.
+        return undefined;
       }
       return r;
     },
+    donnees: () => sondeRapport(),
   };
 }
 
