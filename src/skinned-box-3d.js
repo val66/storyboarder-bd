@@ -159,27 +159,41 @@ export function box3FromObjectSkinAware3D(object) {
  * change change la clé, et la boîte est recalculée. La boîte rendue est une COPIE : l'appelant peut
  * la modifier sans corrompre la mémoire.
  */
-const _boitesMemorisees = new WeakMap();
-const ETATS_MEMORISES = 4;
+/**
+ * ⚠️ PARTAGÉE ENTRE CLONES (#438). Chaque Case a SON clone d'un modèle importé ; mémorisée par
+ * objet, la boîte était donc recalculée à la première visite de chaque Case, 15 à 45 ms par modèle,
+ * et un changement de Planche sur le Projet lourd (10 modèles) coûtait 155 à 181 ms. Or deux clones
+ * dans le même état ont la même boîte : mêmes géométries (partagées), même hiérarchie, mêmes
+ * transformées. La clé décrit donc la STRUCTURE (l'identifiant de la géométrie de chaque nœud, pas
+ * celui du nœud, propre au clone) et l'ÉTAT ; le cache est rangé par géométries et taille d'arbre.
+ */
+const _boitesMemorisees = new Map();
+const ETATS_MEMORISES = 8;
+const GROUPES_MAX = 256;
 let _calculsDeBoite = 0;
 
 /**
  * La clé : un tableau de nombres, comparé élément par élément. ⚠️ PAS UNE CHAÎNE. La première
  * version joignait les nombres en texte, 20 fois par rendu sur le Projet lourd, pour des modèles de
  * plusieurs centaines de nœuds : la conversion des flottants en texte coûtait l'essentiel de ce
- * qu'elle protégeait.
+ * qu'elle protégeait. Le groupe, lui, est une chaîne courte : les géométries et le nombre de nœuds.
  */
 function cleDeLaBoite3D(object){
   object.updateMatrixWorld(true);
   const n = [];
   const e = object.matrixWorld.elements;
   for (let i = 0; i < 16; i++) n.push(e[i]);
+  const geometries = [];
+  let noeuds = 0;
   object.traverse(o => {
-    n.push(o.id, o.position.x, o.position.y, o.position.z,
+    noeuds++;
+    const g = o.geometry ? o.geometry.id : -1;
+    if (o.geometry) geometries.push(g);
+    n.push(g, o.position.x, o.position.y, o.position.z,
       o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w,
       o.scale.x, o.scale.y, o.scale.z, o.visible ? 1 : 0);
   });
-  return n;
+  return { cle: n, groupe: noeuds + ':' + geometries.join(',') };
 }
 
 function memesCles(a, b){
@@ -190,14 +204,21 @@ function memesCles(a, b){
 
 export function box3FromObjectSkinAwareCached3D(object){
   if (!object) return box3FromObjectSkinAware3D(object);
-  const cle = cleDeLaBoite3D(object);
-  // ⚠️ PLUSIEURS ÉTATS PAR OBJET, PAS UN SEUL. Chaque rendu mesure le même modèle dans DEUX états :
-  // posé (placement) et au repos (hauteur debout, qui remet les os à zéro). Une seule entrée
-  // aurait été écrasée à chaque appel par l'autre état, et ne servait donc jamais.
-  let gardes = _boitesMemorisees.get(object);
-  if (!gardes) { gardes = []; _boitesMemorisees.set(object, gardes); }
-  const garde = gardes.find(g => memesCles(g.cle, cle));
-  if (garde) return garde.box.clone();
+  const { cle, groupe } = cleDeLaBoite3D(object);
+  // ⚠️ PLUSIEURS ÉTATS PAR GROUPE, PAS UN SEUL. Chaque rendu mesure le même modèle dans DEUX états :
+  // posé (placement) et au repos (hauteur debout, qui remet les os à zéro), et plusieurs Cases
+  // posent différemment le même modèle. Une seule entrée se serait écrasée à chaque appel.
+  let gardes = _boitesMemorisees.get(groupe);
+  if (!gardes) {
+    if (_boitesMemorisees.size >= GROUPES_MAX) _boitesMemorisees.clear();
+    gardes = []; _boitesMemorisees.set(groupe, gardes);
+  }
+  const i = gardes.findIndex(g => memesCles(g.cle, cle));
+  if (i >= 0) {
+    const garde = gardes[i];
+    if (i > 0) { gardes.splice(i, 1); gardes.unshift(garde); }
+    return garde.box.clone();
+  }
   _calculsDeBoite++;
   const box = box3FromObjectSkinAware3D(object);
   gardes.unshift({ cle, box: box.clone() });

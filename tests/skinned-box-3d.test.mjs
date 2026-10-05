@@ -352,4 +352,47 @@ describe('box3FromObjectSkinAwareCached3D : la boîte mémorisée (#438)', () =>
     const scene = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
     assert.ok(scene.includes('const b = box3FromObjectSkinAwareCached3D(fg);'));
   });
+  test('⚠️ DEUX CLONES DANS LE MÊME ÉTAT PARTAGENT LEUR BOÎTE, un clone posé autrement non', async () => {
+    // Chaque Case a SON clone d'un modèle : mémorisée par objet, la boîte se recalculait à chaque
+    // première visite de Case, 15 à 45 ms par modèle, 155 à 181 ms par changement de Planche.
+    const { cloneSkinned } = await import('../src/vendor/SkeletonUtils.js');
+    const { scène } = maillageArticuléPosé();
+    const a = cloneSkinned(scène), b = cloneSkinned(scène);
+    const ba = box3FromObjectSkinAwareCached3D(a);
+    const avant = _calculsDeBoite3D();
+    const bb = box3FromObjectSkinAwareCached3D(b);
+    assert.equal(_calculsDeBoite3D() - avant, 0, 'le second clone a recalculé');
+    assert.ok(egales(ba, bb));
+    assert.ok(egales(bb, box3FromObjectSkinAware3D(b)), 'la boîte partagée diffère de la vraie');
+    // Le même modèle, posé autrement dans une autre Case : sa propre boîte.
+    let os = null; b.traverse(n => { if (n.isBone && n.name === 'enfant') os = n; });
+    os.position.set(0, 90, 0);
+    const bp = box3FromObjectSkinAwareCached3D(b);
+    assert.equal(_calculsDeBoite3D() - avant, 1);
+    assert.ok(egales(bp, box3FromObjectSkinAware3D(b)));
+    // Et un objet aux transformées identiques mais à d'autres géométries ne la reçoit pas.
+    const c = maillageArticuléPosé().scène;
+    box3FromObjectSkinAwareCached3D(c);
+    assert.equal(_calculsDeBoite3D() - avant, 2, 'une autre géométrie a reçu une boîte étrangère');
+  });
+  test('dix modèles différents ne se chassent pas les uns les autres de la mémoire', () => {
+    // Rangée par géométries : chaque modèle a ses places. Une seule file commune de huit places
+    // aurait évincé le premier modèle dès le neuvième.
+    const modeles = Array.from({ length: 10 }, () => maillageArticuléPosé().scène);
+    modeles.forEach(m => box3FromObjectSkinAwareCached3D(m));
+    const avant = _calculsDeBoite3D();
+    modeles.forEach(m => box3FromObjectSkinAwareCached3D(m));
+    assert.equal(_calculsDeBoite3D() - avant, 0);
+  });
+
+  test('l’état le plus récemment servi reste en mémoire quand les états se multiplient', () => {
+    const { scène, enfant } = maillageArticuléPosé();
+    const etat = (y) => { enfant.position.set(0, y, 0); return box3FromObjectSkinAwareCached3D(scène); };
+    for (let y = 1; y <= 8; y++) etat(y);     // huit états, la mémoire est pleine
+    etat(1);                                  // le plus ancien est servi, il redevient le plus récent
+    etat(100);                                // un neuvième évince le moins récemment servi
+    const avant = _calculsDeBoite3D();
+    etat(1);
+    assert.equal(_calculsDeBoite3D() - avant, 0, 'l’état servi à l’instant a été évincé');
+  });
 });
