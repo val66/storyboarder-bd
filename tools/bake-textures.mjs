@@ -94,7 +94,7 @@
  * régulier. Un bon chiffre ne garantit pas une texture utilisable, d'où l'avertissement plus bas.
  */
 
-import { writeFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readdirSync, rmSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 
@@ -836,6 +836,12 @@ async function main(){
   else await ecrireGrainPng(grain, taille, sortie);
 
   console.log(`${id} → ${basename(sortie)}  (${taille}², mesures à ${TAILLE_GRAIN}²)`);
+  // #431c : une texture livrée sans sa ligne de licence fait échouer les tests. On le dit ICI, au
+  // moment où on peut encore noter la source, plutôt qu'au commit où on l'aura oubliée.
+  const recap = join(SORTIE, 'LICENSES.md');
+  if (existsSync(recap) && !readFileSync(recap, 'utf8').includes('`' + basename(sortie) + '`')) {
+    console.warn(`  ⚠️  ${basename(sortie)} n'a pas de ligne dans assets/textures/LICENSES.md : ajoutez sa source et sa banque.`);
+  }
   // ⚠️ LE RÉGIME EST IMPRIMÉ, JAMAIS DEVINÉ EN SILENCE. Une matière cuite par erreur en image
   // perdrait 30 % de son grain — le terme directionnel — sans rien changer d'autre. Le seul moyen
   // de s'en apercevoir est de le lire ici.

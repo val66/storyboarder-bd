@@ -163,6 +163,13 @@ describe('Installeur : ce que les feuilles de style réclament', () => {
       'style.css n\'explique plus POURQUOI les polices sont locales : l\'explication a disparu');
   });
 
+  test('les licences voyagent avec les textures (#431c)', () => {
+    // CC0 n'exige rien ; on crédite quand même, et le récapitulatif doit partir avec les fichiers
+    // qu'il décrit, faute de quoi il ne servirait qu'au dépôt.
+    assert.ok(existsSync(join(RACINE, 'assets', 'textures', 'LICENSES.md')), 'le récapitulatif est absent');
+    assert.ok(empaqueté('assets/textures/LICENSES.md'), 'le récapitulatif des textures n\'est pas embarqué');
+  });
+
   test('les licences voyagent avec les polices', () => {
     // L'OFL comme Apache 2.0 l'exigent. Elles ne sont citées par aucune CSS : rien ne les
     // rattraperait si elles sortaient de la liste de packaging.
