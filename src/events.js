@@ -147,7 +147,7 @@ import {
 } from './draw.js';
 import { setI18nCallbacks, applyI18n } from './i18n.js';
 import {
-  menuGaucheOuvert, memoriserMenuGauche, sectionDroitePliee, memoriserSectionDroite, oublierAnciennesCles,
+  menuGaucheOuvert, memoriserMenuGauche, sectionDroitePliee, memoriserSectionDroite,
 } from './section-memory.js';
 import {
   setSidebarCallbacks, isSceneTopDownView, homeOwningPanel, exitCameraMode, elementsInPanel,
@@ -8527,14 +8527,43 @@ if (window.document) {
 }
 
 // ── Collapsible sections of the right-hand menu ────────────────────────────────────────────────────
-// #441 : chaque section du panneau de droite se souvient d'elle-même, quelle que soit l'entité
-// sélectionnée, et d'une séance à l'autre (cf. src/section-memory.js, qui dit pourquoi l'état
-// n'est plus rangé par Case, Bulle ou Page). Appelée à la fin de chaque updateSidePanel().
+// The collapsed state is saved PER ENTITY (cf. src/section-memory.js, #441): each Panel, Bubble
+// and Page keeps its own collapse preferences, independent of the others, across restarts.
+
+function scEntityId() {
+  if (typeof S.selectedId !== 'undefined' && S.selectedId) {
+    // If the selected element is a Panel's Element (perso / objet3d / bulle / tracé),
+    // use the owning panel's ID: the right-hand menu always shows the Panel's menu in this
+    // context, so the collapsed state must stay the Panel's, not the Element's.
+    // Without this lookup, clicking an Element in the list changed S.selectedId → the Element had
+    // no localStorage entry → restoreSectionCollapseStates forced everything to expanded.
+    try {
+      const page = currentPage();
+      const sel = page && page.objects.find(o => o.id === S.selectedId);
+      if (sel && (sel.type === 'perso' || sel.type === 'objet3d' || sel.type === 'bulle' || sel.type === 'tracé')) {
+        const ownerId = sel.homePanelId || sel.panelId;
+        const owner = ownerId && page.objects.find(o => o.id === ownerId && o.type === 'panel');
+        if (owner) return owner.id;
+      }
+    } catch(e) {}
+    return S.selectedId;
+  }
+  try {
+    const p = currentPageData();
+    if (p && p.id) return 'page:' + p.id;
+  } catch(e) {}
+  return '__global__';
+}
+
+// Restores the collapsed state of all visible sections of the right-hand panel for the current
+// entity. Called at the end of every updateSidePanel().
 function restoreSectionCollapseStates() {
+  const entityId = scEntityId();
   document.querySelectorAll('#rightPanel .side-section[id]').forEach(sec => {
     // Sections hidden by updateSidePanel (display:none): no need to restore.
     if (sec.style.display === 'none') return;
-    sec.classList.toggle('collapsed', sectionDroitePliee(localStorage, sec.id));
+    // Nothing saved → expanded (a new Panel always starts expanded by default).
+    sec.classList.toggle('collapsed', sectionDroitePliee(localStorage, entityId, sec.id));
   });
 }
 
@@ -8542,13 +8571,12 @@ function restoreSectionCollapseStates() {
 // restoreSectionCollapseStates is injected into sidebar.js via setSidebarCallbacks (cf. the final
 // wiring block further below): updateSidePanel() calls it itself internally.
 (function initRightPanelCollapse() {
-  oublierAnciennesCles(localStorage);
   document.querySelectorAll('#rightPanel .side-section > h2').forEach(h2 => {
     h2.addEventListener('click', () => {
       const sec = h2.closest('.side-section');
       sec.classList.toggle('collapsed');
       if (!sec.id) return; // no persistence without an ID
-      memoriserSectionDroite(localStorage, sec.id, sec.classList.contains('collapsed'));
+      memoriserSectionDroite(localStorage, scEntityId(), sec.id, sec.classList.contains('collapsed'));
     });
   });
 })();

@@ -1,5 +1,5 @@
 /**
- * tests/section-memory.test.mjs, la mémoire des sections pliées des menus (#441).
+ * tests/section-memory.test.mjs, la mémoire de ce qui est plié dans les menus (#441).
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,31 +7,27 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  PREFIXE_GAUCHE, PREFIXE_DROITE, PREFIXE_ANCIEN,
-  menuGaucheOuvert, memoriserMenuGauche, sectionDroitePliee, memoriserSectionDroite, oublierAnciennesCles,
+  PREFIXE_GAUCHE, PREFIXE_TOME, PREFIXE_DROITE, PREFIXE_GROUPE,
+  menuGaucheOuvert, memoriserMenuGauche, tomeOuvert, memoriserTome, tomesOuverts,
+  sectionDroitePliee, memoriserSectionDroite, groupeReplie, memoriserGroupe,
 } from '../src/section-memory.js';
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const events = readFileSync(join(RACINE, 'src', 'events.js'), 'utf8');
+const source = (f) => readFileSync(join(RACINE, 'src', f), 'utf8');
+const events = source('events.js');
 
-/** Un localStorage en mémoire, avec l'interface que la mémoire utilise. */
+/** Un localStorage en mémoire. */
 function stockage(initial = {}){
   const m = new Map(Object.entries(initial));
   return {
     m,
-    get length(){ return m.size; },
-    key(i){ return [...m.keys()][i] ?? null; },
     getItem(c){ return m.has(c) ? m.get(c) : null; },
     setItem(c, v){ m.set(c, String(v)); },
-    removeItem(c){ m.delete(c); },
   };
 }
 
-/** Un stockage qui refuse tout, comme un quota plein ou un contexte sans stockage. */
-const casse = {
-  get length(){ throw new Error('x'); }, key(){ throw new Error('x'); },
-  getItem(){ throw new Error('x'); }, setItem(){ throw new Error('x'); }, removeItem(){ throw new Error('x'); },
-};
+/** Un stockage qui refuse tout, comme un quota plein. */
+const casse = { getItem(){ throw new Error('x'); }, setItem(){ throw new Error('x'); } };
 
 describe('menus de gauche', () => {
   test('sans mémoire, l\'état par défaut est rendu tel quel', () => {
@@ -47,11 +43,6 @@ describe('menus de gauche', () => {
     assert.equal(menuGaucheOuvert(s, 'treePanel', true), false);
     assert.equal(menuGaucheOuvert(s, 'imagePanel', false), true);
   });
-  test('chaque menu a sa clé : en fermer un ne ferme pas l\'autre', () => {
-    const s = stockage();
-    memoriserMenuGauche(s, 'scenePanel', false);
-    assert.equal(menuGaucheOuvert(s, 'modelPanel', true), true);
-  });
   test('une valeur inconnue rend le défaut', () => {
     const s = stockage({ [PREFIXE_GAUCHE + 'treePanel']: 'oui' });
     assert.equal(menuGaucheOuvert(s, 'treePanel', true), true);
@@ -59,55 +50,81 @@ describe('menus de gauche', () => {
   });
 });
 
-describe('sections de droite', () => {
+describe('Tomes de l\'arborescence', () => {
+  test('aller-retour', () => {
+    const s = stockage();
+    memoriserTome(s, 't1', true);
+    memoriserTome(s, 't2', false);
+    assert.equal(s.getItem(PREFIXE_TOME + 't1'), '1');
+    assert.equal(s.getItem(PREFIXE_TOME + 't2'), '0');
+    assert.equal(tomeOuvert(s, 't1', false), true);
+    assert.equal(tomeOuvert(s, 't2', true), false);
+    assert.equal(tomeOuvert(s, 't3', true), true);
+  });
+  test('à l\'ouverture d\'un Projet : le premier Tome par défaut, puis ce qui est mémorisé', () => {
+    const tomes = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    assert.deepEqual([...tomesOuverts(stockage(), tomes)], ['a']);
+    const s = stockage();
+    memoriserTome(s, 'a', false);
+    memoriserTome(s, 'c', true);
+    assert.deepEqual([...tomesOuverts(s, tomes)], ['c']);
+    assert.deepEqual([...tomesOuverts(s, [])], []);
+  });
+});
+
+describe('sections de droite, par entité', () => {
   test('sans mémoire, une section est dépliée', () => {
-    assert.equal(sectionDroitePliee(stockage(), 'sideBorderSection'), false);
+    assert.equal(sectionDroitePliee(stockage(), 'p1', 'sideBorderSection'), false);
   });
-  test('pliée puis dépliée, la section suit', () => {
+  test('chaque entité garde son état, sous la clé d\'avant #441', () => {
     const s = stockage();
-    memoriserSectionDroite(s, 'sideBorderSection', true);
-    assert.equal(s.getItem(PREFIXE_DROITE + 'sideBorderSection'), '1');
-    assert.equal(sectionDroitePliee(s, 'sideBorderSection'), true);
-    memoriserSectionDroite(s, 'sideBorderSection', false);
-    assert.equal(s.getItem(PREFIXE_DROITE + 'sideBorderSection'), '0');
-    assert.equal(sectionDroitePliee(s, 'sideBorderSection'), false);
-  });
-  test('les clés de gauche et de droite ne se mêlent pas', () => {
-    const s = stockage();
-    memoriserMenuGauche(s, 'x', false);
-    memoriserSectionDroite(s, 'x', false);
-    assert.equal(s.m.size, 2);
+    memoriserSectionDroite(s, 'p1', 'sideBorderSection', true);
+    assert.equal(s.getItem(PREFIXE_DROITE + 'p1:sideBorderSection'), '1');
+    assert.equal(PREFIXE_DROITE, 'sc:');
+    assert.equal(sectionDroitePliee(s, 'p1', 'sideBorderSection'), true);
+    assert.equal(sectionDroitePliee(s, 'p2', 'sideBorderSection'), false);
+    memoriserSectionDroite(s, 'p1', 'sideBorderSection', false);
+    assert.equal(s.getItem(PREFIXE_DROITE + 'p1:sideBorderSection'), '0');
+    assert.equal(sectionDroitePliee(s, 'p1', 'sideBorderSection'), false);
   });
 });
 
-describe('les anciennes clés par entité', () => {
-  test('sont effacées, et elles seules', () => {
-    const s = stockage({
-      [PREFIXE_ANCIEN + 'p1:sideBorderSection']: '1',
-      [PREFIXE_ANCIEN + 'page:p2:sideDescSection']: '0',
-      [PREFIXE_DROITE + 'sideDescSection']: '1',
-      autre: 'z',
-      [PREFIXE_ANCIEN + 'p3:sideLightSection']: '1',
-    });
-    assert.equal(oublierAnciennesCles(s), 3);
-    assert.deepEqual([...s.m.keys()].sort(), [PREFIXE_DROITE + 'sideDescSection', 'autre'].sort());
-    assert.equal(oublierAnciennesCles(s), 0);
+describe('groupes Pièce et Bâtiment', () => {
+  test('aller-retour, déplié par défaut', () => {
+    const s = stockage();
+    assert.equal(groupeReplie(s, 'piece1'), false);
+    memoriserGroupe(s, 'piece1', true);
+    assert.equal(s.getItem(PREFIXE_GROUPE + 'piece1'), '1');
+    assert.equal(groupeReplie(s, 'piece1'), true);
+    assert.equal(groupeReplie(s, 'piece1,piece2'), false);
+    memoriserGroupe(s, 'piece1', false);
+    assert.equal(s.getItem(PREFIXE_GROUPE + 'piece1'), '0');
+    assert.equal(groupeReplie(s, 'piece1'), false);
   });
 });
 
-describe('un stockage qui échoue', () => {
+test('les familles de clés ne se mêlent pas', () => {
+  const s = stockage();
+  memoriserMenuGauche(s, 'x', false);
+  memoriserTome(s, 'x', false);
+  memoriserSectionDroite(s, 'x', 'x', false);
+  memoriserGroupe(s, 'x', false);
+  assert.equal(s.m.size, 4);
+});
+
+describe('un stockage qui échoue ou manque', () => {
   test('rend les défauts sans lever', () => {
-    assert.equal(menuGaucheOuvert(casse, 'treePanel', true), true);
-    assert.equal(sectionDroitePliee(casse, 'a'), false);
-    assert.doesNotThrow(() => memoriserMenuGauche(casse, 'a', true));
-    assert.doesNotThrow(() => memoriserSectionDroite(casse, 'a', true));
-    assert.equal(oublierAnciennesCles(casse), 0);
-  });
-  test('un stockage absent aussi', () => {
-    assert.equal(menuGaucheOuvert(null, 'treePanel', false), false);
-    assert.equal(sectionDroitePliee(undefined, 'a'), false);
-    assert.doesNotThrow(() => memoriserSectionDroite(null, 'a', true));
-    assert.equal(oublierAnciennesCles(null), 0);
+    for (const st of [casse, null, undefined]) {
+      assert.equal(menuGaucheOuvert(st, 'a', true), true);
+      assert.equal(tomeOuvert(st, 'a', false), false);
+      assert.deepEqual([...tomesOuverts(st, [{ id: 'a' }, { id: 'b' }])], ['a']);
+      assert.equal(sectionDroitePliee(st, 'e', 'a'), false);
+      assert.equal(groupeReplie(st, 'a'), false);
+      assert.doesNotThrow(() => {
+        memoriserMenuGauche(st, 'a', true); memoriserTome(st, 'a', true);
+        memoriserSectionDroite(st, 'e', 'a', true); memoriserGroupe(st, 'a', true);
+      });
+    }
   });
 });
 
@@ -117,10 +134,19 @@ describe('le câblage', () => {
     assert.match(corps, /menuGaucheOuvert\(localStorage, panelId,/);
     assert.match(corps, /memoriserMenuGauche\(localStorage, panelId,/);
   });
-  test('le panneau de droite ne range plus par entité', () => {
-    assert.doesNotMatch(events, /'sc:' \+/);
-    assert.doesNotMatch(events, /scEntityId/);
-    assert.match(events, /sectionDroitePliee\(localStorage, sec\.id\)/);
-    assert.match(events, /memoriserSectionDroite\(localStorage, sec\.id,/);
+  test('le panneau de droite range par entité', () => {
+    assert.match(events, /sectionDroitePliee\(localStorage, entityId, sec\.id\)/);
+    assert.match(events, /memoriserSectionDroite\(localStorage, scEntityId\(\), sec\.id,/);
+  });
+  test('les Tomes : mémorisés au clic et à la création, relus à l\'ouverture', () => {
+    const arbre = source('project-tree.js');
+    assert.equal((arbre.match(/memoriserTome\(/g) || []).length, 2);
+    assert.match(source('io.js'), /S\.expandedVolumes = tomesOuverts\(globalThis\.localStorage, S\.tomes\)/);
+  });
+  test('les groupes de la liste des Éléments ne vivent plus dans un objet oublié au lancement', () => {
+    const barre = source('sidebar.js');
+    assert.doesNotMatch(barre, /sideGroupCollapsed\[/);
+    assert.equal((barre.match(/basculerGroupe\(/g) || []).length, 3);
+    assert.equal((barre.match(/groupeReplie\(globalThis\.localStorage/g) || []).length, 3);
   });
 });

@@ -22,6 +22,7 @@ import { groupImagesByUsage, imageUsageLabel } from './image-library.js';
 import { getFormat, libelleTable3D } from './utils.js';
 import { alertAction, confirmAction, openRenameEntityModal, prechargerEnCascade3D } from './io.js';
 import { renderAll } from './draw.js';
+import { memoriserTome } from './section-memory.js';
 
 // Six upward dependencies, all of them things the left menu TRIGGERS rather than owns: what a
 // Scene is (createScene / openScene / disableSceneCameraMode), the context menus its rows open,
@@ -130,6 +131,8 @@ export function renderTree(){
     row.innerHTML = `<span>${t.name} <small style="color:var(--sepia)">— ${libelleTable3D(getFormat(t.format), tr).split(' (')[0]}</small></span><span class="caret">${expanded ? '▾' : '▸'}</span>`;
     row.onclick = () => {
       if (S.expandedVolumes.has(t.id)) S.expandedVolumes.delete(t.id); else S.expandedVolumes.add(t.id);
+      // #441 : l'état du Tome survit à la fermeture de l'application.
+      memoriserTome(globalThis.localStorage, t.id, S.expandedVolumes.has(t.id));
       renderTree();
     };
     row.oncontextmenu = (e) => {
@@ -254,6 +257,7 @@ document.getElementById('addVolumeBtn').onclick = () => {
   disableSceneCameraMode();
   S.editingSceneId = null;
   S.expandedVolumes.add(t.id);
+  memoriserTome(globalThis.localStorage, t.id, true);
   S.selectedId = null; S.selectedRoomId = null;
   renderAll();
 };

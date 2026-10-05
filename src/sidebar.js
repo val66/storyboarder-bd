@@ -5,7 +5,7 @@
  *
  * Exported functions: renderSideElementRow, renderSidePersonas, renderTracéSideRow,
  * renderSidePagePanels, updateSidePanel, refreshCameraSliders, renderSideCameraGizmo,
- * refreshSceneTopDownBtn, closeRightPanelMenu, sideGroupCollapsed,
+ * refreshSceneTopDownBtn, closeRightPanelMenu,
  * + helpers re-exported for app.js: isSceneTopDownView, setPanelNumber,
  * getLinkedElementName, homeOwningPanel, exitCameraMode, elementsInPanel,
  * getRoomConnectedComponents.
@@ -32,6 +32,7 @@ import {
 } from './constants.js';
 import { clamp, getEmotion, libelleTable3D, libelleTypeObjet3D, pxPerMm } from './utils.js';
 import { estUneLumiere3D } from './light-source-3d.js';
+import { groupeReplie, memoriserGroupe } from './section-memory.js';
 import {
   findOwningPanel, centerSceneCameraOnElement, centerSceneCameraOnRoom,
   drawAxisGizmoAt, panelSceneCache3D,
@@ -431,7 +432,14 @@ export function elementsInPanel(panel, page){
     findOwningPanel(o, page) === panel);
 }
 
-export const sideGroupCollapsed = {};
+// #441 : l'état replié des groupes Pièce et Bâtiment de la liste des Éléments survit à la fermeture
+// de l'application (cf. src/section-memory.js). Il remplace l'objet `sideGroupCollapsed`, oublié à
+// chaque lancement.
+function basculerGroupe(cle){
+  const replie = !groupeReplie(globalThis.localStorage, cle);
+  memoriserGroupe(globalThis.localStorage, cle, replie);
+  return replie;
+}
 
 // Un seul avertissement par session pour une projection impossible (cf. renderSidePersonas).
 let horsChampAlerteDonnee = false;
@@ -681,7 +689,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
   // click on ▾/▸ = collapse/expand the Walls.
   function renderRoomGroup(p, container, inBuilding = false) {
     const members = list.filter(o => o.pieceId === p.pieceId);
-    const isCollapsed = !!sideGroupCollapsed[p.pieceId];
+    const isCollapsed = groupeReplie(globalThis.localStorage, p.pieceId);
 
     // Room header
     const header = document.createElement('div');
@@ -703,9 +711,9 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     // Click on the ▾/▸ toggle: collapse/expand, without selecting
     toggle.addEventListener('mousedown', (e) => {
       e.preventDefault(); e.stopPropagation();
-      sideGroupCollapsed[p.pieceId] = !sideGroupCollapsed[p.pieceId];
-      groupWrap.classList.toggle('collapsed', !!sideGroupCollapsed[p.pieceId]);
-      toggle.textContent = sideGroupCollapsed[p.pieceId] ? '▸' : '▾';
+      const replie = basculerGroupe(p.pieceId);
+      groupWrap.classList.toggle('collapsed', replie);
+      toggle.textContent = replie ? '▸' : '▾';
     });
 
     // Click / double-click on the rest of the header: selection or modal opening
@@ -745,7 +753,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     if (component.length >= 2) {
       // ── Building: several spatially connected Rooms.
       const buildingKey      = component.slice().sort().join(',');
-      const buildingCollapsed = !!sideGroupCollapsed[buildingKey];
+      const buildingCollapsed = groupeReplie(globalThis.localStorage, buildingKey);
       const buildingName = panel.batimentNames[buildingKey] || 'Bâtiment';
 
       const buildingHeader = document.createElement('div');
@@ -761,9 +769,9 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
 
       buildingToggle.addEventListener('mousedown', (e) => {
         e.preventDefault(); e.stopPropagation();
-        sideGroupCollapsed[buildingKey] = !sideGroupCollapsed[buildingKey];
-        buildingMembers.classList.toggle('collapsed', !!sideGroupCollapsed[buildingKey]);
-        buildingToggle.textContent = sideGroupCollapsed[buildingKey] ? '▸' : '▾';
+        const replie = basculerGroupe(buildingKey);
+        buildingMembers.classList.toggle('collapsed', replie);
+        buildingToggle.textContent = replie ? '▸' : '▾';
       });
 
       // Single click → select the Building; double-click → Building modal

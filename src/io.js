@@ -9,6 +9,7 @@
  *   - _closeSettingsModal : closes the Settings modal (defined in the Settings section)
  */
 import { habillerModales } from './modal-chrome.js';
+import { tomesOuverts } from './section-memory.js';
 import { S, tr, createVolume, addPageToVolume, modeCanevasActif3D } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
 // Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
@@ -637,7 +638,8 @@ export function applyProjectData(data){
   S.scenes.forEach(s => { (s.pages || []).forEach(sp => { (sp.objects || []).forEach(_resetPanelAnimState); }); });
   S.selectedId = null; S.selectedRoomId = null; S.dragMode = null; S.snapGuide = null;
   S.undoStack = [];
-  S.expandedVolumes = new Set(S.tomes.length ? [S.tomes[0].id] : []);
+  // #441 : les Tomes dépliés à la dernière séance, le premier si rien n'est mémorisé pour lui.
+  S.expandedVolumes = tomesOuverts(globalThis.localStorage, S.tomes);
   document.getElementById('projectNameText').textContent = S.projectName;
   const undoBtnEl = document.getElementById('undoBtn');
   if (undoBtnEl) undoBtnEl.disabled = true;
