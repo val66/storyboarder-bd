@@ -163,7 +163,14 @@ function tailleLisible(octets){
  * ni installer. La variable STORYBOARD_SIMULER_MAJ montre chaque écran avec des données factices,
  * pour qu'on puisse les voir sans publier de version. Rend `{ decision, latest }` ou null.
  */
-const SIMULATIONS = ['disponible', 'obligatoire', 'obligatoireHorsLigne', 'expire', 'jamais', 'horloge'];
+const SIMULATIONS = ['disponible', 'obligatoire', 'obligatoireLong', 'obligatoireHorsLigne', 'expire', 'jamais', 'horloge'];
+
+/** Des notes longues, pour vérifier le défilement et les marges de l'écran (`obligatoireLong`). */
+function notesLongues(n){
+  const points = Array.from({ length: 8 }, (_, i) => `- **Point ${i + 1}.** Une phrase assez longue pour passer sur deux lignes dans la fenêtre, comme dans un vrai journal des versions.`);
+  return `**Simulation, version ${n}.** Un résumé en une phrase, en gras, comme en tête de chaque section de CHANGELOG.md.\n\n${points.join('\n')}\n\nUn dernier paragraphe, pour finir la section.`;
+}
+
 
 function simulation(nom, version, maintenant){
   if (!SIMULATIONS.includes(nom)) return null;
@@ -180,9 +187,14 @@ function simulation(nom, version, maintenant){
       { version: `${maj}.${min}.${pat}`, obligatoire: false, notes: 'La version installée.' },
     ],
   };
-  const latest = { version: encore, fichier: `Storyboard-BD-Setup-${encore}.exe`, sha512: 'simulation', taille: 130180869 };
+  if (nom === 'obligatoireLong') {
+    charge.versions = Array.from({ length: 6 }, (_, i) => ({
+      version: `${maj}.${min + 1}.${5 - i}`, obligatoire: i === 5, notes: notesLongues(`${maj}.${min + 1}.${5 - i}`),
+    }));
+  }
+  const latest = { version: nom === 'obligatoireLong' ? `${maj}.${min + 1}.5` : encore, fichier: 'Storyboard-BD-Setup-simulation.exe', sha512: 'simulation', taille: 130180869 };
   if (nom === 'disponible') return { decision: { etat: 'libre', charge }, latest };
-  if (nom === 'obligatoire') return { decision: { etat: 'obligatoire', versionMinimale: suivante, enLigne: true, charge }, latest };
+  if (nom === 'obligatoire' || nom === 'obligatoireLong') return { decision: { etat: 'obligatoire', versionMinimale: suivante, enLigne: true, charge }, latest };
   if (nom === 'obligatoireHorsLigne') return { decision: { etat: 'obligatoire', versionMinimale: suivante, enLigne: false, charge }, latest: null };
   if (nom === 'expire') return { decision: { etat: 'horsLigne', raison: 'expire', jours: 17 }, latest: null };
   if (nom === 'horloge') return { decision: { etat: 'horsLigne', raison: 'horloge', jours: -40 }, latest: null };

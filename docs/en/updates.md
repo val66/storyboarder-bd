@@ -86,6 +86,6 @@ everyone would face a screen with nothing to download.
 ## Seeing the screens without publishing
 
 `npm start` is not an installed application: it checks nothing and offers nothing. The
-`STORYBOARD_SIMULER_MAJ` variable shows each screen with fake data: `disponible`, `obligatoire`,
+`STORYBOARD_SIMULER_MAJ` variable shows each screen with fake data: `disponible`, `obligatoire`, `obligatoireLong` (six versions with long notes),
 `obligatoireHorsLigne`, `expire`, `jamais`, `horloge`. The download is simulated, nothing is
 installed.

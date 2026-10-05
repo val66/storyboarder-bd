@@ -11,8 +11,10 @@
   html, body { height: 100%; margin: 0; }
   /* Marges horizontales généreuses (demandé) : le texte ne doit jamais longer les bords de la
      fenêtre, même étroite. `box-sizing` pour que la largeur maximale compte les marges. */
-  body { display: flex; align-items: center; justify-content: center; background: var(--paper); color: var(--ink); overflow: auto; padding: 0 64px; box-sizing: border-box; }
-  .blocage { width: 100%; max-width: 720px; padding: 40px 56px; box-sizing: border-box; }
+  /* Centré par `margin: auto` et non par `align-items: center` : quand le contenu dépasse la
+     hauteur de la fenêtre, le second le rognerait EN HAUT, hors d'atteinte du défilement. */
+  body { display: flex; background: var(--paper); color: var(--ink); overflow: auto; padding: 0 64px; box-sizing: border-box; }
+  .blocage { width: 100%; max-width: 720px; margin: auto; padding: 40px 56px; box-sizing: border-box; }
   .blocage h1 { font-size: 13px; letter-spacing: 2px; color: var(--ink-soft); margin: 0 0 24px; }
   .blocage h2 { font-size: 24px; margin: 0 0 16px; }
   .blocage p { line-height: 1.5; margin: 0 0 12px; }

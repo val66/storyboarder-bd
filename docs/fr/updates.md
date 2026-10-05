@@ -89,5 +89,5 @@ sinon, tout le monde serait bloqué devant un écran sans rien à télécharger.
 
 `npm start` n'est pas une application installée : il ne vérifie rien et ne propose rien. La
 variable `STORYBOARD_SIMULER_MAJ` montre chaque écran avec des données factices :
-`disponible`, `obligatoire`, `obligatoireHorsLigne`, `expire`, `jamais`, `horloge`. Le
+`disponible`, `obligatoire`, `obligatoireLong` (six versions aux notes longues), `obligatoireHorsLigne`, `expire`, `jamais`, `horloge`. Le
 téléchargement y est simulé, rien n'est installé.

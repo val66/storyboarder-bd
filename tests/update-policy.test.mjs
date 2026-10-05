@@ -211,7 +211,7 @@ describe('le reste', () => {
       return [n, s.decision.etat + (s.decision.raison ? ':' + s.decision.raison : '') + (s.latest ? '+' : '')];
     }));
     assert.deepEqual(etats, {
-      disponible: 'libre+', obligatoire: 'obligatoire+', obligatoireHorsLigne: 'obligatoire',
+      disponible: 'libre+', obligatoire: 'obligatoire+', obligatoireLong: 'obligatoire+', obligatoireHorsLigne: 'obligatoire',
       expire: 'horsLigne:expire', jamais: 'horsLigne:jamais', horloge: 'horsLigne:horloge',
     });
     assert.equal(simulation('autre', '1.8.4', MAINTENANT), null);
