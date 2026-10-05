@@ -485,7 +485,7 @@ export const I18N_MODALS = [
   ['#autosaveIntervalSelect option[value="0"]', 'Disabled', 'Désactivée'],
   ['#themeSelect', null], // label below targets the preceding label, not this select itself
   ['#projectsDirBrowse', '📂 Choose...', '📂 Choisir...'],
-  ['#projectsDirReset', '↺ Reset', '↺ Réinitialiser'],
+  ['#projectsDirReset', '↺ Default folder', '↺ Dossier par défaut'],
   ['#themeSelect option[value="dark"]', '🌑 Dark', '🌑 Sombre'],
   ['#themeSelect option[value="light"]', '☀️ Light', '☀️ Clair'],
   // Contraste renforcé (#409c). Le libellé porte son propre id, `contrastCheckboxLabel`, plutôt
