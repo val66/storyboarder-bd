@@ -260,3 +260,44 @@ describe('Ciel : le fil jusqu’au rendu d’une Case', () => {
     }
   });
 });
+
+describe('Le plan lointain couvre tout le contenu de la Case (#439)', () => {
+  test('⚠️ UN MURET LOIN AU FOND N’EST PLUS TRANCHÉ : le plan lointain recule jusqu’à lui', async () => {
+    const { allongerPlanLointain3D } = await import('../src/scene3d.js');
+    const cam = new THREE.PerspectiveCamera(36, 1.5, 0.01, 95);
+    cam.position.set(0, 10, 0); cam.updateMatrixWorld();
+    const scene = new THREE.Scene();
+    const muret = new THREE.Mesh(new THREE.BoxGeometry(40, 1, 0.2));
+    muret.position.set(0, 0.5, -200);
+    scene.add(muret);
+    const far = allongerPlanLointain3D(cam, scene, []);
+    assert.ok(far >= 220, `plan lointain ${far}`);
+    assert.equal(cam.far, far);
+    // Le coin le plus lointain du muret est bien devant le plan.
+    const coin = new THREE.Vector3(20, 1, -200.1);
+    assert.ok(cam.position.distanceTo(coin) < far);
+  });
+
+  test('il ne rapproche jamais, et ignore le Sol, les objets masqués et les lumières', async () => {
+    const { allongerPlanLointain3D } = await import('../src/scene3d.js');
+    const cam = new THREE.PerspectiveCamera(36, 1.5, 0.01, 500);
+    cam.position.set(0, 10, 0);
+    const scene = new THREE.Scene();
+    const sol = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000));
+    const cache = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)); cache.position.set(0, 0, -5000); cache.visible = false;
+    const lumiere = new THREE.PointLight(); lumiere.position.set(0, 0, -9000);
+    const proche = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)); proche.position.set(0, 0, -10);
+    scene.add(sol, cache, lumiere, proche);
+    assert.equal(allongerPlanLointain3D(cam, scene, [sol]), 500, 'le plan a bougé pour rien');
+    assert.equal(allongerPlanLointain3D(cam, new THREE.Scene(), []), 500);
+  });
+
+  test('le rendu d’une Case l’appelle, Sol exclu, avant les ombres et le rendu', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+    const i = src.indexOf('allongerPlanLointain3D(personaCamera3D, personaScene3D, [groundMesh3D]);');
+    assert.ok(i > 0);
+    assert.ok(i < src.indexOf('if (_ombresDeLaCase) marquerProjectionDOmbre3D();'));
+    assert.ok(i < src.indexOf('abaissementDeLHorizon3D(personaCamera3D.position.y'), 'l’horizon du ciel doit lire le plan lointain final');
+  });
+});

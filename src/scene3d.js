@@ -131,6 +131,32 @@ export function sansLesEnfantsMasques3D(scene){
   return restaurer;
 }
 
+/**
+ * Recule le plan lointain d'une caméra jusqu'à couvrir tout le contenu VISIBLE de la scène, sauf
+ * les objets exclus (le Sol, qui fait 12 000 unités, et ne doit pas tout repousser). Ne le rapproche
+ * jamais. Rend la valeur retenue.
+ *
+ * La sphère englobante du contenu, plutôt que sa boîte : la distance la plus lointaine d'un point
+ * du contenu à la caméra est au plus la distance au centre plus le rayon, quel que soit l'angle de
+ * vue. Une marge d'une unité couvre l'épaisseur des murets.
+ */
+export function allongerPlanLointain3D(camera, scene, exclus = []){
+  if (!camera || !scene) return camera ? camera.far : 0;
+  const boite = new THREE.Box3();
+  for (const c of scene.children) {
+    if (!c.visible || exclus.includes(c) || c.isLight) continue;
+    boite.expandByObject(c);
+  }
+  if (boite.isEmpty()) return camera.far;
+  const sphere = boite.getBoundingSphere(new THREE.Sphere());
+  const besoin = camera.position.distanceTo(sphere.center) + sphere.radius + 1;
+  if (Number.isFinite(besoin) && besoin > camera.far) {
+    camera.far = besoin;
+    camera.updateProjectionMatrix();
+  }
+  return camera.far;
+}
+
 export function ensureElementWorldPos3D(o, panel){
   const dist = panelDepthToDistance3D(getElementDepth(o));
   const factor = WALL_PX_PER_UNIT_3D * (PANEL_CAM_DEFAULT_DIST_3D / dist);
@@ -3015,6 +3041,12 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // rendu — ce qu'il faisait —, il manquait tout rig créé pendant CE rendu, c'est à dire tous au
   // premier affichage d'une Case. L'image sans ombre partait ensuite dans le cache.
   jalon('  5. Traces, cadrage final');
+  // ⚠️ LE PLAN LOINTAIN COUVRE TOUT LE CONTENU DE LA CASE (#439). Il valait au plus distance + 80 :
+  // sur une grande Scène (le Cimetière), les murets et chemins du fond étaient TRANCHÉS net, puisque
+  // ce qui passe derrière le plan lointain est coupé. Le tampon de profondeur est logarithmique,
+  // donc reculer ce plan ne coûte pas de précision ; on ne le recule que si le contenu l'exige.
+  allongerPlanLointain3D(personaCamera3D, personaScene3D, [groundMesh3D]);
+  jalon('  5b. plan lointain');
   if (_ombresDeLaCase) marquerProjectionDOmbre3D();
   // ⚠️ LE FOND EST UN CIEL DEPUIS #429, ET IL L'EST AVEC LA MÊME LIGNE. L'opacité forcée reste
   // indispensable pour la raison écrite au-dessus — sans elle les pixels au-dessus de l'horizon
