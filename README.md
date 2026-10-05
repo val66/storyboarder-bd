@@ -12,8 +12,8 @@
 
 [![Download for Windows](https://img.shields.io/badge/Download-Windows_installer-0078D6?style=for-the-badge&logo=windows)](https://github.com/val66/storyboarder-bd/releases/latest/download/Storyboarder-BD-Setup.exe)
 
-Always the latest version. Run the downloaded file and follow the steps; no command line needed. The
-application then updates itself.
+Run the downloaded file and follow the steps; no command line needed. The application then updates
+itself.
 
 Previous versions and release notes: [all releases](https://github.com/val66/storyboarder-bd/releases).
 
