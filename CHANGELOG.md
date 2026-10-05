@@ -13,6 +13,36 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.10.0
+
+**L'application devient Storyboarder BD, et vos Projets sont à l'abri des mises à jour.** Un nom
+plus court, et la correction d'un défaut qui aurait effacé le dossier des Projets par défaut à la
+première mise à jour.
+
+### Ce qui change pour vous
+
+**Storyboarder BD.** L'application change de nom. Elle se met à jour comme d'habitude : vos
+réglages, la mémoire des menus et vos Projets suivent, rien n'est à refaire. Les raccourcis
+Bureau et Menu Démarrer portent le nouveau nom.
+
+**Vos Projets dans Documents.** Le dossier des Projets par défaut est désormais
+`Documents\Storyboarder BD\Projets`. Il se trouvait à côté du programme, là où chaque mise à jour
+efface tout. Si vous l'utilisiez, il est déplacé automatiquement, et un message vous le dit. Un
+dossier choisi ailleurs dans la Configuration ne bouge pas.
+
+### Sous le capot
+
+- L'installeur déplace l'ancien dossier `Projets` vers Documents AVANT de désinstaller la version
+  précédente (`build/installer.nsh`) ; l'application refait la vérification au démarrage
+  (`projects-dir.js`). Une cible déjà occupée n'est jamais écrasée : « Projets (anciens) ».
+- Au premier lancement sous le nouveau nom, réglages, attestation des mises à jour et mémoire des
+  menus sont recopiés depuis l'ancien dossier de données. L'identifiant de l'application et le
+  dépôt GitHub ne changent pas.
+- Documentation des simulations (`STORYBOARD_SIMULER_MAJ`, `STORYBOARD_SIMULER_RESSOURCES`), de la
+  reprise d'une release dont l'installeur échoue, et de la modale des ressources introuvables.
+
+---
+
 ## v1.9.0
 
 **L'application se met à jour toute seule.** Une nouvelle version s'annonce d'un bouton, se
