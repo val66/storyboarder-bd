@@ -193,8 +193,8 @@ export const I18N_TEXT = [
   // interface anglaise, et l'oubli passait inaperçu tant qu'il valait « Fermer » : le mot est court
   // et se devine. En y ajoutant la mention du raccourci, il devenait une phrase entière dans la
   // mauvaise langue.
-  ['#projectModalCornerClose', null, null, 'title', 'Close (Esc)', 'Fermer (Échap)'],
-  ['#settingsModalCornerClose', null, null, 'title', 'Close (Esc)', 'Fermer (Échap)'],
+  // #440 : TOUTES les croix de coin, celles d'index.html comme celles que modal-chrome.js ajoute.
+  ['.modal-close-btn', null, null, 'title', 'Close (Esc)', 'Fermer (Échap)'],
   // Titres simples sans contenu imbriqué dynamique
   ['#bubbleMenuHeader .menu-title', 'Speech bubble', 'Bulle'],
   ['#sideCameraSection > .menu-header .menu-title', 'Camera', 'Caméra'],

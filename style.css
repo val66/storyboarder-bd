@@ -1080,6 +1080,9 @@ canvas{ background:var(--fond-3d); }
   padding:0; flex-shrink:0; z-index:1;
 }
 .modal-close-btn:hover{ color:var(--accent); border-color:var(--accent); }
+/* #440 : le titre d'une modale est sa poignée ; il laisse la place à la croix du coin. */
+.modal-box > h3.modal-poignee{ cursor:move; user-select:none; padding-right:30px; }
+body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-select:none !important; }
 /* `.joint-sliders-details` A ÉTÉ RETIRÉE (#402a) : c'était le <details> « Réglages des
    articulations » des trois fiches, parties poser dans l'Éditeur (#394, #401a, #401c). Le panneau
    de l'Éditeur n'a jamais utilisé cette classe, il porte ses propres sections. */

@@ -8,6 +8,7 @@
  *   - _applyRenameScene : applies a Scene rename
  *   - _closeSettingsModal : closes the Settings modal (defined in the Settings section)
  */
+import { habillerModales } from './modal-chrome.js';
 import { S, tr, createVolume, addPageToVolume, modeCanevasActif3D } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
 // Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
@@ -1389,6 +1390,8 @@ enregistrerFermeture('settingsModal', () => { if (_closeSettingsModal) _closeSet
 // fermeture est déclarée ailleurs (modals.js, events.js) : ce qu'on observe ici, c'est
 // l'ouverture, pas la fermeture. Posé en fin de io.js, donc après que le document est prêt.
 surveillerModales();
+// #440 : la croix du coin et le titre-poignée, pour toutes les modales, sans les énumérer.
+habillerModales();
 // ↳ src/i18n.js
 // ↳ src/i18n.js
 // ════════════════════════════════════════════════════════════

@@ -173,6 +173,18 @@ export function fermerModaleDuDessus(){
 }
 
 /**
+ * Ferme UNE modale par sa fermeture déclarée, celle qu'Échap emploie. Rend `true` si elle en avait
+ * une. C'est ce qu'appelle la croix du coin (cf. modal-chrome.js) : la croix, Échap, « Annuler » et
+ * un clic sur le fond sont une seule intention, ils passent donc par la même fonction.
+ */
+export function fermerModale(id){
+  const fermer = _fermetures.get(id);
+  if (!fermer) return false;
+  fermer();
+  return true;
+}
+
+/**
  * Surveille toutes les modales du document et tient la pile à jour.
  *
  * PAR OBSERVATION, ET NON EN INSTRUMENTANT LES POINTS D'APPEL. Les quatorze modales s'ouvrent et se
