@@ -13,6 +13,51 @@ version coûterait plus qu'il ne rapporte.
 
 ---
 
+## v1.9.0
+
+**L'application se met à jour toute seule.** Une nouvelle version s'annonce d'un bouton, se
+télécharge et s'installe sans repasser par le site. Les menus se souviennent de ce qui est plié, et
+un Projet dont les fichiers manquent dit enfin où il les a cherchés.
+
+### Ce qui change pour vous
+
+**Mises à jour intégrées.** Quand une version plus récente est publiée, un bouton « Mise à jour »
+apparaît à côté du numéro de version. Il montre les nouveautés et le poids du téléchargement ;
+l'application enregistre votre Projet, installe la mise à jour et redémarre.
+
+**Mises à jour obligatoires.** Une version peut être déclarée obligatoire : l'application s'ouvre
+alors sur un écran plein qui explique ce qu'elle apporte et propose de la télécharger.
+L'application fonctionne hors ligne jusqu'à 14 jours d'affilée ; au-delà, un écran « Connexion
+requise » le dit clairement, sans parler de mise à jour.
+
+**Fichiers introuvables expliqués.** Si un Projet ouvert cite des modèles ou des images absents du
+dossier des Projets, une fenêtre dit combien, où l'application a cherché, et comment corriger.
+Choisir le bon dossier dans la Configuration les fait revenir aussitôt, sans redémarrer.
+
+**Les menus se souviennent.** Les sections pliées à gauche (Tomes compris) et à droite (pour chaque
+Case, Bulle ou Page), ainsi que les groupes Pièce et Bâtiment, gardent leur état d'une séance à
+l'autre.
+
+**Toutes les modales** ont leur croix de fermeture en haut à droite, et se déplacent en les
+saisissant par leur titre.
+
+Dans la Configuration, le bouton « Réinitialiser » du dossier des Projets s'appelle désormais
+« Dossier par défaut », ce qu'il fait.
+
+### Sous le capot
+
+- Une attestation signée (Ed25519), republiée chaque nuit par GitHub Actions, dit quelle version
+  est exigée ; l'application la vérifie avec une clé publique embarquée. Les releases construisent
+  désormais l'installeur sous Windows et l'attachent avec `latest.yml`.
+- `npm run obligatoire` marque une version obligatoire ; `npm run cles-attestation` crée la paire
+  de clés (une seule fois). Voir `docs/fr/updates.md`.
+- Fusibles Electron : intégrité de l'archive de l'application, ni `--inspect` ni `NODE_OPTIONS`.
+- La CI était rouge depuis la v1.7 : trois tests supposaient présent un dossier tenu hors du dépôt.
+  Elle teste désormais Node 22 et 24, Node 20 étant en fin de vie.
+- Simulations pour le développement : `STORYBOARD_SIMULER_MAJ` et `STORYBOARD_SIMULER_RESSOURCES`.
+
+---
+
 ## v1.8.0
 
 **Le décor prend matière.** Le Sol, l'eau, le ciel et les Traces quittent les aplats et les
