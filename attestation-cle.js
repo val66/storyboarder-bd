@@ -10,4 +10,4 @@
  * cette garde, une version publiée avant la création des clés bloquerait tout le monde.
  */
 'use strict';
-module.exports = { CLE_PUBLIQUE: null };
+module.exports = { CLE_PUBLIQUE: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA3y6gHL4uqFDnPltr4HdAM+KcOD2O7nJq5xXonx6gSZk=\n-----END PUBLIC KEY-----\n" };
