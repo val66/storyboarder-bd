@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   NOMS_MONTRES, objetsDuProjet, ressourcesManquantes, dossierDe, joindre, memeDossier, listeTronquee,
-  contenuRessources,
+  contenuRessources, simulationRessources, manquantesSimulees,
 } from '../src/missing-resources.js';
 import { oublierModelesIntrouvables, modelState, _setModelCacheEntry } from '../src/model-cache.js';
 import { oublierImagesIntrouvables, imageState, _setImageCacheEntry } from '../src/image-cache.js';
@@ -105,6 +105,25 @@ describe('le contenu de la modale', () => {
     assert.equal(c.titre, 'Missing resources');
     assert.match(c.intro, /2 3D model\(s\) and 1 image\(s\)/);
     assert.match(c.indice, /\/q/);
+  });
+});
+
+describe('la simulation', () => {
+  test('déclenchée par ?simulerRessources, et seulement par lui', () => {
+    assert.ok(simulationRessources('?simulerRessources=1'));
+    assert.ok(!simulationRessources(''));
+    assert.ok(!simulationRessources('?autre=1'));
+    assert.ok(!simulationRessources(undefined));
+  });
+  test('des manques qui montrent la liste tronquée', () => {
+    const m = manquantesSimulees();
+    assert.equal(m.modeles.length, 3);
+    assert.ok(m.images.length > NOMS_MONTRES);
+  });
+  test('main.js ne la transmet qu\'en développement', () => {
+    const main = lire('main.js');
+    assert.match(main, /const simulerRessources = !app\.isPackaged && process\.env\.STORYBOARD_SIMULER_RESSOURCES;/);
+    assert.match(main, /simulerRessources \? \{ query: \{ simulerRessources: '1' \} \} : undefined/);
   });
 });
 

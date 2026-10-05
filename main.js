@@ -141,7 +141,10 @@ function createWindow(mode = 'app') {
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.loadFile(path.join(__dirname, 'blocage.html'));
   } else {
-    win.loadFile(path.join(__dirname, 'index.html'));
+    // #443 : en développement, STORYBOARD_SIMULER_RESSOURCES montre la modale des ressources
+    // introuvables avec des données factices (cf. src/missing-resources.js, simulationRessources).
+    const simulerRessources = !app.isPackaged && process.env.STORYBOARD_SIMULER_RESSOURCES;
+    win.loadFile(path.join(__dirname, 'index.html'), simulerRessources ? { query: { simulerRessources: '1' } } : undefined);
   }
   return win;
 }

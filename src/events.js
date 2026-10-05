@@ -42,7 +42,7 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { initialiserMiseAJour, rafraichirTextesMaj, fermerModaleMaj } from './update-button.js';
-import { verifierRessources, rafraichirApresChangementDeDossier } from './missing-resources.js';
+import { verifierRessources, rafraichirApresChangementDeDossier, simulationRessources } from './missing-resources.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
@@ -8419,6 +8419,8 @@ async function loadAppSettings(){
   // #442 : après la langue, pour que le bouton « Mise à jour » naisse dans la bonne. Sans attendre :
   // l'état est déjà décidé côté processus principal, la demande ne retarde pas le démarrage.
   initialiserMiseAJour();
+  // #443 : la simulation de la modale des ressources introuvables, après la langue elle aussi.
+  if (simulationRessources(location.search)) verifierRessources();
 }
 
 // ---------- START ----------

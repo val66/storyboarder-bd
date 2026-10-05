@@ -109,6 +109,23 @@ export function contenuRessources({ manquantes, dossierProjets, cheminProjet, t 
   };
 }
 
+/**
+ * La SIMULATION, pour voir la modale sans casser un vrai Projet : `npm start` avec la variable
+ * STORYBOARD_SIMULER_RESSOURCES, que main.js transmet en paramètre d'adresse (`?simulerRessources=1`,
+ * en développement seulement). Trois modèles et onze images manquants, pour voir la liste tronquée,
+ * et un Projet rangé ailleurs, pour voir l'indice.
+ */
+export function simulationRessources(recherche){
+  return /[?&]simulerRessources(=|&|$)/.test(String(recherche || ''));
+}
+
+export function manquantesSimulees(){
+  return {
+    modeles: ['banc-de-parc.glb', 'chat-noir.glb', 'lampadaire.glb'],
+    images: Array.from({ length: 11 }, (_, i) => `photo-${String(i + 1).padStart(2, '0')}.jpg`),
+  };
+}
+
 // ─── Câblage (DOM et pont Electron) ───────────────────────────────────────────────────────────────
 
 const $ = (id) => document.getElementById(id);
@@ -125,10 +142,15 @@ export function fermerModaleRessources(){
   if (m) m.classList.add('hidden');
 }
 
-function afficher(c){
+function afficher(c, simule = false){
   $('ressourcesTitre').textContent = c.titre;
   const corps = $('ressourcesCorps');
   const blocs = [element('p', c.intro)];
+  // Une simulation se DIT, comme celle des mises à jour : sinon elle passe pour un vrai problème.
+  if (simule) {
+    blocs.unshift(element('p', tr('Simulation (STORYBOARD_SIMULER_RESSOURCES): fake data. To go back to normal, close this terminal or type Remove-Item Env:STORYBOARD_SIMULER_RESSOURCES.',
+      'Simulation (STORYBOARD_SIMULER_RESSOURCES) : données factices. Pour revenir à la normale, fermez ce terminal ou tapez Remove-Item Env:STORYBOARD_SIMULER_RESSOURCES.'), 'maj-simulation'));
+  }
   blocs.push(element('h4', tr('Where the application looked', 'Où l\'application a cherché')));
   const ul = element('ul');
   c.cherche.forEach(({ libelle, chemin }) => {
@@ -167,9 +189,12 @@ export async function verifierRessources(){
   const manquantes = ressourcesManquantes({
     objets: objetsDuProjet({ tomes: S.tomes, scenes: S.scenes }), modelesPresents, imagesPresentes,
   });
-  const total = manquantes.modeles.length + manquantes.images.length;
+  const simule = simulationRessources(typeof location !== 'undefined' && location.search);
+  const vraies = simule ? manquantesSimulees() : manquantes;
+  const total = vraies.modeles.length + vraies.images.length;
   if (!total || !dossierProjets) { fermerModaleRessources(); return total; }
-  afficher(contenuRessources({ manquantes, dossierProjets, cheminProjet: S.projectFilePath, t: tr }));
+  const cheminProjet = simule ? 'D:\\Ailleurs\\Mes BD\\Projet simulé.json' : S.projectFilePath;
+  afficher(contenuRessources({ manquantes: vraies, dossierProjets, cheminProjet, t: tr }), simule);
   return total;
 }
 
