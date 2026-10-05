@@ -9,12 +9,14 @@
 <link rel="stylesheet" href="style.css">
 <style>
   html, body { height: 100%; margin: 0; }
-  body { display: flex; align-items: center; justify-content: center; background: var(--paper); color: var(--ink); overflow: auto; }
-  .blocage { width: min(640px, 90vw); padding: 32px 0; }
+  /* Marges horizontales généreuses (demandé) : le texte ne doit jamais longer les bords de la
+     fenêtre, même étroite. `box-sizing` pour que la largeur maximale compte les marges. */
+  body { display: flex; align-items: center; justify-content: center; background: var(--paper); color: var(--ink); overflow: auto; padding: 0 64px; box-sizing: border-box; }
+  .blocage { width: 100%; max-width: 720px; padding: 40px 56px; box-sizing: border-box; }
   .blocage h1 { font-size: 13px; letter-spacing: 2px; color: var(--ink-soft); margin: 0 0 24px; }
   .blocage h2 { font-size: 24px; margin: 0 0 16px; }
   .blocage p { line-height: 1.5; margin: 0 0 12px; }
-  .blocage .maj-notes { max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0; background: var(--paper-dark); }
+  .blocage .maj-notes { max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 16px 28px; margin: 16px 0; background: var(--paper-dark); }
   .blocage .maj-notes h3 { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
   .blocage .actions { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
   .blocage .actions button { padding: 10px 22px; font-size: 14px; }
