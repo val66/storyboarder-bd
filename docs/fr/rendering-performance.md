@@ -1014,3 +1014,45 @@ seule entrée s'écrasait à chaque appel et n'aurait jamais servi. Écrit dans 
 Le WebGL (11 ms) est maintenant l'essentiel d'une image, et il n'est payé que quand la Case change.
 Il reste une image lente isolée par relevé (240 ms), la toute première après le démarrage de la
 sonde : construction des rigs. Pas de remède à chercher tant qu'elle reste unique.
+
+## Suite : un Projet lourd généré, et quatre corrections de plus
+
+Pour mesurer sans dépendre des Projets de l'utilisateur, un Projet de test a été généré à partir de
+sa « Scène 1 » (`Projets/Projet lourd (test perf).json`, hors dépôt) : 10 modèles importés,
+45 murs, 18 dalles, 5 Traces, et un Tome de 6 Planches portant chacune une copie de la scène. La
+sonde y a ensuite été lancée AVANT l'ouverture du Projet, pour mesurer aussi le chargement. Chaque
+ligne du tableau est un relevé de l'utilisateur, sur ce même Projet et ce même geste.
+
+| | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| rendu complet d'une Case, médiane | 30,5 ms | 26,3 | 21,5 | **18,0** |
+| dont placement des Éléments | 8,9 | 9,3 | 4,5 | **4,0** |
+| dont matrices de la scène | 2,8 (max 9) | 1,1 (max 2) | 1,1 | **0,7** |
+| dont WebGL | 16,7 | 14,6 | 14,5 | **12,2** |
+| nœuds parcourus au rendu | 20 189 | 3 169 | 3 169 | 3 169 |
+| image d'un changement de Planche | 105-196 | 105-183 | 94-181 | **72-87** |
+
+1. **Les rigs masqués des autres Cases sortent de l'arbre le temps du rendu** (`sansLesEnfantsMasques3D`).
+   three met à jour les matrices de tout l'arbre sans regarder la visibilité, et l'arbre grossit de
+   chaque Case visitée.
+2. **La hauteur debout d'un modèle est mémorisée sur son rig** : elle ne dépend que du modèle, de ce
+   qui en est affiché et de l'orientation de l'Élément, pas de la pose.
+3. **La clé de la boîte mémorisée est un tableau de nombres**, plus une chaîne.
+4. **La boîte est partagée entre les clones** d'un même modèle : chaque Case a son clone, et la
+   boîte se recalculait à la première visite de chacune.
+
+Et au chargement, mesuré : lecture 0,3 s, décodage 0,76 s de médiane par modèle (neuf en parallèle,
+attente comprise), mesures 8 ms ; six textures en double évitées (`src/glb-textures.js`).
+
+## Ce qui reste, et pourquoi on s'arrête là
+
+- **Le WebGL (12 ms)** est désormais l'essentiel d'une image : 776 appels de dessin, un million de
+  triangles. Le réduire sans toucher l'image demanderait de fusionner les géométries statiques
+  (murs, dalles) par Case, un chantier à part entière.
+- **Le tampon de profondeur logarithmique** coûte au GPU (il désactive le test de profondeur
+  anticipé), mais le retirer pourrait faire scintiller des surfaces proches : écarté, puisque la
+  consigne était de ne rien changer à l'image.
+- **KTX2 / Basis** diviserait par 4 à 8 la mémoire des textures des modèles (2,3 Go estimés pour
+  les 22 de l'utilisateur), mais avec perte : écarté pour la même raison.
+- **La première visite** reste plus chère : clonage des modèles (jusqu'à 43 ms) et composition des
+  textures des Traces (une fois, ~150 ms). Payé une fois par session.

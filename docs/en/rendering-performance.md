@@ -970,3 +970,44 @@ single entry was overwritten on every call and would never have hit. Written dow
 WebGL (11 ms) is now most of a frame, and it is only paid when the Panel changes. One isolated slow
 frame per run remains (240 ms), the very first after starting the probe: rig construction. No
 remedy to look for while it stays single.
+
+## Follow-up: a generated heavy Project, and four more fixes
+
+To measure without depending on the user's Projects, a test Project was generated from their
+"Scène 1" (`Projets/Projet lourd (test perf).json`, outside the repository): 10 imported models,
+45 walls, 18 slabs, 5 Traces, and a Volume of 6 Pages each carrying a copy of the scene. The probe
+was then started BEFORE opening the Project, to measure loading too. Each column is one run by the
+user, same Project, same gesture.
+
+| | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| full render of a Panel, median | 30.5 ms | 26.3 | 21.5 | **18.0** |
+| of which Element placement | 8.9 | 9.3 | 4.5 | **4.0** |
+| of which scene matrices | 2.8 (max 9) | 1.1 (max 2) | 1.1 | **0.7** |
+| of which WebGL | 16.7 | 14.6 | 14.5 | **12.2** |
+| nodes traversed per render | 20,189 | 3,169 | 3,169 | 3,169 |
+| frame of a Page switch | 105-196 | 105-183 | 94-181 | **72-87** |
+
+1. **Hidden rigs of other Panels leave the tree for the duration of the render**
+   (`sansLesEnfantsMasques3D`). three updates the matrices of the whole tree regardless of
+   visibility, and the tree grows with every Panel visited.
+2. **A model's standing height is memoised on its rig**: it depends only on the model, what of it
+   is shown and the Element's orientation, not on the pose.
+3. **The memoised box's key is an array of numbers**, no longer a string.
+4. **The box is shared between clones** of the same model: each Panel has its clone, and the box
+   was recomputed on the first visit of each.
+
+And on loading, measured: reading 0.3 s, decoding 0.76 s median per model (nine in parallel,
+waiting included), measurements 8 ms; six duplicate textures avoided (`src/glb-textures.js`).
+
+## What remains, and why we stop here
+
+- **WebGL (12 ms)** is now most of a frame: 776 draw calls, one million triangles. Reducing it
+  without touching the image would mean merging static geometry (walls, slabs) per Panel, a
+  project of its own.
+- **The logarithmic depth buffer** costs the GPU (it disables early depth testing), but removing it
+  could make close surfaces flicker: ruled out, the brief being to change nothing in the image.
+- **KTX2 / Basis** would divide the models' texture memory by 4 to 8 (2.3 GB estimated for the
+  user's 22), but lossily: ruled out for the same reason.
+- **The first visit** stays more expensive: cloning the models (up to 43 ms) and composing the
+  Traces' textures (once, ~150 ms). Paid once per session.
