@@ -32,6 +32,7 @@ down.
 | Document | Subject |
 |---|---|
 | [versioning.md](versioning.md) | `major.minor.patch` policy, git hooks, tags. |
+| [missing-resources.md](missing-resources.md) | Missing resources: why a Project loses its models and images from one installation to another, the dialog that explains it, and its simulation (task #443). |
 | [updates.md](updates.md) | Built-in updates: the signed attestation, the fourteen-day offline lease, publishing a version, making one required (task #442). |
 
 ## Design in progress

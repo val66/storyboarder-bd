@@ -88,6 +88,60 @@ sinon, tout le monde serait bloqué devant un écran sans rien à télécharger.
 ## Voir les écrans sans publier
 
 `npm start` n'est pas une application installée : il ne vérifie rien et ne propose rien. La
-variable `STORYBOARD_SIMULER_MAJ` montre chaque écran avec des données factices :
-`disponible`, `obligatoire`, `obligatoireLong` (six versions aux notes longues), `obligatoireHorsLigne`, `expire`, `jamais`, `horloge`. Le
-téléchargement y est simulé, rien n'est installé.
+variable `STORYBOARD_SIMULER_MAJ` montre chaque écran avec des données factices, en développement
+seulement :
+
+| Valeur | Ce qu'on voit |
+|---|---|
+| `disponible` | le bouton « Mise à jour » et sa modale |
+| `obligatoire` | l'écran plein de mise à jour obligatoire |
+| `obligatoireLong` | le même, avec six versions aux notes longues (défilement, marges) |
+| `obligatoireHorsLigne` | la mise à jour obligatoire alors qu'on est hors ligne |
+| `expire` | « Connexion requise », hors ligne depuis plus de quatorze jours |
+| `jamais` | « Première vérification nécessaire » |
+| `horloge` | « Date de l'ordinateur incorrecte » |
+
+Sous PowerShell :
+
+```
+[Console]::OutputEncoding=[Text.Encoding]::UTF8; cd C:\WebProjects\Storyboarder; $env:STORYBOARD_SIMULER_MAJ='obligatoire'; npm start
+```
+
+⚠️ **La variable reste posée dans ce terminal** tant qu'il est ouvert : chaque `npm start` suivant y
+relance la simulation. Un bandeau jaune la signale et dit comment en sortir. Pour revenir à la
+normale, fermer le terminal, ou :
+
+```
+[Console]::OutputEncoding=[Text.Encoding]::UTF8; Remove-Item Env:STORYBOARD_SIMULER_MAJ; cd C:\WebProjects\Storyboarder; npm start
+```
+
+Le téléchargement y est simulé (une barre de progression factice), rien n'est installé.
+
+## Tester une vraie mise à jour
+
+La simulation ne prouve pas que la chaîne marche. Pour cela :
+
+1. Installer une version qui contient déjà ce système (`npm run dist`, puis l'installeur de `dist/`).
+2. Publier une version plus récente : `git push --follow-tags` sur un tag `vX.Y.Z`.
+3. Attendre dans l'onglet Actions la fin de **Release** (la note, puis l'installeur Windows) puis
+   d'**Attestation**. La release doit porter trois fichiers : l'installeur `.exe`, son `.blockmap` et
+   `latest.yml`.
+4. Lancer la version installée : le bouton « Mise à jour » apparaît. Elle ne vérifie qu'au
+   démarrage.
+
+### Si l'installeur d'une release échoue
+
+Corriger, committer **sans le hook** (`git commit --no-verify`, lint et tests lancés à la main) :
+sinon la version passerait au correctif suivant, et l'installeur du tag annoncerait une autre version
+que la sienne. Puis reposer le tag sur ce commit et le repousser :
+
+```
+git tag -f -a v1.9.0 -m v1.9.0 HEAD
+git push; git push --force origin v1.9.0
+```
+
+La note d'une release qui existe déjà est mise à jour, pas recréée : le circuit se relance en entier.
+
+⚠️ **`latest.yml` n'est produit que si `build.publish` désigne le dépôt GitHub.** Avec
+`publish: null`, l'installeur se construit mais pas ce fichier, et l'application installée n'a rien
+à lire. C'est ce qui a fait échouer la première release (v1.9.0). Un test le garde.

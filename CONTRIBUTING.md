@@ -55,6 +55,19 @@ Anything needing real WebGL is out of reach (`THREE.WebGLRenderer` cannot be bui
 is event wiring — there is no real DOM. Those parts are checked by source inspection, and each test
 file's header says what it excludes and why.
 
+## Simulations
+
+Some screens only appear in an installed application, or when something is missing. In
+development, an environment variable shows them with fake data, flagged by a yellow banner:
+
+- `STORYBOARD_SIMULER_MAJ`: the update screens, see
+  [`docs/en/updates.md`](docs/en/updates.md#seeing-the-screens-without-publishing);
+- `STORYBOARD_SIMULER_RESSOURCES`: the missing-resources dialog, see
+  [`docs/en/missing-resources.md`](docs/en/missing-resources.md).
+
+In PowerShell, the variable stays set in the terminal while it is open: `Remove-Item Env:NAME`
+removes it.
+
 ## Things you do not need to do
 
 **Do not bump the version by hand.** The pre-commit hook does it. `package.json`, `src/version.js`

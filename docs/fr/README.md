@@ -32,6 +32,7 @@ régression difficile à retrouver.
 | Document | Sujet |
 |---|---|
 | [versioning.md](versioning.md) | Politique `major.minor.correctif`, hooks git, tags. |
+| [missing-resources.md](missing-resources.md) | Ressources introuvables : pourquoi un Projet perd ses modèles et images d'une installation à l'autre, la modale qui l'explique, et sa simulation (tâche #443). |
 | [updates.md](updates.md) | Mises à jour intégrées : l'attestation signée, le bail de quatorze jours hors ligne, publier une version, la rendre obligatoire (tâche #442). |
 
 ## Conception en cours

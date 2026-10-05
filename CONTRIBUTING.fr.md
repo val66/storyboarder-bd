@@ -59,6 +59,20 @@ Tout ce qui exige un vrai WebGL est hors de portée (`THREE.WebGLRenderer` ne se
 Node), de même que le câblage des événements — il n'y a pas de vrai DOM. Ces parties sont contrôlées
 par inspection de source, et l'en-tête de chaque fichier de test dit ce qu'il exclut et pourquoi.
 
+## Simulations
+
+Certains écrans n'apparaissent que dans une application installée, ou quand quelque chose manque.
+En développement, une variable d'environnement les montre avec des données factices, signalées
+par un bandeau jaune :
+
+- `STORYBOARD_SIMULER_MAJ` : les écrans de mise à jour, voir
+  [`docs/fr/updates.md`](docs/fr/updates.md#voir-les-écrans-sans-publier) ;
+- `STORYBOARD_SIMULER_RESSOURCES` : la modale des ressources introuvables, voir
+  [`docs/fr/missing-resources.md`](docs/fr/missing-resources.md).
+
+Sous PowerShell, la variable reste posée dans le terminal tant qu'il est ouvert :
+`Remove-Item Env:NOM` la retire.
+
 ## Ce qu'il ne faut pas faire
 
 **Ne pas incrémenter la version à la main.** Le hook pre-commit s'en charge. `package.json`,

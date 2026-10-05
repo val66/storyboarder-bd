@@ -86,6 +86,58 @@ everyone would face a screen with nothing to download.
 ## Seeing the screens without publishing
 
 `npm start` is not an installed application: it checks nothing and offers nothing. The
-`STORYBOARD_SIMULER_MAJ` variable shows each screen with fake data: `disponible`, `obligatoire`, `obligatoireLong` (six versions with long notes),
-`obligatoireHorsLigne`, `expire`, `jamais`, `horloge`. The download is simulated, nothing is
-installed.
+`STORYBOARD_SIMULER_MAJ` variable shows each screen with fake data, in development only:
+
+| Value | What you see |
+|---|---|
+| `disponible` | the "Update" button and its dialog |
+| `obligatoire` | the full-screen required update |
+| `obligatoireLong` | the same, with six versions of long notes (scrolling, margins) |
+| `obligatoireHorsLigne` | the required update while offline |
+| `expire` | "Connection required", offline for more than fourteen days |
+| `jamais` | "First check required" |
+| `horloge` | "Incorrect computer date" |
+
+In PowerShell:
+
+```
+[Console]::OutputEncoding=[Text.Encoding]::UTF8; cd C:\WebProjects\Storyboarder; $env:STORYBOARD_SIMULER_MAJ='obligatoire'; npm start
+```
+
+⚠️ **The variable stays set in that terminal** while it is open: every later `npm start` there runs
+the simulation again. A yellow banner says so and how to leave it. To go back to normal, close the
+terminal, or:
+
+```
+[Console]::OutputEncoding=[Text.Encoding]::UTF8; Remove-Item Env:STORYBOARD_SIMULER_MAJ; cd C:\WebProjects\Storyboarder; npm start
+```
+
+The download is simulated (a fake progress bar), nothing is installed.
+
+## Testing a real update
+
+The simulation does not prove the chain works. For that:
+
+1. Install a version that already contains this system (`npm run dist`, then the installer in `dist/`).
+2. Publish a newer version: `git push --follow-tags` on a `vX.Y.Z` tag.
+3. In the Actions tab, wait for **Release** (the notes, then the Windows installer) and then
+   **Attestation**. The release must carry three files: the `.exe` installer, its `.blockmap` and
+   `latest.yml`.
+4. Start the installed version: the "Update" button appears. It only checks at startup.
+
+### If a release's installer fails
+
+Fix it and commit **without the hook** (`git commit --no-verify`, lint and tests run by hand):
+otherwise the version would move to the next patch, and the tag's installer would announce a version
+other than its own. Then move the tag onto that commit and push it again:
+
+```
+git tag -f -a v1.9.0 -m v1.9.0 HEAD
+git push; git push --force origin v1.9.0
+```
+
+The notes of a release that already exists are updated, not recreated: the whole chain runs again.
+
+⚠️ **`latest.yml` is only produced when `build.publish` points at the GitHub repository.** With
+`publish: null`, the installer builds but that file does not, and the installed application has
+nothing to read. That is what made the first release (v1.9.0) fail. A test guards it.
