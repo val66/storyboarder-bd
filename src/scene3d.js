@@ -2114,6 +2114,25 @@ export function hauteurDeboutModele3D(entry, boxFn){
   const g = entry && entry.figureGroup;
   const pg = entry && entry.poseGroup;
   if (!g || !pg) return undefined;
+  // ⚠️ #438 : LA HAUTEUR DEBOUT NE DÉPEND QUE DU MODÈLE ET DE CE QUI EN EST AFFICHÉ, pas de la pose
+  // courante, que cette fonction neutralise justement. Elle est donc mémorisée sur le rig, sous la
+  // visibilité de ses nœuds (les maillages égarés se masquent depuis la fiche) et le boxFn employé.
+  // Avant, chaque rendu remettait les os au repos, mesurait, puis restaurait, pour chaque modèle.
+  const visibilites = [];
+  g.traverse(n => { visibilites.push(n.visible ? 1 : 0); });
+  // L'orientation de l'Élément (rotX/rotY/rotZ, portée par le figureGroup) n'est PAS neutralisée par
+  // la mesure : elle change la boîte, donc la clé.
+  const q = g.quaternion;
+  const cle = visibilites.join('') + '|' + (boxFn ? 'f' : 'b') + '|' + [q.x, q.y, q.z, q.w].join(',');
+  if (entry._hauteurDebout && entry._hauteurDebout.cle === cle) return entry._hauteurDebout.h;
+  const h = mesurerHauteurDebout3D(entry, boxFn);
+  entry._hauteurDebout = { cle, h };
+  return h;
+}
+
+function mesurerHauteurDebout3D(entry, boxFn){
+  const g = entry.figureGroup;
+  const pg = entry.poseGroup;
   const q = pg.quaternion.clone();
   const sc = g.scale.clone(), po = g.position.clone();
   // Les orientations d'os sont SAUVEGARDÉES, pas recalculées : restaurer en réappliquant la pose
@@ -2371,7 +2390,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // par diverger (cf. le saut de 116 px de #420d, né de cette faute).
   const _posLumieres3D = new Map();
   jalon('  1. caméra, éclairage, ombres, murs fusionnés, Sol');
-  elements.forEach((o, idx) => {
+  const _placerElement3D = (o, idx) => {
     if (o.objType === 'dalle') return; // rendered separately below (THREE.ShapeGeometry)
     if (mergedWallCovered.has(o.id)) return; // rendered via a merged group (below)
     let entry;
@@ -2509,6 +2528,13 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
       placeRigCentered3D(selEntry.figureGroup, wx, wy, z, unitsH);
       selEntry.figureGroup.visible = false;
     }
+  };
+  // #438 : chaque Élément est mesuré par famille, sonde allumée seulement : le jalon « Éléments »
+  // restait à 9 ms par rendu sur le Projet lourd, sans dire qui les prenait.
+  elements.forEach((o, idx) => {
+    const _tEl = sondeDebut();
+    _placerElement3D(o, idx);
+    if (_tEl) sondeFin('    élément : ' + (o.type === 'perso' ? 'personnage' : (o.objType === 'modele' ? 'modèle importé' : (WALL_TYPES.includes(o.objType) ? 'mur' : 'autre objet'))), _tEl);
   });
   // Les sources posées de CETTE Case, allumées, et toutes les autres éteintes. Voir le plan pur et
   // sa raison d'être dans light-source-3d.js : la scène Three.js est partagée entre les Cases.

@@ -137,7 +137,8 @@ export function rapport(){
 /**
  * La SYNTHÈSE, sur une seule ligne à copier-coller (demandée par l'utilisateur : un tableau se
  * capture en image, une ligne se colle telle quelle et se relit sans erreur de lecture).
- * Chaque mesure : `nom n× méd/p95/max` en ms ; un simple compte : `nom n×`. Puis les images lentes.
+ * Chaque mesure : `nom n× méd/p95/max Σtotal` en ms ; un simple compte : `nom n×`. Puis les
+ * images lentes. Le total dit la PART d'une étape, que la médiane seule cache.
  * Fonction PURE sur le rapport.
  */
 export function synthese(r = rapport()){
@@ -146,7 +147,7 @@ export function synthese(r = rapport()){
   for (const [nom, m] of Object.entries(r.mesures)) {
     const n = nom.trim();
     parties.push(m['médiane'] === undefined ? `${n} ${m.appels}×`
-      : `${n} ${m.appels}× ${m['médiane']}/${m.p95}/${m.max}`);
+      : `${n} ${m.appels}× ${m['médiane']}/${m.p95}/${m.max} Σ${Math.round(m['total ms'])}`);
   }
   if (r.images_lentes.length) {
     parties.push(`lentes(ms) ${r.images_lentes.map(l => l.ms).join(',')}`);

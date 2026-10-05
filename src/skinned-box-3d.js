@@ -163,6 +163,12 @@ const _boitesMemorisees = new WeakMap();
 const ETATS_MEMORISES = 4;
 let _calculsDeBoite = 0;
 
+/**
+ * La clé : un tableau de nombres, comparé élément par élément. ⚠️ PAS UNE CHAÎNE. La première
+ * version joignait les nombres en texte, 20 fois par rendu sur le Projet lourd, pour des modèles de
+ * plusieurs centaines de nœuds : la conversion des flottants en texte coûtait l'essentiel de ce
+ * qu'elle protégeait.
+ */
 function cleDeLaBoite3D(object){
   object.updateMatrixWorld(true);
   const n = [];
@@ -173,7 +179,13 @@ function cleDeLaBoite3D(object){
       o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w,
       o.scale.x, o.scale.y, o.scale.z, o.visible ? 1 : 0);
   });
-  return n.join(',');
+  return n;
+}
+
+function memesCles(a, b){
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 
 export function box3FromObjectSkinAwareCached3D(object){
@@ -184,7 +196,7 @@ export function box3FromObjectSkinAwareCached3D(object){
   // aurait été écrasée à chaque appel par l'autre état, et ne servait donc jamais.
   let gardes = _boitesMemorisees.get(object);
   if (!gardes) { gardes = []; _boitesMemorisees.set(object, gardes); }
-  const garde = gardes.find(g => g.cle === cle);
+  const garde = gardes.find(g => memesCles(g.cle, cle));
   if (garde) return garde.box.clone();
   _calculsDeBoite++;
   const box = box3FromObjectSkinAware3D(object);

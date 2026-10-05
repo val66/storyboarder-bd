@@ -1322,6 +1322,32 @@ describe('un modèle couché n\'est pas agrandi', () => {
       'la hauteur de référence suit la pose au lieu de l\'ignorer');
   });
 
+  test('⚠️ MÉMORISÉE (#438) : un second appel ne remesure pas, sauf si l’orientation ou l’affichage change', () => {
+    // Avant, chaque rendu remettait les os au repos, mesurait et restaurait, pour chaque modèle.
+    const entry = buildPropRig3D('modele', '#888', elem());
+    let mesures = 0;
+    const compteuse = (g) => { mesures++; return BOITE(g); };
+    const h = hauteurDeboutModele3D(entry, compteuse);
+    hauteurDeboutModele3D(entry, compteuse);
+    applySkeletonPose(entry.skeletonBones, POSE_PLIEE());
+    assert.equal(hauteurDeboutModele3D(entry, compteuse), h, 'une pose a changé la hauteur debout');
+    assert.equal(mesures, 1, 'la hauteur debout a été remesurée sans raison');
+    // L'orientation de l'Élément n'est pas neutralisée par la mesure : elle change la boîte.
+    entry.figureGroup.rotation.x = Math.PI / 2;
+    const couchee = hauteurDeboutModele3D(entry, compteuse);
+    assert.equal(mesures, 2);
+    assert.ok(Math.abs(couchee - h) > 1e-6, 'une orientation différente a rendu la même hauteur');
+    entry.figureGroup.rotation.x = 0;
+    hauteurDeboutModele3D(entry, compteuse);
+    assert.equal(mesures, 3);
+    // Masquer un maillage change ce qui est mesuré.
+    let maillage = null;
+    entry.figureGroup.traverse(n => { if (n.isMesh && !maillage) maillage = n; });
+    maillage.visible = false;
+    hauteurDeboutModele3D(entry, compteuse);
+    assert.equal(mesures, 4, 'masquer un maillage n’a pas fait remesurer');
+  });
+
   test('la mesure RESTAURE aussi la POSE des os', () => {
     // Elle remet les os au repos le temps de mesurer. Ne pas les rendre laisserait le modèle
     // brutalement redressé, une pose effacée par un simple placement.
