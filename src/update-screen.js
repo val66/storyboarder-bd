@@ -18,6 +18,10 @@ function afficher(e){
   document.body.classList.toggle('theme-contraste', e.contraste === true);
   const c = contenuDuBlocage(e);
   $('blocageTitre').textContent = c.titre;
+  // Une simulation se DIT : la variable d'environnement survit dans le terminal, et l'écran
+  // revenait à chaque `npm start` sans qu'on sache pourquoi (constaté par l'utilisateur).
+  $('blocageSimulation').hidden = !e.simulation;
+  if (e.simulation) $('blocageSimulation').textContent = t.bandeauSimulation(e.simulation);
   const texte = $('blocageTexte');
   texte.replaceChildren(...c.paragraphes.map(p => Object.assign(document.createElement('p'), { textContent: p })));
   const avecNotes = c.notes && e.notes.length > 0;

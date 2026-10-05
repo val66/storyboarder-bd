@@ -39,6 +39,7 @@ export function rafraichirTextesMaj(){
   const paragraphes = [t.dispo(etat.version, etat.installee)];
   if (etat.taille) paragraphes.push(t.taille(etat.taille));
   paragraphes.push(t.redemarrage);
+  if (etat.simulation) paragraphes.unshift(t.bandeauSimulation(etat.simulation));
   if (S.projectDirty) paragraphes.push(t.nonEnregistre);
   $('majModalTexte').replaceChildren(...paragraphes.map(p => Object.assign(document.createElement('p'), { textContent: p })));
   $('majModalNotes').innerHTML = nouveautesEnHtml(etat.notes, langue());

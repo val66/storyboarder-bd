@@ -83,6 +83,21 @@ describe('les deux langues', () => {
   });
 });
 
+describe('le bandeau de simulation', () => {
+  test('nomme la simulation et dit comment en sortir, dans les deux langues', () => {
+    assert.match(textesMaj('fr').bandeauSimulation('obligatoireLong'), /STORYBOARD_SIMULER_MAJ=obligatoireLong.*Remove-Item Env:STORYBOARD_SIMULER_MAJ/);
+    assert.match(textesMaj('en').bandeauSimulation('expire'), /STORYBOARD_SIMULER_MAJ=expire.*Remove-Item/);
+  });
+  test('l\'écran bloquant et la modale l\'affichent dès que main.js en annonce une', () => {
+    const ecran = readFileSync(new URL('../src/update-screen.js', import.meta.url), 'utf8');
+    assert.match(ecran, /\$\('blocageSimulation'\)\.hidden = !e\.simulation;/);
+    const bouton = readFileSync(new URL('../src/update-button.js', import.meta.url), 'utf8');
+    assert.match(bouton, /if \(etat\.simulation\) paragraphes\.unshift\(t\.bandeauSimulation\(etat\.simulation\)\);/);
+    const main = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+    assert.match(main, /simulation: politiqueMaj\.simulation\(SIMULATION_MAJ, version, Date\.now\(\)\) \? SIMULATION_MAJ : null/);
+  });
+});
+
 describe('progression', () => {
   test('bornée et entière', () => {
     assert.equal(pourcentage(50, 200), 25);

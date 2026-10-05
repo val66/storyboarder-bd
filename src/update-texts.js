@@ -15,6 +15,7 @@ export const JOURS_HORS_LIGNE = 14;
 const T = {
   fr: {
     bouton: 'Mise à jour',
+    bandeauSimulation: (nom) => `Simulation (STORYBOARD_SIMULER_MAJ=${nom}) : données factices. Pour revenir à la normale, fermez ce terminal ou tapez Remove-Item Env:STORYBOARD_SIMULER_MAJ.`,
     boutonTitre: (v) => `La version ${v} est disponible`,
     titreDispo: (v) => `Mise à jour ${v}`,
     titreObligatoire: 'Mise à jour obligatoire',
@@ -51,6 +52,7 @@ const T = {
   },
   en: {
     bouton: 'Update',
+    bandeauSimulation: (nom) => `Simulation (STORYBOARD_SIMULER_MAJ=${nom}): fake data. To go back to normal, close this terminal or type Remove-Item Env:STORYBOARD_SIMULER_MAJ.`,
     boutonTitre: (v) => `Version ${v} is available`,
     titreDispo: (v) => `Update ${v}`,
     titreObligatoire: 'Required update',

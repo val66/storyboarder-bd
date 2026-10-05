@@ -65,7 +65,7 @@ interface StoryboarderAPI {
     etat: 'libre' | 'obligatoire' | 'horsLigne'; raison: string | null; jours: number | null;
     enLigne: boolean; versionMinimale: string | null; installee: string; disponible: boolean;
     version: string | null; taille: string; notes: { version: string; obligatoire: boolean; notes: string }[];
-    lang: 'fr' | 'en'; theme: string | null; contraste: boolean; simulation: boolean;
+    lang: 'fr' | 'en'; theme: string | null; contraste: boolean; simulation: string | null;
   }>;
   majInstaller(): Promise<{ ok: boolean; erreur?: string }>;
   onMajProgression(callback: (recus: number, total: number) => void): void;

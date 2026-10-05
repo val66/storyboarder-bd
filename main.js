@@ -638,7 +638,8 @@ function etatPourAffichage() {
     lang: readSettings().lang === 'en' ? 'en' : 'fr',
     theme: readSettings().theme || null,
     contraste: readSettings().contrast === true,
-    simulation: !!politiqueMaj.simulation(SIMULATION_MAJ, version, Date.now()),
+    // Le NOM de la simulation, ou null : l'écran l'affiche, pour qu'elle ne passe jamais pour réelle.
+    simulation: politiqueMaj.simulation(SIMULATION_MAJ, version, Date.now()) ? SIMULATION_MAJ : null,
   };
 }
 

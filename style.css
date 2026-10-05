@@ -2019,3 +2019,7 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .ressources-corps code{ overflow-wrap:anywhere; font-size:12px; }
 .ressources-noms li{ overflow-wrap:anywhere; color:var(--ink-soft); }
 .ressources-indice{ padding:8px 12px; border-left:3px solid var(--accent); background:var(--accent-soft); }
+.maj-simulation{
+  padding:8px 12px; border-radius:6px; font-size:12.5px; line-height:1.4;
+  background:var(--warn); color:var(--sur-warn);
+}
