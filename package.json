@@ -79,6 +79,10 @@
       "enableEmbeddedAsarIntegrityValidation": true,
       "onlyLoadAppFromAsar": true
     },
-    "publish": null
+    "publish": {
+      "provider": "github",
+      "owner": "val66",
+      "repo": "storyboarder-bd"
+    }
   }
 }

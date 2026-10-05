@@ -177,6 +177,17 @@ describe('la publication', () => {
     assert.match(RELEASE, /needs: publier/);
     assert.match(RELEASE, /runs-on: windows-latest/);
   });
+  test('⚠️ latest.yml n\'est produit QUE si une cible de publication est déclarée', () => {
+    // Avec `publish: null`, electron-builder construit l'installeur mais pas latest.yml : la
+    // première release (v1.9.0) a échoué au téléversement pour cette raison. La cible doit être le
+    // dépôt même que l'application interroge ; `--publish never` empêche de publier pour autant.
+    assert.deepEqual(PKG.build.publish, { provider: 'github', owner: 'val66', repo: 'storyboarder-bd' });
+    assert.equal(`${PKG.build.publish.owner}/${PKG.build.publish.repo}`, politique.DEPOT);
+  });
+  test('la publication de la note est rejouable : une release existante est mise à jour', () => {
+    assert.match(RELEASE, /if gh release view "\$\{\{ github\.ref_name \}\}"/);
+    assert.match(RELEASE, /gh release edit "\$\{\{ github\.ref_name \}\}" --notes-file NOTE\.md/);
+  });
   test('le verrouillage d\'intégrité est posé', () => {
     assert.deepEqual(PKG.build.electronFuses, {
       runAsNode: false, enableNodeOptionsEnvironmentVariable: false, enableNodeCliInspectArguments: false,
