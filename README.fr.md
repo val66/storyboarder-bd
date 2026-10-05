@@ -8,6 +8,15 @@
 
 > Application de bureau Windows, construite avec Electron + Three.js.
 
+## ⬇️ Télécharger
+
+[![Télécharger pour Windows](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Installeur_Windows-0078D6?style=for-the-badge&logo=windows)](https://github.com/val66/storyboarder-bd/releases/latest/download/Storyboarder-BD-Setup.exe)
+
+Toujours la dernière version. Lancez le fichier téléchargé et suivez les étapes, sans ligne de
+commande. L'application se met ensuite à jour d'elle-même.
+
+Versions précédentes et notes de version : [toutes les releases](https://github.com/val66/storyboarder-bd/releases).
+
 ---
 
 ## ✨ Fonctionnalités

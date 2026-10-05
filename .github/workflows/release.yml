@@ -92,9 +92,12 @@ jobs:
         # Les trois fichiers vont ensemble : `latest.yml` nomme l'installeur et donne son empreinte,
         # le `.blockmap` l'accompagne. `artifactName` (package.json) les nomme sans espace : GitHub
         # remplace les espaces des noms téléversés, et `latest.yml` ne nommerait plus le bon fichier.
+        #
+        # Une COPIE sans numéro de version, `Storyboarder-BD-Setup.exe`, part avec : c'est elle que le
+        # bouton « Télécharger » des README vise, par l'adresse stable
+        # releases/latest/download/Storyboarder-BD-Setup.exe. Un nom versionné changerait à chaque
+        # release, et le lien du README mènerait à une version périmée.
         shell: bash
-        run: gh release upload "${{ github.ref_name }}"
-             dist/Storyboarder-BD-Setup-*.exe
-             dist/Storyboarder-BD-Setup-*.exe.blockmap
-             dist/latest.yml
-             --clobber
+        run: |
+          cp dist/Storyboarder-BD-Setup-*.exe dist/Storyboarder-BD-Setup.exe
+          gh release upload "${{ github.ref_name }}" dist/Storyboarder-BD-Setup-*.exe dist/Storyboarder-BD-Setup-*.exe.blockmap dist/latest.yml dist/Storyboarder-BD-Setup.exe --clobber

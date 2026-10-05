@@ -188,6 +188,12 @@ describe('la publication', () => {
     assert.match(RELEASE, /if gh release view "\$\{\{ github\.ref_name \}\}"/);
     assert.match(RELEASE, /gh release edit "\$\{\{ github\.ref_name \}\}" --notes-file NOTE\.md/);
   });
+  test('le bouton « Télécharger » des README vise une copie sans version, que la release téléverse', () => {
+    const URL = 'https://github.com/val66/storyboarder-bd/releases/latest/download/Storyboarder-BD-Setup.exe';
+    for (const f of ['README.md', 'README.fr.md']) assert.ok(lire(f).includes(`](${URL})`), f);
+    assert.match(RELEASE, /cp dist\/Storyboarder-BD-Setup-\*\.exe dist\/Storyboarder-BD-Setup\.exe/);
+    assert.match(RELEASE, /gh release upload [^\n]* dist\/Storyboarder-BD-Setup\.exe --clobber/);
+  });
   test('le verrouillage d\'intégrité est posé', () => {
     assert.deepEqual(PKG.build.electronFuses, {
       runAsNode: false, enableNodeOptionsEnvironmentVariable: false, enableNodeCliInspectArguments: false,
