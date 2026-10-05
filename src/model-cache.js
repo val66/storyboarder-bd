@@ -435,6 +435,17 @@ export function clearModelCache(){
   _cache.clear();
 }
 
+/**
+ * Oublie les modèles déclarés introuvables, pour qu'ils soient redemandés (#443). Même raison que
+ * `oublierImagesIntrouvables` : un changement de dossier des Projets peut les avoir fait apparaître.
+ * Les modèles déjà décodés restent : ils sont justes, d'où qu'ils viennent. Rend le nombre oublié.
+ */
+export function oublierModelesIntrouvables(){
+  let n = 0;
+  _cache.forEach((e, nom) => { if (e === 'introuvable') { _cache.delete(nom); n++; } });
+  return n;
+}
+
 /** Pour les tests : injecter un état sans passer par le disque. */
 /**
  * Les fichiers actuellement DÉCODÉS, dans l'ordre alphabétique.

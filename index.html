@@ -653,6 +653,9 @@
         <button type="button" class="help-group" data-help="maj">
           <span class="help-group-title">Mises à jour</span>
         </button>
+        <button type="button" class="help-group" data-help="ressources">
+          <span class="help-group-title">Fichiers introuvables</span>
+        </button>
         <button type="button" class="help-group" data-help="tomes">
           <span class="help-group-title">Tomes &amp; planches</span>
         </button>
@@ -1226,6 +1229,18 @@
      bouton natif de fermeture que le bouton "Fermer l'application" de la modale Projet) — sur demande
      utilisateur : propose d'enregistrer avant de quitter, de quitter sans enregistrer, ou d'annuler,
      plutôt que d'empêcher la fermeture en attendant que l'utilisateur sauvegarde. -->
+<!-- Ressources introuvables (#443) : ouverte après l'ouverture d'un Projet dont des modèles ou des
+     images manquent dans le dossier des Projets. Tout le texte est écrit par le code
+     (src/missing-resources.js), dans la langue choisie, chemins compris. -->
+<div class="modal-overlay hidden" id="ressourcesModal">
+  <div class="modal-box">
+    <h3 id="ressourcesTitre"></h3>
+    <div id="ressourcesCorps" class="ressources-corps"></div>
+    <button class="full-btn" id="ressourcesConfiguration" type="button"></button>
+    <button class="nav-btn" id="ressourcesFermer" type="button" style="margin-top:6px;"></button>
+  </div>
+</div>
+
 <!-- Mise à jour facultative (#442) : confirmation, poids du téléchargement, redémarrage, puis
      progression. Tout le texte est écrit par le code (src/update-texts.js), dans la langue choisie. -->
 <div class="modal-overlay hidden" id="majModal">

@@ -51,6 +51,10 @@ export const HELP_MANUAL_EN = [
     'A required update opens the application on a full screen, with no menus, until it is installed.',
     'The application works offline for up to 14 days in a row. Beyond that, and on the very first launch, it asks for a connection to check that no required update is waiting. Your Projects are never affected.',
   ]},
+  { id: 'ressources', title: 'Missing files', paragraphs: [
+    'Imported 3D models and panel images are not stored inside the Project file, but in the Modeles and Images folders of the Projects folder chosen in Settings.',
+    'If an opened Project uses files missing from those folders, a window says so: how many, where the application looked, and how to fix it. Most often, choosing the right Projects folder in Settings is enough: the files come back right away.',
+  ]},
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
     '"New volume" and "Add a page" in the left-hand menu.',
     'Right-click a volume or a page to export it as PNG or delete it.',
@@ -261,6 +265,10 @@ export const HELP_MANUAL_FR = [
     "Quand une version plus récente est publiée, un bouton « Mise à jour » apparaît à côté du numéro de version. Il montre les nouveautés et le poids du téléchargement ; l'application enregistre votre Projet, installe la mise à jour et redémarre.",
     "Une mise à jour obligatoire ouvre l'application sur un écran plein, sans menus, tant qu'elle n'est pas installée.",
     "L'application fonctionne hors ligne jusqu'à 14 jours d'affilée. Au-delà, et au tout premier lancement, elle demande une connexion pour vérifier qu'aucune mise à jour obligatoire n'attend. Vos Projets ne sont jamais touchés.",
+  ]},
+  { id: 'ressources', title: 'Fichiers introuvables', paragraphs: [
+    "Les modèles 3D et les images de Case ne sont pas rangés dans le fichier du Projet, mais dans les dossiers Modeles et Images du dossier des Projets choisi dans la Configuration.",
+    "Si un Projet ouvert cite des fichiers absents de ces dossiers, une fenêtre le signale : combien, où l'application a cherché, et comment corriger. Le plus souvent, il suffit de choisir le bon dossier des Projets dans la Configuration : les fichiers reviennent aussitôt.",
   ]},
   { id: 'tomes', title: 'Tomes & planches', paragraphs: [
     '« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.',

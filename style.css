@@ -2009,3 +2009,13 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .maj-progression{ width:100%; margin-top:10px; accent-color:var(--accent); }
 .maj-message{ font-size:12.5px; color:var(--ink-soft); min-height:1em; margin:8px 0 0; }
 .maj-message.erreur{ color:var(--danger); }
+
+/* ── Ressources introuvables (#443) ─────────────────────────────────────────────────────────
+   Des chemins Windows longs : ils doivent se couper plutôt qu'élargir la modale. */
+.ressources-corps{ font-size:13px; line-height:1.45; max-height:60vh; overflow:auto; }
+.ressources-corps p{ margin:0 0 10px; }
+.ressources-corps h4{ margin:12px 0 6px; font-size:13px; }
+.ressources-corps ul, .ressources-corps ol{ margin:0 0 8px; padding-left:20px; }
+.ressources-corps code{ overflow-wrap:anywhere; font-size:12px; }
+.ressources-noms li{ overflow-wrap:anywhere; color:var(--ink-soft); }
+.ressources-indice{ padding:8px 12px; border-left:3px solid var(--accent); background:var(--accent-soft); }

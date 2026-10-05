@@ -10,6 +10,7 @@
  */
 import { habillerModales } from './modal-chrome.js';
 import { tomesOuverts } from './section-memory.js';
+import { verifierRessources, cablerModaleRessources, fermerModaleRessources } from './missing-resources.js';
 import { S, tr, createVolume, addPageToVolume, modeCanevasActif3D } from './state.js';
 import { preloadModelsFor } from './model-cache.js';
 // Les images d'une Case suivent le même chemin que les modèles, et pour la même raison : le dessin
@@ -668,6 +669,10 @@ export function applyProjectData(data){
  * cours. Rappeler cette fonction en changeant de Planche ne recharge donc rien, elle ne fait que
  * remettre en tête ce qu'on regarde maintenant.
  */
+// #443 : la modale des ressources introuvables. Ses boutons se câblent ici, avec ses voisines.
+cablerModaleRessources();
+enregistrerFermeture('ressourcesModal', fermerModaleRessources);
+
 export function prechargerEnCascade3D(){
   const vagues = vaguesDePrechargement3D({ tomes: S.tomes, scenes: S.scenes },
     S.currentTomeIndex, S.currentPageIndex);
@@ -881,6 +886,8 @@ export async function loadExistingProjectFlow(){
       await proposerRepointageModeles();
       setProjectModalStatus(tr(`Project "${S.projectName}" loaded.`, tr(`Project "${S.projectName}" loaded.`, `Projet « ${S.projectName} » chargé.`)));
       closeProjectModal();
+      // #443 : APRÈS le repointage, qui peut avoir retrouvé des modèles renommés.
+      verifierRessources();
     } catch (err) {
       // stopAutosave() a été appelé AVANT la lecture. Sans ce redémarrage, un fichier refusé
       // laissait la sauvegarde automatique éteinte pour le reste de la session, en silence, sur

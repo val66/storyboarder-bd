@@ -143,5 +143,16 @@ export function clearImageCache(){
 // images décodées ne sont qu'un état passager du dessin ; les proposer comme inventaire aurait
 // montré à l'utilisateur une liste qui dépend de ce qu'il vient de regarder.
 
+/**
+ * Oublie les images déclarées introuvables, pour qu'elles soient redemandées (#443). « Introuvable »
+ * ne se réessaie jamais tout seul, et c'est voulu (voir l'en-tête) ; mais quand l'utilisateur change
+ * de dossier des Projets, le fichier peut désormais être là. Rend le nombre d'images oubliées.
+ */
+export function oublierImagesIntrouvables(){
+  let n = 0;
+  _cache.forEach((e, nom) => { if (e === 'introuvable') { _cache.delete(nom); n++; } });
+  return n;
+}
+
 /** Faux-seau d'accès pour les tests : le décodage réel est hors de portée sous Node. */
 export function _setImageCacheEntry(nom, valeur){ _cache.set(nom, valeur); }

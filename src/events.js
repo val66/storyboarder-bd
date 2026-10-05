@@ -42,6 +42,7 @@ import { normaliserPose } from './skeleton-pose.js';
 import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { initialiserMiseAJour, rafraichirTextesMaj, fermerModaleMaj } from './update-button.js';
+import { verifierRessources, rafraichirApresChangementDeDossier } from './missing-resources.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
@@ -138,7 +139,7 @@ import {
   setDemarrageProjetVierge,
   loadPoseLibrary, loadDismissedPoses, restoreBuiltinPoses, missingBuiltinPoseCount,
   openRenameEntityModal, setRenameModelCallback, setRenameImageCallback,
-  loadModelRenames, noterRenommageModele, proposerRepointageModeles,
+  loadModelRenames, noterRenommageModele, proposerRepointageModeles, prechargerEnCascade3D,
 } from './io.js';
 import {
   setDrawCallbacks, uniqueDefaultName, addRoomWallElement, stopBuildMode, buildToolCreateWallSegment,
@@ -8328,6 +8329,8 @@ document.getElementById('projectsDirBrowse').onclick = async () => {
   if (res && !res.canceled && res.filePath) {
     await window.storyboarderAPI.setSetting('projectsDir', res.filePath);
     refreshProjectsDirDisplay();
+    // #443 : ce qui était introuvable dans l'ancien dossier l'est peut-être plus dans le nouveau.
+    rafraichirApresChangementDeDossier(prechargerEnCascade3D);
   }
 };
 // Returns to the default folder (next to the executable) by clearing the custom setting.
@@ -8335,6 +8338,7 @@ document.getElementById('projectsDirReset').onclick = async () => {
   if (!hasElectronAPI()) return;
   await window.storyboarderAPI.setSetting('projectsDir', null);
   refreshProjectsDirDisplay();
+  rafraichirApresChangementDeDossier(prechargerEnCascade3D);   // #443, idem
 };
 // Loads persisted settings before starting the Project (cf. initStartupProject below), so that
 // startAutosave()/applyTheme() use the right values right away instead of the hardcoded defaults.
@@ -8459,6 +8463,8 @@ async function initStartupProject(){
         S.projectFilePath = res.filePath;
         startAutosave();
         await proposerRepointageModeles();
+        // #443 : APRÈS le repointage, qui peut avoir retrouvé des modèles renommés.
+        verifierRessources();
         return;
       }
     } catch (err) {
