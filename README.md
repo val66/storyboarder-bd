@@ -90,23 +90,28 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 - ✅ **Apply changes** sends the pose back to the Element's dialog; nothing is written until you save
 
 ### Project & saving
-- 💾 **JSON** project format, human-readable and versionable
 - 📁 Projects kept in **Documents\Storyboarder BD\Projets** by default, out of reach of updates and uninstalls
+- 💾 **JSON** project format, human-readable and versionable
 - ⏱️ Configurable auto-save
 - 🗑️ **Delete a project**, confirmed by typing the word
 - 🖼️ Export pages as **PNG** or **PDF**
 - ↩️ Undo, over the last 50 actions
-- 🪟 The window **reopens where you left it**, size, position and maximised state
-- 🔌 **Works offline** for up to 14 days in a row, fonts included: pages look the same with or without a connection
 - 🔎 **Missing files explained**: when an opened project uses models or images the Projects folder does not contain, a window says where the application looked and how to fix it
+
+### Application
 - ⬆️ **Built-in updates**: an "Update" button appears when a newer version is published, with what's new and the download size; a required update opens the application on a full screen until it is installed
+- 🔌 **Works offline** for up to 14 days in a row, fonts included: pages look the same with or without a connection
+- 🪟 The window **reopens where you left it**, size, position and maximised state
 - 🌗 **Dark and light themes**, plus an **increased-contrast** option that combines with either
-- 🔎 **Interface size** in four steps, from Compact to Extra large. The Page keeps its own zoom
+- 📐 **Interface size** in four steps, from Compact to Extra large. The Page keeps its own zoom
 - 🧠 **Pages kept in memory**, adjustable from 0 to 900 MB: pages you have just visited come back instantly instead of being redrawn
 
 ---
 
-## 🚀 Getting started
+## 🧑‍💻 Development
+
+To use the application, the [Download](#️-download) button above is all you need. What follows
+is for running it from source or contributing.
 
 ### Prerequisites
 - [Node.js LTS](https://nodejs.org) (v22 or higher; v20 reached end of life in April 2026)
@@ -137,19 +142,8 @@ which git cannot carry over on clone.
 ```bash
 npm test
 ```
-Runs the unit test suite with Node's built-in test runner: no external framework, no browser. One
-`tests/<module>.test.mjs` file per `src/` module, plus a lightweight DOM stub so the modules can be
-imported outside Electron.
-
-It covers the application's pure logic layer: the 3D Panel camera (orbit basis, pivot, world↔screen
-projection, framing), the Build tool (wall tracing, snapping, room/building closing), world
-coordinates and ground magnetism, Wall-Opening positioning on walls, project serialization and its
-migrations, EN/FR translation, 2D drawing helpers (panel shapes, speech bubbles, text wrapping), and
-the sidebar/modal helpers.
-
-Anything requiring real WebGL is deliberately out of scope (building a `THREE.WebGLRenderer` fails
-under Node), as is the event wiring itself; see the header comment in each test file for what is
-excluded and why.
+Node's built-in test runner, no framework, no browser. What is covered and what is not:
+[CONTRIBUTING.md](CONTRIBUTING.md#tests).
 
 ---
 
@@ -157,52 +151,21 @@ excluded and why.
 
 ```
 storyboarder-bd/
-├── index.html         # HTML shell: page structure, modals, context menus
-├── style.css          # All application styles
-├── main.js            # Electron main process (window, file dialogs, IPC)
-├── preload.js         # Electron contextIsolation bridge
-├── window-state.js    # Window geometry remembered between launches (pure decision)
-├── src/                # Application logic (ES modules)
-│   ├── app.js          # Entry point (just imports events.js)
-│   ├── state.js        # Shared app state + Volume/Page/Panel helpers
-│   ├── constants.js    # Static data: formats, styles, poses, 3D defaults…
-│   ├── utils.js        # Pure utility functions (math, geometry, lookups)
-│   ├── i18n.js         # FR/EN translation strings + engine
-│   ├── io.js           # Project serialization, save/load, migrations
-│   ├── draw.js         # 2D canvas rendering (panels, elements, previews)
-│   ├── hit-test.js     # What a click grabs, and what a drag does to it (pure geometry)
-│   ├── canvas-tools.js # The three tools that take over the canvas: Build, Tracé, Measure
-│   ├── project-tree.js # Left menu: Volume → Page tree, list of Scenes
-│   ├── scenes.js       # Scenes: creation, opening, loading into a Panel
-│   ├── sidebar.js      # Right-hand panel rendering (Panel/Bubble/Page/Camera)
-│   ├── modals.js       # Modal dialogs (Character, Object, Room, Building…)
-│   ├── modal-stack.js  # Which dialog is in front, and what Escape closes
-│   ├── scene3d.js      # 3D camera + combined scene rendering (Three.js)
-│   ├── rig3d.js        # 3D rig construction (characters, objects, animals…)
-│   ├── model-store.js  # Storage of imported .glb files (Modeles/ folder, safe file names)
-│   ├── model-cache.js  # Asynchronous model decoding + cache (the drawing path never waits)
-│   ├── model-import.js # The three import gestures, and what each one creates
-│   ├── model-library.js # Model library: grouping by usage, deletion message
-│   ├── model-usages.js # "Where is this model used?": pure location + navigation
-│   ├── skeleton-map.js # Recognising an imported skeleton: which bone plays which role
-│   ├── skeleton-store.js # Skeleton mappings, stored next to the Modeles folder
-│   ├── skeleton-pose.js # Turning a mapped bone: composing with its rest orientation
-│   ├── skeleton-retarget.js # The same gesture from one body to another (pure change of basis)
-│   ├── pose-bridge.js  # A Character pose translated into imported-bone angles
-│   ├── skinned-box-3d.js # Skinning-aware bounding box (Box3 ignores it)
-│   ├── stray-meshes-3d.js # Meshes a file places away from the body, and which get hidden
-│   ├── vendor/         # Adapted GLTFLoader and SkeletonUtils (copies, no bundler)
-│   ├── persona-editor.js # Model editor: posing view over the central area
-│   ├── help-content.js # Built-in user manual content
-│   ├── version.js      # Version number, GENERATED by tools/bump-version.mjs
-│   └── events.js       # Event wiring + remaining business logic (real entry point)
-├── assets/fonts/       # Bundled fonts + their licences (generated by tools/fetch-fonts.mjs)
-├── tests/              # Unit tests (Node's built-in test runner)
-├── tools/              # Repo tooling (version bump, git hooks, font fetching)
-├── docs/en, docs/fr/   # Contributor notes, one folder per language, start with docs/en/README.md
-├── package.json        # Electron + electron-builder config
-└── LICENSE
+├── index.html, style.css   # The interface: page structure, modals, styles
+├── main.js, preload.js     # Electron main process and its bridge to the interface
+├── *.js (root)             # Main-process decisions, tested under plain Node: window, updates,
+│                           # Projects folder
+├── blocage.html            # Full-screen update / connection-required screen
+├── src/                    # Application logic (ES modules); src/events.js is the real entry point
+├── assets/                 # Bundled fonts and textures, with their licences
+├── build/                  # Installer customisation (NSIS)
+├── tests/                  # Unit tests (Node's built-in test runner)
+├── tools/                  # Repo tooling: version, git hooks, release notes, textures, attestation
+├── docs/en, docs/fr/       # Contributor notes, one folder per language: start with docs/en/README.md
+└── package.json            # Electron + electron-builder config
 ```
+
+Each file opens with a header comment saying what it does and why; the notes in `docs/` go further.
 
 ---
 

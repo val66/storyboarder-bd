@@ -102,17 +102,22 @@ Versions précédentes et notes de version : [toutes les releases](https://githu
 - 🗑️ **Supprimer un Projet**, confirmé en écrivant le mot
 - 🖼️ Export des planches en **PNG** ou **PDF**
 - ↩️ Annulation sur les 50 dernières actions
-- 🪟 La fenêtre **rouvre où vous l'avez laissée** : taille, position et plein écran
-- 🔌 **Fonctionne hors ligne** jusqu'à 14 jours d'affilée, polices comprises : vos Planches ont le même aspect avec ou sans connexion
 - 🔎 **Fichiers introuvables expliqués** : quand un Projet ouvert cite des modèles ou images absents du dossier des Projets, une fenêtre dit où l'application a cherché et comment corriger
+
+### Application
 - ⬆️ **Mises à jour intégrées** : un bouton « Mise à jour » apparaît quand une version plus récente est publiée, avec les nouveautés et le poids du téléchargement ; une mise à jour obligatoire ouvre l'application sur un écran plein tant qu'elle n'est pas installée
+- 🔌 **Fonctionne hors ligne** jusqu'à 14 jours d'affilée, polices comprises : vos Planches ont le même aspect avec ou sans connexion
+- 🪟 La fenêtre **rouvre où vous l'avez laissée** : taille, position et plein écran
 - 🌗 **Thèmes sombre et clair**, plus une option **contraste renforcé** qui se combine aux deux
-- 🔎 **Taille de l'interface** en quatre crans, de Compacte à Très grande. La Planche garde son propre zoom
+- 📐 **Taille de l'interface** en quatre crans, de Compacte à Très grande. La Planche garde son propre zoom
 - 🧠 **Planches en mémoire**, réglable de 0 à 900 Mo : celles que vous venez de consulter reviennent instantanément au lieu d'être redessinées
 
 ---
 
-## 🚀 Installation
+## 🧑‍💻 Développement
+
+Pour utiliser l'application, le bouton [Télécharger](#️-télécharger) plus haut suffit. Ce qui suit
+sert à la lancer depuis les sources ou à contribuer.
 
 ### Prérequis
 - [Node.js LTS](https://nodejs.org) (v22 ou supérieur ; v20 est en fin de vie depuis avril 2026)
@@ -143,19 +148,8 @@ Mise en route, les trois règles qui font refuser une modification, et ce qu'on 
 ```bash
 npm test
 ```
-Exécute la suite de tests unitaires avec le test runner natif de Node : sans framework externe ni
-navigateur. Un fichier `tests/<module>.test.mjs` par module de `src/`, plus un stub DOM léger qui
-permet d'importer les modules hors d'Electron.
-
-Elle couvre toute la logique pure de l'application : la Caméra 3D des Cases (repère d'orbite, pivot,
-projection monde↔écran, cadrage), l'outil Construire (tracé des murs, magnétisme, fermeture des
-Pièces/Bâtiments), les coordonnées monde et l'aimantation au Sol, le placement des Parois sur les
-Murs, la sérialisation du Projet et ses migrations, la traduction FR/EN, les aides au dessin 2D
-(formes de Case, Bulles, découpage du texte) et les helpers du panneau latéral et des modales.
-
-Tout ce qui exige un vrai WebGL est volontairement hors périmètre (construire un
-`THREE.WebGLRenderer` échoue sous Node), de même que le câblage des événements ; l'en-tête de chaque
-fichier de test détaille ce qui est exclu et pourquoi.
+Le test runner natif de Node, sans framework ni navigateur. Ce qui est couvert et ce qui ne l'est
+pas : [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md#tests).
 
 ---
 
@@ -163,52 +157,22 @@ fichier de test détaille ce qui est exclu et pourquoi.
 
 ```
 storyboarder-bd/
-├── index.html         # Squelette HTML : structure de page, modales, menus contextuels
-├── style.css          # Tous les styles de l'application
-├── main.js            # Processus principal Electron (fenêtre, fichiers, IPC)
-├── preload.js         # Bridge contextIsolation Electron
-├── window-state.js    # Géométrie de la fenêtre retenue entre deux lancements (décision pure)
-├── src/                # Logique applicative (modules ES)
-│   ├── app.js          # Point d'entrée (importe simplement events.js)
-│   ├── state.js        # État partagé + fonctions utilitaires Tome/Planche/Case
-│   ├── constants.js    # Données statiques : formats, styles, poses, valeurs 3D par défaut…
-│   ├── utils.js        # Fonctions utilitaires pures (maths, géométrie, lookups)
-│   ├── i18n.js         # Chaînes de traduction FR/EN + moteur d'i18n
-│   ├── io.js           # Sérialisation du projet, sauvegarde/chargement, migrations
-│   ├── draw.js         # Rendu 2D sur canvas (Cases, Éléments, aperçus)
-│   ├── hit-test.js     # Ce qu'un clic attrape et ce qu'un glisser en fait (géométrie pure)
-│   ├── canvas-tools.js # Les trois outils qui prennent le canevas : Construire, Tracer, Mesurer
-│   ├── project-tree.js # Menu de gauche : arborescence Tome → Planche, liste des Scènes
-│   ├── scenes.js       # Scènes : création, ouverture, chargement dans une Case
-│   ├── sidebar.js      # Rendu du panneau droit (Case/Bulle/Planche/Caméra)
-│   ├── modals.js       # Modales (Personnage, Objet, Pièce, Bâtiment…)
-│   ├── modal-stack.js  # Quelle modale est devant, et ce qu'Échap ferme
-│   ├── scene3d.js      # Caméra 3D + rendu de la scène combinée (Three.js)
-│   ├── rig3d.js        # Construction des rigs 3D (personnages, objets, animaux…)
-│   ├── model-store.js  # Rangement des .glb importés (dossier Modeles/, noms de fichiers sûrs)
-│   ├── model-cache.js  # Décodage asynchrone des modèles + cache (le chemin de dessin n'attend pas)
-│   ├── model-import.js # Les trois gestes d'import, et ce qu'ils créent
-│   ├── model-library.js # Bibliothèque de modèles : groupement par usage, message de suppression
-│   ├── model-usages.js # « Où est utilisé ce modèle ? » : localisation pure + navigation
-│   ├── skeleton-map.js # Reconnaître un squelette importé : quel os joue quel rôle
-│   ├── skeleton-store.js # Correspondances de squelette, rangées à côté du dossier Modeles
-│   ├── skeleton-pose.js # Tourner un os mappé : composition avec sa rotation de repos
-│   ├── skeleton-retarget.js # Le même geste d'un corps à l'autre (changement de repère pur)
-│   ├── pose-bridge.js  # Une pose du Personnage traduite en angles d'os importés
-│   ├── skinned-box-3d.js # Boîte englobante tenant compte du skinning (Box3 l'ignore)
-│   ├── stray-meshes-3d.js # Les maillages qu'un fichier place hors du corps, et qu'on masque
-│   ├── vendor/         # GLTFLoader et SkeletonUtils adaptés (copies, pas de bundler)
-│   ├── persona-editor.js # Éditeur de modèle : vue de pose sur la zone centrale
-│   ├── help-content.js # Contenu du manuel d'utilisation intégré
-│   ├── version.js      # Numéro de version, GÉNÉRÉ par tools/bump-version.mjs
-│   └── events.js       # Câblage des événements + logique métier restante (point d'entrée réel)
-├── assets/fonts/       # Polices embarquées + leurs licences (générées par tools/fetch-fonts.mjs)
-├── tests/              # Tests unitaires (test runner natif de Node)
-├── tools/              # Outillage de dépôt (version, hooks git, récupération des polices)
-├── docs/fr, docs/en/   # Notes de contributeur, un dossier par langue, commencer par docs/fr/README.md
-├── package.json        # Config Electron + electron-builder
-└── LICENSE
+├── index.html, style.css   # L'interface : structure de page, modales, styles
+├── main.js, preload.js     # Processus principal Electron et son pont vers l'interface
+├── *.js (racine)           # Décisions du processus principal, testées sous Node nu : fenêtre,
+│                           # mises à jour, dossier des Projets
+├── blocage.html            # Écran plein de mise à jour obligatoire ou de connexion requise
+├── src/                    # Logique applicative (modules ES) ; src/events.js est le vrai point d'entrée
+├── assets/                 # Polices et textures embarquées, avec leurs licences
+├── build/                  # Personnalisation de l'installeur (NSIS)
+├── tests/                  # Tests unitaires (test runner natif de Node)
+├── tools/                  # Outillage : version, hooks git, notes de version, textures, attestation
+├── docs/fr, docs/en/       # Notes de contributeur, un dossier par langue : commencer par docs/fr/README.md
+└── package.json            # Config Electron + electron-builder
 ```
+
+Chaque fichier s'ouvre sur un commentaire qui dit ce qu'il fait et pourquoi ; les notes de `docs/`
+vont plus loin.
 
 ---
 
