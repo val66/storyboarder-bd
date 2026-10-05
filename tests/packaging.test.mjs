@@ -76,6 +76,20 @@ function couvert(chemin, motif){
  * déclaration, toutes aveugles aux exclusions le jour où la première a été écrite. Exclure par
  * erreur un fichier que l'application charge les aurait tous laissés au vert.
  */
+/**
+ * Les règles de dossier de `.gitignore` (`foo/`), les seules qui portent ici.
+ *
+ * ⚠️ UN DOSSIER IGNORÉ N'EXISTE PAS DANS UN CLONE FRAIS, ET LA CI EN EST UN. Les sources de
+ * textures (`assets/textures/sources/`) ne vivent que sur le poste de travail : l'exclusion qui les
+ * écarte de l'installeur est juste, mais sur le serveur elle « ne vise rien ». Trois tests de ce
+ * fichier tenaient pour acquis que ce dossier était là, et la CI a été rouge à chaque push depuis.
+ */
+const DOSSIERS_IGNORES = lire('.gitignore').split('\n')
+  .map(l => l.trim())
+  .filter(l => l && !l.startsWith('#') && !l.startsWith('!') && l.endsWith('/'))
+  .map(l => l.replace(/\/$/, ''));
+const sousUnDossierIgnore = (chemin) => DOSSIERS_IGNORES.some(d => chemin === d || chemin.startsWith(d + '/'));
+
 const empaqueté = (chemin) => MOTIFS_POSITIFS.some(m => couvert(chemin, m))
   && !MOTIFS_NEGATIFS.some(m => couvert(chemin, m));
 
@@ -205,6 +219,8 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
       // Le `!` d'une exclusion ne fait pas partie du chemin. Sans ce retrait, la première
       // exclusion écrite fait échouer ce test : il cherchait un dossier nommé « !assets ».
       const racineMotif = m.replace(/^!/, '').split('*')[0].replace(/\/$/, '');
+      // Une exclusion qui vise un dossier tenu hors du dépôt reste juste là où il manque.
+      if (m.startsWith('!') && sousUnDossierIgnore(racineMotif)) return false;
       return racineMotif && !existsSync(join(RACINE, racineMotif));
     });
     assert.deepEqual(vides, [], `motifs de packaging sans cible : ${vides.join(', ')}`);
@@ -249,11 +265,14 @@ describe('Installeur : tout ce que l\'application charge est embarqué', () => {
  * Une seule exception, `node_modules/`, dont la raison est écrite là où elle s'applique.
  */
 describe('Installeur : rien d’inutile ne monte à bord', () => {
-  /** Les règles de dossier de `.gitignore` (`foo/`), les seules qui portent ici. */
-  const dossiersIgnorés = lire('.gitignore').split('\n')
-    .map(l => l.trim())
-    .filter(l => l && !l.startsWith('#') && !l.startsWith('!') && l.endsWith('/'))
-    .map(l => l.replace(/\/$/, ''));
+  const dossiersIgnorés = DOSSIERS_IGNORES;
+  /** Un dossier ignoré ET exclu de l'installeur est-il présent ? Pas dans un clone frais. */
+  const matierePresente = MOTIFS_NEGATIFS.some(m => {
+    const racine = m.split('*')[0].replace(/\/$/, '');
+    return sousUnDossierIgnore(racine) && existsSync(join(RACINE, racine));
+  });
+  const SANS_MATIERE = !matierePresente
+    && 'clone frais (la CI) : aucun dossier tenu hors du dépôt n\'est là pour être détecté';
 
   /** Les fichiers du dépôt qu'electron-builder emporterait sous une liste de motifs donnée. */
   const empaquetés = (positifs, négatifs) => {
@@ -287,7 +306,7 @@ describe('Installeur : rien d’inutile ne monte à bord', () => {
       + `à commencer par ${intrus.slice(0, 3).join(', ')}`);
   });
 
-  test('le garde-fou : sans les exclusions, le détecteur VOIT bien les intrus', () => {
+  test('le garde-fou : sans les exclusions, le détecteur VOIT bien les intrus', { skip: SANS_MATIERE }, () => {
     // Le test précédent est un `[].filter(...)` de plus. Mesurer une absence sans vérifier que
     // l'instrument sait voir une présence est la faute la plus répétée de ce dépôt : on lui donne
     // donc la liste d'AVANT le correctif, où l'on sait que 19 fichiers passaient.
@@ -301,8 +320,11 @@ describe('Installeur : rien d’inutile ne monte à bord', () => {
   test('… et chaque exclusion vise encore quelque chose', () => {
     // Symétrique de « aucun motif ne vise le vide », côté négatif. Une exclusion périmée laisse
     // croire qu'un dossier est écarté alors qu'il a été renommé, et il repart en silence.
-    const inutiles = MOTIFS_NEGATIFS.filter(m =>
-      empaquetés([m], []).length === 0 && !existsSync(join(RACINE, m.split('*')[0].replace(/\/$/, ''))));
+    const inutiles = MOTIFS_NEGATIFS.filter(m => {
+      const racine = m.split('*')[0].replace(/\/$/, '');
+      if (sousUnDossierIgnore(racine)) return false;   // juste même absent : voir DOSSIERS_IGNORES
+      return empaquetés([m], []).length === 0 && !existsSync(join(RACINE, racine));
+    });
     assert.deepEqual(inutiles, [], `exclusions de packaging sans cible : ${inutiles.join(', ')}`);
   });
 });
