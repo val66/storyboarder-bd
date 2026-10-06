@@ -1262,9 +1262,13 @@
       <label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label>
     </form>
     <p id="storeMessage" class="maj-message"></p>
-    <div id="storeGrille" class="store-grille"></div>
-    <div id="storeFiche" class="store-fiche" hidden></div>
-    <button id="storePlusBtn" class="nav-btn store-plus" type="button" hidden></button>
+    <!-- Seule cette zone défile : les filtres restent en haut, la mention en bas. La fiche d'un
+         modèle y REMPLACE la grille (demandé). -->
+    <div id="storeDefilement" class="store-defilement">
+      <div id="storeGrille" class="store-grille"></div>
+      <button id="storePlusBtn" class="nav-btn store-plus" type="button" hidden></button>
+      <div id="storeFiche" class="store-fiche" hidden></div>
+    </div>
     <p id="storeCredit" class="store-credit"></p>
   </div>
 </div>

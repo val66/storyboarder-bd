@@ -109,6 +109,18 @@ describe('le câblage', () => {
     assert.ok(c.indexOf('sources.rechercheNormalisee(params)') < c.indexOf('module.urlRecherche(recherche)'));
     assert.match(c, /return sources\.pageAffichable\(module\.pageNormalisee\(json\), recherche\);/);
   });
+  test('retours de Valentin (6 octobre 2026) : une seule zone défile, la fiche remplace la liste, une ligne par licence', () => {
+    const css = lire('style.css');
+    const html = lire('index.html');
+    assert.match(css, /\.store-grille\[hidden\], \.store-fiche\[hidden\], \.store-plus\[hidden\]\{ display:none; \}/);
+    assert.match(css, /display:flex; flex-direction:column; overflow:hidden;/);
+    assert.match(css, /\.store-box > \.store-defilement\{ flex:1 1 auto; min-height:0; overflow-y:auto;/);
+    const zone = html.slice(html.indexOf('id="storeDefilement"'), html.indexOf('id="storeCredit"'));
+    for (const id of ['storeGrille', 'storePlusBtn', 'storeFiche']) assert.ok(zone.includes(`id="${id}"`), id);
+    assert.match(css, /\.store-badge\{ min-width:0;[^}]*white-space:nowrap;/);
+    assert.match(css, /\.modal-box \.store-filtres select\{ flex:1 1 180px; width:auto; margin:0; \}/);
+    assert.equal(textesStore('fr').ouvrir, 'Store en ligne');
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js']) assert.ok(pkg.build.files.includes(f), f);

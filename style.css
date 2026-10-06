@@ -2026,13 +2026,23 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 
 /* ── Store de ressources (#444b) ─────────────────────────────────────────────────────────────
    Une modale large : la grille a besoin de place, et la fiche d'un aperçu 3D lisible. */
-.modal-box.store-box{ width:min(1040px, 94vw); }
+.modal-box.store-box{
+  width:min(1040px, 94vw); height:min(880px, 90vh);
+  display:flex; flex-direction:column; overflow:hidden;   /* seule .store-defilement défile */
+}
+.store-box > *{ flex:none; }
+.store-box > .store-defilement{ flex:1 1 auto; min-height:0; overflow-y:auto; padding-right:4px; }
+/* Même écart partout entre les filtres : celui de la grille (8 px), pas les 14 px de marge basse
+   que `.modal-box select` porte pour les formulaires empilés. */
 .store-filtres{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
 .store-filtres .modal-input{ flex:1 1 260px; margin:0; }
 .store-filtres .full-btn{ width:auto; margin:0; padding:8px 18px; }
-.store-filtres select{ flex:0 1 auto; }
+.modal-box .store-filtres select{ flex:1 1 180px; width:auto; margin:0; }
 .store-case{ font-size:12.5px; display:flex; align-items:center; gap:6px; }
 .store-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px; }
+/* ⚠️ `hidden` ne l'emporte pas sur un `display` posé par une classe : sans ces règles, la grille
+   restait affichée sous la fiche au lieu d'être remplacée. */
+.store-grille[hidden], .store-fiche[hidden], .store-plus[hidden]{ display:none; }
 .store-carte{
   display:flex; flex-direction:column; gap:4px; text-align:left; padding:0 0 8px; cursor:pointer;
   background:var(--white); border:1px solid var(--line); border-radius:8px; overflow:hidden; color:var(--ink);
@@ -2042,8 +2052,12 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-carte img, .store-sans-vignette{ width:100%; aspect-ratio:16/9; object-fit:cover; background:var(--creux); display:block; }
 .store-carte-nom{ font-size:12.5px; font-weight:600; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .store-carte-auteur{ font-size:11.5px; color:var(--ink-soft); padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.store-carte-infos{ display:flex; justify-content:space-between; gap:6px; padding:0 8px; font-size:11px; color:var(--ink-soft); }
-.store-badge{ padding:1px 6px; border-radius:999px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.store-carte-infos{ display:flex; justify-content:space-between; align-items:center; gap:6px; padding:0 8px; font-size:11px; color:var(--ink-soft); }
+/* Toujours UNE ligne : la licence se coupe (points de suspension, libellé complet en infobulle),
+   le poids ne se coupe jamais. Sans `min-width: 0`, un élément flexible refuse de rétrécir sous
+   la largeur de son texte, et la ligne passait à deux. */
+.store-badge{ min-width:0; flex:0 1 auto; padding:1px 6px; border-radius:999px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.store-carte-infos > :not(.store-badge){ flex:none; white-space:nowrap; }
 .store-badge.store-badge-nc{ background:var(--line); color:var(--ink-soft); }
 .store-plus{ display:block; margin:12px auto 0; }
 .store-fiche{ font-size:13px; line-height:1.45; }

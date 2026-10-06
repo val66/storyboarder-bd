@@ -21,6 +21,7 @@ let infos = null;
 let derniereRecherche = null;
 let suivant = null;
 let enCours = false;
+let positionListe = 0;
 
 function el(tag, { texte, classe, attrs } = {}, enfants = []){
   const e = document.createElement(tag);
@@ -89,7 +90,7 @@ function carte(r){
     el('span', { texte: r.nom, classe: 'store-carte-nom' }),
     el('span', { texte: `${t.par} ${r.auteur.nom}`, classe: 'store-carte-auteur' }),
     el('span', { classe: 'store-carte-infos' }, [
-      el('span', { texte: r.licence.libelle, classe: 'store-badge' + (r.licence.commercial ? '' : ' store-badge-nc') }),
+      el('span', { texte: r.licence.libelle, classe: 'store-badge' + (r.licence.commercial ? '' : ' store-badge-nc'), attrs: { title: r.licence.libelle } }),
       r.poids ? el('span', { texte: poidsLisible(r.poids, langue()) }) : null,
     ]),
   ]);
@@ -131,16 +132,21 @@ function ouvrirFiche(r){
     telecharger,
     el('p', { texte: t.bientot, classe: 'store-note' }),
   );
-  fiche.hidden = false;
+  // La fiche REMPLACE la liste (demandé) ; on garde la position dans la liste pour le retour.
+  positionListe = $('storeDefilement').scrollTop;
   $('storeGrille').hidden = true;
   $('storePlusBtn').hidden = true;
+  fiche.hidden = false;
+  $('storeDefilement').scrollTop = 0;
 }
 
 function fermerFiche(){
+  const ouverte = !$('storeFiche').hidden;
   $('storeFiche').hidden = true;
   $('storeFiche').replaceChildren();   // arrête un aperçu 3D en cours
   $('storeGrille').hidden = false;
   $('storePlusBtn').hidden = !suivant;
+  if (ouverte) $('storeDefilement').scrollTop = positionListe;   // on retrouve la liste où on l'avait laissée
 }
 
 async function chercher(suite = false){
