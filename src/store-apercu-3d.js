@@ -28,10 +28,19 @@ const INCLINAISON_MAX = 1.4;
  * Le cadrage d'une boîte englobante : le point visé (son centre) et la distance qui la fait tenir
  * dans le champ, avec une marge. Fonction PURE.
  */
-export function cadrage3D(min, max, champDeg = CHAMP){
+export function cadrage3D(min, max, champDeg = CHAMP, aspect = 1){
   const centre = [0, 1, 2].map(i => (min[i] + max[i]) / 2);
-  const rayon = Math.max(1e-3, Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]) / 2);
-  const distance = (rayon / Math.sin((champDeg * Math.PI / 180) / 2)) * 1.1;
+  const [dx, dy, dz] = [0, 1, 2].map(i => Math.max(1e-3, max[i] - min[i]));
+  const rayon = Math.hypot(dx, dy, dz) / 2;
+  // ⚠️ LA BOÎTE, PAS SA SPHÈRE. Cadrer sur la sphère englobante éloignait trop une silhouette haute et
+  // fine (un personnage : sa sphère est presque deux fois plus large que lui), d'où une vignette où
+  // il flottait, minuscule (signalé). On fait tenir la HAUTEUR dans le champ vertical, la largeur vue
+  // de trois quarts dans le champ horizontal (qui dépend du format de l'image), puis on recule de la
+  // demi-profondeur, avec un peu de marge.
+  const v = (champDeg * Math.PI / 180) / 2;
+  const h = Math.atan(Math.tan(v) * Math.max(0.1, aspect));
+  const largeur = Math.hypot(dx, dz) * 0.85;
+  const distance = (Math.max((dy / 2) / Math.tan(v), (largeur / 2) / Math.tan(h)) + Math.max(dx, dz) / 2) * 1.08;
   return { centre, rayon, distance };
 }
 
@@ -85,7 +94,8 @@ export async function ouvrirApercu3D(conteneur, octets){
   maillagesParNom3D(modele, maillagesHorsCorps3D(modele)).forEach(m => { m.visible = false; });
   modele.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
   const boite = box3FromObjectSkinAware3D(modele);
-  const { centre, distance: distanceCadrage } = cadrage3D(boite.min.toArray(), boite.max.toArray());
+  const { centre, distance: distanceCadrage } = cadrage3D(boite.min.toArray(), boite.max.toArray(), CHAMP,
+    (conteneur.clientWidth || 1) / (conteneur.clientHeight || 1));
   let distance = distanceCadrage;
   let angles = { lacet: 0.6, tangage: 0.25 };
 

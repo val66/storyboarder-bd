@@ -206,7 +206,7 @@ function carte(r){
 }
 
 function ouvrirFiche(r){
-  if (r.local) { ficheLocale(r); return; }
+  if (r.local) { ficheLocale(r); ficheCourante = r; return; }
   const t = textesStore(langue());
   const fiche = $('storeFiche');
   const image = () => (r.vignettes.grande ? [el('img', { attrs: { src: r.vignettes.grande, alt: '', referrerpolicy: 'no-referrer' } })] : []);
@@ -283,6 +283,7 @@ function ouvrirFiche(r){
   message('');
   fiche.hidden = false;
   $('storeDefilement').scrollTop = 0;
+  ficheCourante = r;
 }
 
 /**
@@ -522,6 +523,7 @@ function progressionApercu(source, id, recus, total){
 }
 
 function fermerFiche(){
+  ficheCourante = null;
   fermerApercuLocal();
   const ouverte = !$('storeFiche').hidden;
   $('storeFiche').hidden = true;
@@ -546,7 +548,7 @@ async function chercher(suite = false){
   const t = textesStore(langue());
   const moi = ++generation;
   enCours = true;
-  if (!suite) { fermerFiche(); $('storeGrille').replaceChildren(); affiches = []; suivant = null; derniereRecherche = parametres(); }
+  if (!suite) { fermerFiche(); $('storeGrille').replaceChildren(); affiches = []; suivant = null; derniereRecherche = parametres(); memoriserEtat(); }
   if (source === LOCAL) { await chercherLocal(moi); return; }
   message(t.chargement);
   $('storePlusBtn').hidden = true;
@@ -670,11 +672,13 @@ function ficheLocale(e){
   };
   const visuel = el('div', { classe: 'store-fiche-visuel' }, image());
   const boutons = el('div', { classe: 'store-fiche-boutons' });
+  let bascule3D = null;
   if (!e.introuvable) {
-    boutons.appendChild(boutonApercuLocal({ source: LOCAL, id: e.fichier }, visuel, image, async () => {
+    bascule3D = boutonApercuLocal({ source: LOCAL, id: e.fichier }, visuel, image, async () => {
       const data = await readModel(e.fichier);
       return data ? { data } : { erreur: 'reponse' };
-    }));
+    });
+    boutons.appendChild(bascule3D);
   }
   const nomSource = a && (infosPar[a.source] ? infosPar[a.source].source.nom : a.source);
   if (a && a.url) boutons.appendChild(lien(t.voirSur(nomSource), a.url, 'nav-btn store-lien-bouton'));
@@ -762,11 +766,61 @@ function ficheLocale(e){
   message('');
   fiche.hidden = false;
   $('storeDefilement').scrollTop = 0;
+  // ⚠️ LA FICHE LOCALE S'OUVRE EN 3D (signalé : sa vignette, au format des cartes, flottait petite dans
+  // le grand cadre de la fiche, alors que l'aperçu 3D, cadré sur le cadre lui-même, était juste). Le
+  // fichier est sur le disque : rien à télécharger. « Voir l'image » ramène la vignette.
+  if (bascule3D) bascule3D.onclick();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La fenêtre RETIENT où l'on en était (demandé)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Pendant la session : l'onglet, les filtres, la position dans la liste, et la fiche ouverte, qui se
+// rouvre telle quelle (reconstruite, pour qu'un aperçu 3D ne tourne pas fenêtre fermée). D'une
+// session à l'autre : l'onglet et les filtres (localStorage), pas la fiche.
+
+let ficheCourante = null;      // le résultat dont la fiche est ouverte
+let aRouvrir = null;           // { fiche, position } à la fermeture
+const CLE_ETAT = 'store:etat';
+const CHAMPS_ETAT = { texte: 'storeTexte', categorie: 'storeCategorie', licence: 'storeLicence', faces: 'storeFaces', tri: 'storeTri', usage: 'storeUsage' };
+
+function memoriserEtat(){
+  const etat = { source, commercial: !!$('storeCommercial').checked };
+  for (const [cle, id] of Object.entries(CHAMPS_ETAT)) etat[cle] = $(id).value || '';
+  try { globalThis.localStorage.setItem(CLE_ETAT, JSON.stringify(etat)); } catch (e) { /* une préférence perdue, rien de plus */ }
+}
+function etatMemorise(){
+  try { return JSON.parse(globalThis.localStorage.getItem(CLE_ETAT) || 'null'); } catch (e) { return null; }
+}
+/** Remet les filtres retenus, une fois les listes construites (une valeur inconnue est ignorée). */
+function restaurerFiltres(etat){
+  if (!etat) return;
+  for (const [cle, id] of Object.entries(CHAMPS_ETAT)) {
+    const v = etat[cle];
+    if (typeof v !== 'string') continue;
+    const champ = $(id);
+    if (champ.tagName === 'SELECT' && ![...(champ.options || [])].some(o => o.value === v)) continue;
+    champ.value = v;
+  }
+  $('storeCommercial').checked = !!etat.commercial;
+}
+
+/** Ouvre la fenêtre si elle est fermée, la ferme sinon (raccourci B). */
+export function basculerStore(){
+  if ($('storeModal').classList.contains('hidden')) ouvrirStore();
+  else fermerStore();
 }
 
 export async function ouvrirStore({ onglet } = {}){
   const pont = window.storyboarderAPI;
   if (!pont || !pont.storeChercher) return;
+  let restaure = null;
+  if (!infos) {
+    // Première ouverture de la session : on reprend l'onglet et les filtres de la dernière fois.
+    restaure = etatMemorise();
+    if (restaure && SOURCES_STORE.includes(restaure.source)) source = restaure.source;
+  }
   if (onglet && SOURCES_STORE.includes(onglet) && onglet !== source) {
     source = onglet;
     infos = infosPar[onglet] || null;   // relu plus bas s'il n'a jamais été lu
@@ -778,19 +832,31 @@ export async function ouvrirStore({ onglet } = {}){
     infosPar[LOCAL] = infosLocales();
     infos = infosPar[source];
     rafraichirTextesStore();
+    restaurerFiltres(restaure);
   }
   // Relu à chaque ouverture : un modèle a pu être téléchargé, supprimé ou renommé entre-temps. Les
   // cartes déjà affichées sont refaites, sans nouvelle requête, pour que leur badge suive.
   await rafraichirPossedes();
   $('storeModal').classList.remove('hidden');
-  $('storeTexte').focus();
+  const reprise = aRouvrir;
+  aRouvrir = null;
   // Une première page dès l'ouverture : une fenêtre vide n'apprend rien sur ce qu'on peut y trouver.
   // La bibliothèque locale est TOUJOURS relue : un modèle a pu être placé, renommé ou importé.
-  if (source === LOCAL || !$('storeGrille').children.length) chercher();
+  if (source === LOCAL || !$('storeGrille').children.length) await chercher();
   else $('storeGrille').replaceChildren(...affiches.map(carte));
+  if (reprise && reprise.fiche) {
+    // La fiche qu'on avait laissée, à jour (ses usages ont pu changer), puis la liste à sa place.
+    const r = reprise.fiche.local ? (affiches.find(a => a.fichier === reprise.fiche.fichier) || null) : reprise.fiche;
+    if (r) { ouvrirFiche(r); positionListe = reprise.position; return; }
+  }
+  if (reprise) $('storeDefilement').scrollTop = reprise.position;
+  $('storeTexte').focus();
 }
 
 export function fermerStore(){
+  memoriserEtat();
+  const ouverte = !$('storeFiche').hidden && ficheCourante;
+  aRouvrir = { fiche: ouverte ? ficheCourante : null, position: ouverte ? positionListe : $('storeDefilement').scrollTop };
   fermerFiche();
   $('storeModal').classList.add('hidden');
 }
@@ -806,9 +872,8 @@ export function cablerStore(rappels = {}){
   const pont = window.storyboarderAPI;
   if (pont && pont.onStoreProgression) pont.onStoreProgression(progression);
   if (pont && pont.onStoreApercuProgression) pont.onStoreApercuProgression(progressionApercu);
-  // Le bouton du menu de gauche ouvre TOUJOURS sur « Mes modèles » : c'est là qu'on cherche d'abord
-  // ce qu'on a ; les sources en ligne sont à un onglet.
-  $('storeOuvrirBtn').onclick = () => ouvrirStore({ onglet: LOCAL });
+  // Le bouton rouvre la fenêtre LÀ OÙ ON L'AVAIT LAISSÉE (demandé) : onglet, filtres, fiche.
+  $('storeOuvrirBtn').onclick = () => ouvrirStore();
   // Pas de bouton « Rechercher » (demandé) : la saisie relance la recherche après une courte pause,
   // pour ne pas lancer une requête par lettre tapée ; Entrée la lance tout de suite.
   let minuterie = null;

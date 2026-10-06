@@ -2150,10 +2150,12 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-menu-resolution.actif{ font-weight:600; color:var(--accent); }
 /* « Mes modèles » (bibliothèque locale) */
 .store-fiche-sous-titre{
-  display:flex; align-items:center; gap:4px; width:100%; margin:0; padding:2px 0; border:0; background:none; cursor:pointer;
+  /* Un bouton : sans `text-align` ni `justify-content`, son libellé se centrait (signalé). */
+  display:flex; align-items:center; justify-content:flex-start; text-align:left; gap:6px; width:100%; margin:0; padding:2px 0; border:0; background:none; cursor:pointer;
   font-family:'Inter',sans-serif; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);
 }
 .store-fiche-sous-titre:hover{ color:var(--ink); }
+.store-fiche-sous-titre .model-group-caret{ font-size:12px; }
 /* De l'air ENTRE les sous-sections (demandé : CASES collait à la dernière Scène). */
 .store-usages-groupe + .store-usages-groupe{ margin-top:16px; }
 .store-usages-liste[hidden]{ display:none; }

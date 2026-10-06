@@ -213,6 +213,13 @@ describe('le câblage', () => {
     assert.match(lire('style.css'), /\.store-usages\{ max-height:38vh; overflow-y:auto;/);
     assert.match(lire('style.css'), /\.store-usages-groupe \+ \.store-usages-groupe\{ margin-top:16px; \}/);
   });
+  test('fermer garde la fiche ouverte pour la réouverture ; la fiche locale s\'ouvre en 3D', () => {
+    const f = UI.slice(UI.indexOf('export function fermerStore('));
+    assert.match(f, /aRouvrir = \{ fiche: ouverte \? ficheCourante : null,/);
+    assert.match(UI, /if \(r\) \{ ouvrirFiche\(r\); positionListe = reprise\.position; return; \}/);
+    assert.match(UI.slice(UI.indexOf('function ficheLocale')), /if \(bascule3D\) bascule3D\.onclick\(\);/);
+    assert.match(lire('style.css'), /justify-content:flex-start; text-align:left;/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);

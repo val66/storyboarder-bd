@@ -91,13 +91,29 @@ describe('Les onglets des sources', () => {
     assert.deepEqual(grille().map(c => c.title), ['polyhaven-1']);
   });
 
-  test('le bouton du menu de gauche rouvre TOUJOURS sur « Mes modèles », même après un autre onglet', async () => {
+  test('la fenêtre rouvre LÀ OÙ ON L\'AVAIT LAISSÉE (demandé) : onglet et filtres, même après un redémarrage', async () => {
     const ui = await import('../src/store-ui.js');
-    assert.notEqual(onglets().findIndex(o => o.className.includes('actif')), 0, 'le montage doit partir d\'un autre onglet');
-    await ui.ouvrirStore({ onglet: 'local' });
-    assert.ok(onglets()[0].className.includes('actif'));
+    const actif = () => onglets().findIndex(o => o.className.includes('actif'));
+    const avant = actif();
+    assert.notEqual(avant, 0, 'le montage doit partir d\'un autre onglet que « Mes modèles »');
+    ui.fermerStore();
+    const reouverture = ui.ouvrirStore();
+    await attendre();
+    attentes.splice(0).forEach(l => l());
+    await reouverture;
+    assert.equal(actif(), avant, 'la fenêtre est revenue sur un autre onglet');
+    const etat = JSON.parse(globalThis.localStorage.getItem('store:etat'));
+    assert.equal(etat.source, SOURCES_STORE[avant], 'l\'onglet n\'est pas retenu d\'une session à l\'autre');
     const src = readFileSync(new URL('../src/store-ui.js', import.meta.url), 'utf8');
-    assert.match(src, /\$\('storeOuvrirBtn'\)\.onclick = \(\) => ouvrirStore\(\{ onglet: LOCAL \}\);/);
+    assert.match(src, /\$\('storeOuvrirBtn'\)\.onclick = \(\) => ouvrirStore\(\);/);
+  });
+
+  test('raccourci B : ouvre ou ferme, jamais par-dessus une autre fenêtre ni dans un champ', () => {
+    const ev = readFileSync(new URL('../src/events.js', import.meta.url), 'utf8');
+    const f = ev.slice(ev.indexOf("e.key.toLowerCase() === 'b'"));
+    assert.match(f.slice(0, 400), /tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT'/);
+    assert.match(f.slice(0, 600), /m\.id !== 'storeModal'/);
+    assert.match(f.slice(0, 700), /basculerStore\(\)/);
   });
 
   test('les sources annoncées sont celles que store.js connaît', () => {

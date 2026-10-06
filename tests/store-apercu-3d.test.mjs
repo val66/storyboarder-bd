@@ -22,7 +22,17 @@ describe('Cadrer et tourner', () => {
     const { centre, rayon, distance } = cadrage3D([-1, 0, -1], [1, 2, 1], 35);
     assert.deepEqual(centre, [0, 1, 0]);
     assert.ok(Math.abs(rayon - Math.sqrt(3)) < 1e-9);
-    assert.ok(distance * Math.sin((35 * Math.PI / 180) / 2) > rayon, 'la boîte déborde du champ');
+    const v = (35 * Math.PI / 180) / 2;
+    assert.ok((distance - 1) * Math.tan(v) >= 1, 'la hauteur déborde du champ');
+  });
+  test('un personnage haut et fin se cadre sur sa boîte, un peu plus près que sur sa sphère', () => {
+    const boite = cadrage3D([-0.2, 0, -0.1], [0.2, 1.8, 0.1], 35).distance;
+    const sphere = (Math.hypot(0.4, 1.8, 0.2) / 2) / Math.sin((35 * Math.PI / 180) / 2) * 1.1;
+    assert.ok(boite < sphere, `${boite} contre ${sphere}`);
+  });
+  test('une image large laisse de la place en largeur : une voiture se cadre plus près en 16:9', () => {
+    const voiture = [[-2.2, 0, -1], [2.2, 1.5, 1]];
+    assert.ok(cadrage3D(...voiture, 35, 16 / 9).distance < cadrage3D(...voiture, 35, 1).distance);
   });
   test('une boîte vide ne donne pas une distance nulle', () => {
     assert.ok(cadrage3D([0, 0, 0], [0, 0, 0]).distance > 0);
@@ -79,7 +89,7 @@ describe('Le câblage', () => {
     const f = UI.slice(UI.indexOf('function boutonApercuLocal'), UI.indexOf('function progressionApercu'));
     assert.match(f, /if \(moi !== apercuGeneration\) return;/);
     assert.match(f, /if \(moi !== apercuGeneration\) \{ v\.fermer\(\); return; \}/);
-    assert.match(UI, /function fermerFiche\(\)\{\n\s+fermerApercuLocal\(\);/);
+    assert.match(UI, /function fermerFiche\(\)\{\n\s+ficheCourante = null;\n\s+fermerApercuLocal\(\);/);
   });
   test('⚠️ vignettes et aperçu cadrent sur la boîte qui SUIT LE SQUELETTE (Hulk, worker_j décentrés)', () => {
     for (const f of ['src/model-thumbnails.js', 'src/store-apercu-3d.js']) {

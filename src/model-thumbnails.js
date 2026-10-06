@@ -126,7 +126,7 @@ async function photographier(nom){
     scene.add(cle);
     scene.add(modele);
     if (b.isEmpty()) return null;
-    const { centre, distance } = cadrage3D(b.min.toArray(), b.max.toArray());
+    const { centre, distance } = cadrage3D(b.min.toArray(), b.max.toArray(), 35, LARGEUR_VIGNETTE / HAUTEUR_VIGNETTE);
     const camera = new T.PerspectiveCamera(35, LARGEUR_VIGNETTE / HAUTEUR_VIGNETTE, distance / 100, distance * 20);
     camera.position.fromArray(positionCamera3D(centre, distance, ANGLES));
     camera.lookAt(centre[0], centre[1], centre[2]);

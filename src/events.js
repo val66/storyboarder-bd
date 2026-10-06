@@ -43,7 +43,7 @@ import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { initialiserMiseAJour, rafraichirTextesMaj, fermerModaleMaj } from './update-button.js';
 import { verifierRessources, rafraichirApresChangementDeDossier, simulationRessources } from './missing-resources.js';
-import { cablerStore, rafraichirTextesStore, fermerStore, rafraichirBibliothequeLocale } from './store-ui.js';
+import { cablerStore, rafraichirTextesStore, fermerStore, rafraichirBibliothequeLocale, basculerStore } from './store-ui.js';
 import { oublierVignette } from './model-thumbnails.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
@@ -1732,6 +1732,13 @@ window.addEventListener('keydown', (e) => {
         return;
       }
     }
+  }
+  // Raccourci B : ouvrir ou fermer la bibliothèque de modèles (demandé). Hors d'un champ de saisie, et
+  // pas par-dessus une AUTRE fenêtre ouverte : la bibliothèque s'ouvrirait derrière elle.
+  if (e.key.toLowerCase() === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey
+      && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+    const autre = [...document.querySelectorAll('.modal-overlay:not(.hidden)')].some(m => m.id !== 'storeModal');
+    if (!autre) { e.preventDefault(); basculerStore(); return; }
   }
   // T shortcut: toggles the top-down view in a Scene (cf. sceneTopDownBtn), only available in the
   // Scene editor (S.editingSceneId), on the selected Panel/Scene, on user request.
