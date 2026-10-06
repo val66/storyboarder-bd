@@ -1,0 +1,143 @@
+{
+ "cursors": {
+  "next": "24",
+  "previous": null
+ },
+ "next": "https://api.sketchfab.com/v3/search?count=24&cursor=24&downloadable=true&q=bench&type=models",
+ "previous": null,
+ "results": [
+  {
+   "uri": "https://api.sketchfab.com/v3/models/3c2b1ebcba444ec58c00dc2d89e69db6",
+   "uid": "3c2b1ebcba444ec58c00dc2d89e69db6",
+   "name": "The Kungsåra Bench",
+   "viewCount": 11720,
+   "likeCount": 465,
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-3c2b1ebcba444ec58c00dc2d89e69db6",
+   "embedUrl": "https://sketchfab.com/models/3c2b1ebcba444ec58c00dc2d89e69db6/embed",
+   "isDownloadable": true,
+   "publishedAt": "2021-08-17T12:28:22.822465",
+   "categories": [
+    {
+     "name": "cultural-heritage-history"
+    },
+    {
+     "name": "furniture-home"
+    }
+   ],
+   "thumbnails": {
+    "images": [
+     {
+      "uid": "e201",
+      "size": 250786,
+      "width": 1920,
+      "url": "https://media.sketchfab.com/models/3c2b1ebcba444ec58c00dc2d89e69db6/thumbnails/c38e36a764434db28a9238f72026ae3c/48a1566e142e4662911cad5ef5d8b234.jpeg",
+      "height": 1080
+     },
+     {
+      "uid": "74a1",
+      "size": 63874,
+      "width": 1024,
+      "url": "https://media.sketchfab.com/models/3c2b1ebcba444ec58c00dc2d89e69db6/thumbnails/c38e36a764434db28a9238f72026ae3c/cdd58276ae034ead97de33f17652faea.jpeg",
+      "height": 576
+     },
+     {
+      "uid": "1af9",
+      "size": 33607,
+      "width": 720,
+      "url": "https://media.sketchfab.com/models/3c2b1ebcba444ec58c00dc2d89e69db6/thumbnails/c38e36a764434db28a9238f72026ae3c/8f73ea6c82284a8db69420c4f5d24cb1.jpeg",
+      "height": 405
+     },
+     {
+      "uid": "2cdb",
+      "size": 5851,
+      "width": 256,
+      "url": "https://media.sketchfab.com/models/3c2b1ebcba444ec58c00dc2d89e69db6/thumbnails/c38e36a764434db28a9238f72026ae3c/ac7335f4f16b412788967c83ab8edae1.jpeg",
+      "height": 144
+     },
+     {
+      "uid": "8945",
+      "size": 1239,
+      "width": 64,
+      "url": "https://media.sketchfab.com/models/3c2b1ebcba444ec58c00dc2d89e69db6/thumbnails/c38e36a764434db28a9238f72026ae3c/b7a001fffcef4849a37de95d05212092.jpeg",
+      "height": 36
+     }
+    ]
+   },
+   "user": {
+    "uid": "806a98ef96a44b44907722effadca31c",
+    "username": "historiska",
+    "displayName": "Historiska",
+    "profileUrl": "https://sketchfab.com/historiska",
+    "account": "prem"
+   },
+   "faceCount": 49980,
+   "vertexCount": 24779,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 1,
+     "size": 23795824,
+     "type": "glb",
+     "textureMaxResolution": 8192,
+     "faceCount": 49980,
+     "vertexCount": 38487
+    },
+    "gltf": {
+     "textureCount": 1,
+     "size": 22808651,
+     "type": "gltf",
+     "textureMaxResolution": 8192,
+     "faceCount": 49980,
+     "vertexCount": 38487
+    }
+   },
+   "license": {
+    "uid": "322a749bcfa841b29dff1e8a1bb74b0b",
+    "label": "CC Attribution"
+   }
+  },
+  {
+   "uri": "https://api.sketchfab.com/v3/models/ae2858d8d212406ebe95927d4f17d328",
+   "uid": "ae2858d8d212406ebe95927d4f17d328",
+   "name": "Pokemon RSE - Pokemon Center",
+   "animationCount": 0,
+   "viewerUrl": "https://sketchfab.com/3d-models/none-ae2858d8d212406ebe95927d4f17d328",
+   "embedUrl": "https://sketchfab.com/models/ae2858d8d212406ebe95927d4f17d328/embed",
+   "isDownloadable": true,
+   "thumbnails": {
+    "images": [
+     {
+      "width": 1920,
+      "url": "https://media.sketchfab.com/models/ae28/a.jpeg",
+      "height": 1080
+     },
+     {
+      "width": 256,
+      "url": "https://media.sketchfab.com/models/ae28/b.jpeg",
+      "height": 144
+     }
+    ]
+   },
+   "user": {
+    "username": "Wesai",
+    "displayName": "Wesai",
+    "profileUrl": "https://sketchfab.com/Wesai"
+   },
+   "faceCount": 10041,
+   "isAgeRestricted": false,
+   "archives": {
+    "glb": {
+     "textureCount": 3,
+     "size": 612148,
+     "type": "glb",
+     "textureMaxResolution": 128
+    }
+   },
+   "license": {
+    "uid": "322a749bcfa841b29dff1e8a1bb74b0b",
+    "label": "CC Attribution"
+   }
+  }
+ ]
+}

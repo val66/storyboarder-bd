@@ -1,0 +1,90 @@
+# Le store de ressources
+
+*[English version](../en/asset-store.md)*
+
+Tâches #444 à #446. Chercher, montrer et télécharger des ressources venues d'ailleurs, sans
+quitter l'application : des modèles 3D d'abord, des textures ensuite.
+
+## Périmètre arrêté
+
+- **Modèles 3D, Sketchfab d'abord** (#444), puis **Poly Haven** (#445).
+- **Textures ensuite** (#446) : Poly Haven et ambientCG, sur la même coquille.
+- **Aucune dépendance à une seule source.** Sketchfab a changé deux fois de propriétaire (Epic en
+  2021, KitBash le 12 août 2026) ; son API peut changer encore. Chaque source est un module
+  interchangeable, et tout le reste ne connaît que le format commun.
+
+## Ce que l'API Sketchfab permet
+
+Relevé en appelant l'API le 5 octobre 2026.
+
+- **Recherche publique**, sans connexion : `GET api.sketchfab.com/v3/search?type=models`, avec
+  `downloadable=true`, `q`, `license` (un seul code), `categories` (un slug), `sort_by`
+  (`-likeCount`, `-publishedAt`), `max_face_count`, `count` et `cursor` pour la page suivante.
+- **Chaque résultat** porte le nom, l'auteur et sa page, cinq vignettes (64 à 1920 px), la licence
+  (son libellé, pas son code), le nombre de faces, d'animations, l'adresse d'un aperçu 3D
+  intégrable, et `archives.glb` : poids, nombre et résolution maximale des textures. Certains
+  modèles ont des textures 8k et pèsent plus de 20 Mo : la fiche doit le dire avant le téléchargement.
+- **Téléchargement avec connexion** : `GET /v3/models/{uid}/download` et le jeton de l'utilisateur
+  rendent des liens valables cinq minutes vers une archive glTF (zip : `scene.gltf`, `scene.bin`,
+  `textures/`). L'aide mentionne aussi un GLB direct, à vérifier dès qu'on aura un jeton.
+- **Connexion OAuth obligatoire pour télécharger.** L'application doit être enregistrée auprès de
+  Sketchfab (#444-0) ; mode « Implicit », sans secret, redirection vers une adresse locale.
+- **Obligations** (Developer Terms 4.5 à 4.7) : dire que les modèles viennent de Sketchfab, afficher
+  la licence et l'auteur avec un lien, et faire suivre ce crédit jusque dans ce que l'utilisateur
+  diffuse.
+
+## Le contrat des sources
+
+Deux modules à la racine, en CommonJS, testés sous Node nu :
+
+- `store-sources.js` : le **format commun** d'un résultat, la table des **licences** (ce que chacune
+  permet : attribution, usage commercial, modification), les **sources** connues, les paramètres de
+  recherche **nettoyés** avant d'atteindre une source, et la **ligne de crédit**.
+- `store-sketchfab.js` : l'adresse d'une recherche et d'une demande de téléchargement, et la
+  traduction des réponses dans le format commun. **Aucune requête** n'y est faite.
+
+Une source écrit un module de ce type ; l'interface, l'attribution et le rangement des fichiers ne
+changent pas. `tests/fixtures/sketchfab-recherche.json` est une vraie réponse de l'API : si
+Sketchfab change de format, c'est elle qu'il faut relever à nouveau.
+
+Une **licence inconnue** se lit au plus prudent : attribution exigée, ni usage commercial ni
+modification. Les modèles **réservés aux adultes** et les non téléchargeables sont écartés.
+
+## Où vit quoi
+
+- **Le réseau et le jeton**, dans le processus principal. Le jeton de connexion ne passe jamais par
+  l'interface ; il est chiffré sur le disque (`safeStorage`).
+- **L'interface**, dans le renderer : elle reçoit des résultats déjà normalisés et n'a jamais besoin
+  de savoir d'où ils viennent.
+- **Le rangement**, par le chemin existant de l'import (`model-store.js`) : un modèle téléchargé est
+  un modèle importé comme un autre, avec sa taille réelle, sa morphologie et son squelette.
+
+## L'attribution
+
+Chaque ressource téléchargée garde avec elle sa source, son identifiant, son auteur et son lien, sa
+licence et sa date (#444e), et la suit dans les renommages et suppressions. Les exports PNG et PDF
+listent les ressources attribuables présentes dans les Planches exportées (#444f). La mention
+« Modèles fournis par Sketchfab » figure dans le store.
+
+## Découpage
+
+- **#444-0** Enregistrement de l'application auprès de Sketchfab (à faire par Valentin).
+- **#444a** Le contrat des sources et ce document. Fait.
+- **#444b** Recherche et parcours, sans connexion : la fenêtre du store, la grille, les filtres, la
+  fiche avec l'aperçu 3D, la mention Sketchfab, et une simulation hors ligne.
+- **#444c** La connexion Sketchfab.
+- **#444d** Le téléchargement : GLB direct, ou zip glTF converti en GLB, progression, poids.
+- **#444e** Les attributions.
+- **#444f** Les crédits dans les exports.
+- **#444g** Placer directement un modèle depuis sa fiche.
+- **#444h** Finitions : filtres mémorisés, manuel, README, traductions.
+- **#445** Poly Haven ; **#446** le store de textures.
+
+## Questions ouvertes
+
+- **GLB direct ou zip** : à vérifier avec un premier jeton. Si seul le zip est proposé, il faudra le
+  lire et l'empaqueter en GLB sans dépendance.
+- **Filtres animé et rigué** : les paramètres de l'API n'ont pas pu être vérifiés ; non proposés tant
+  qu'ils ne le sont pas.
+- **Plusieurs licences à la fois** : l'API n'en accepte qu'une. « Usage commercial seulement » est
+  donc filtré par nous, page par page.
