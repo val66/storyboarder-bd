@@ -2155,10 +2155,15 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-menu-resolution.actif{ font-weight:600; color:var(--accent); }
 /* Le message vide ne doit pas creuser d'écart entre le titre et la fiche (demandé). */
 .store-box .maj-message:empty{ display:none; }
-.store-fiche-visuel img, .store-fiche-visuel iframe{ width:100%; height:100%; object-fit:contain; border:0; display:block; }
+/* ⚠️ L'IMAGE NE DONNE PAS SA TAILLE AU CADRE (signalé à l'usage). En flux normal, une vignette
+   carrée ou haute (un buste) imposait sa hauteur naturelle à la colonne : le cadre grandissait, et
+   « Voir en 3D » et « Voir sur Poly Haven » glissaient sous le pied de la fiche, invisibles. Posés
+   en absolu, l'image, l'aperçu 3D et l'iframe REMPLISSENT le cadre sans jamais le pousser : c'est la
+   colonne qui décide de la taille, le visuel s'y adapte (object-fit: contain). */
+.store-fiche-visuel img, .store-fiche-visuel iframe{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; border:0; display:block; }
 /* L'aperçu 3D local (#445, Poly Haven) : la toile remplit le cadre, on tourne autour au glisser. */
 .store-fiche-visuel{ position:relative; }
-.store-fiche-visuel .store-apercu-3d{ width:100%; height:100%; display:block; cursor:grab; touch-action:none; }
+.store-fiche-visuel .store-apercu-3d{ position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none; }
 .store-fiche-visuel .store-apercu-3d:active{ cursor:grabbing; }
 .store-apercu-chargement{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; padding:16px; text-align:center; font-size:13px; color:var(--ink-soft); }
 .store-apercu-chargement.erreur{ color:var(--danger); }

@@ -170,6 +170,11 @@ describe('le câblage', () => {
     assert.match(css, /\.store-fiche-corps\{ flex:1 1 auto; display:grid; grid-template-columns:minmax\(0, 3fr\) minmax\(0, 2fr\);/);
     assert.match(css, /\.store-fiche:not\(\[hidden\]\)\{ display:flex; flex-direction:column; min-height:100%; \}/);
     assert.match(css, /\.store-fiche-gauche \.store-fiche-visuel\{ flex:1 1 auto; aspect-ratio:auto;/);
+    // Signalé à l'usage : une vignette haute (un buste) poussait « Voir en 3D » sous le pied. L'image,
+    // l'iframe et l'aperçu 3D remplissent le cadre EN ABSOLU : ils ne lui imposent plus leur hauteur.
+    assert.match(css, /\.store-fiche-visuel img, \.store-fiche-visuel iframe\{ position:absolute; inset:0;/);
+    assert.match(css, /\.store-fiche-visuel \.store-apercu-3d\{ position:absolute; inset:0;/);
+    assert.match(css, /\.store-fiche-visuel\{ position:relative; \}/);
     assert.match(css, /\.store-box \.maj-message:empty\{ display:none; \}/);
   });
   test('store.js : chaque fichier téléchargé est vérifié, la simulation ne range rien, le poids est borné', () => {
