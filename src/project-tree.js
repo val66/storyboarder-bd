@@ -16,7 +16,7 @@ import { FORMATS } from './constants.js';
 import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
 import { listModels } from './model-store.js';
 import { groupModelsByUsage, filtrerModeles } from './model-library.js';
-import { resolveModelClick } from './model-usages.js';
+import { modelUsageLocations, usageLabel } from './model-usages.js';
 import { listImages } from './image-store.js';
 import { groupImagesByUsage, imageUsageLabel } from './image-library.js';
 import { getFormat, libelleTable3D } from './utils.js';
@@ -416,37 +416,37 @@ export async function renderModelList(){
    * Le texte complet reste accessible en `title`, c'est ce qui rend la coupe acceptable : on perd
    * l'affichage, pas l'information.
    *
-   * Le CLIC GAUCHE mène aux usages : directement s'il n'y en a qu'un, par une modale de choix s'il
-   * y en a plusieurs. Un modèle inutilisé rend une ligne INERTE, et cela se voit avant le clic
-   * (curseur, survol), pas seulement après. Un clic sans effet passe pour une panne ; une ligne qui
-   * n'invite pas au clic ne promet rien.
+   * MÊME FORME QUE LA SECTION IMAGES (demandé) : chaque endroit, Scène ou Case, est un bouton qui y
+   * mène, et le nom du fichier n'est qu'un titre. Un endroit qui porte plusieurs Éléments du fichier
+   * le dit (« ×2 ») et demande lequel au clic (cf. `resolvePlaceClick`). Au-delà de
+   * `ENDROITS_VISIBLES`, un bouton « + N autres » déplie le reste : un décor utilisé dans trente Cases
+   * ne doit pas noyer la liste.
    *
-   * La décision n'est pas prise ici : `resolveModelClick` est pure et testable, ce que ce rendu
-   * n'est pas. Elle est appelée UNE fois, son résultat sert à la fois à l'apparence et à l'action,
-   * qui ne peuvent donc pas se contredire.
-   *
-   * @param {string} nom       le nom de fichier
-   * @param {string[]} endroits  un libellé par endroit ; une Scène par entrée, jamais concaténées
+   * @param {string} nom        le nom de fichier
+   * @param {object[]} endroits  les groupes de `modelUsageLocations`, une Scène ou une Case chacun
    */
-  const ligne = (nom, endroits = []) => {
+  const ligne = (nom, endroits = [], groupe = '') => {
     const row = document.createElement('div');
-    const clic = resolveModelClick(nom, { tomes: S.tomes, scenes: S.scenes });
-    row.className = 'tome-row model-row' + (clic.action === 'rien' ? ' model-row-inert' : '');
-    if (clic.action !== 'rien') {
-      row.onclick = () => _cb.openModelUsages(nom);
-    }
+    row.className = 'tome-row model-row' + (endroits.length ? '' : ' model-row-inert');
     const n = document.createElement('div');
     n.className = 'model-row-name';
     n.textContent = nom;
     n.title = nom;
     row.appendChild(n);
-    endroits.filter(Boolean).forEach(endroit => {
-      const d = document.createElement('div');
-      d.className = 'perso-name-sub model-row-where';
-      d.textContent = endroit;
-      d.title = endroit;
-      row.appendChild(d);
-    });
+    const bouton = (endroit) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'image-row-where';
+      const combien = endroit.elements.length;
+      b.textContent = usageLabel(endroit, tr) + (combien > 1 ? ` ×${combien}` : '');
+      b.title = b.textContent;
+      b.onclick = (e) => {
+        if (e) e.stopPropagation();
+        _cb.openModelPlace(nom, endroit);
+      };
+      return b;
+    };
+    ajouterEndroits(row, `modeles:${groupe}:${nom}`, endroits, bouton, renderModelList);
     // Un modèle introuvable se signale ICI aussi : c'est la liste où l'on vient chercher pourquoi
     // une boîte orangée est apparue dans une Case.
     if (!fichiers.includes(nom)) {
@@ -462,14 +462,51 @@ export async function renderModelList(){
     return row;
   };
 
-  // Une Scène par ligne, jamais concaténées : c'est la seule forme où l'on peut lire le nom d'une
-  // Scène jusqu'au bout. Joints par « , », la coupe tombait au milieu du premier nom et les
-  // suivants disparaissaient sans qu'aucun signe ne dise qu'il y en avait.
+  // Un endroit par ligne, jamais concaténés : c'est la seule forme où l'on peut lire le nom d'une
+  // Scène jusqu'au bout. Chaque groupe ne montre que les endroits de SA nature : un fichier utilisé
+  // des deux façons apparaît dans les deux, avec ses Scènes dans l'un et ses Cases dans l'autre.
+  const projet = { tomes: S.tomes, scenes: S.scenes };
+  const endroits = (nom, kind) => modelUsageLocations(nom, projet).filter(e => e.kind === kind);
   groupeRepliable(list, 'modeles:parScenes', tr('Used by Scenes', 'Utilisés par des Scènes'),
-    g.parScenes.map(e => ligne(e.nom, e.scenes)));
+    g.parScenes.map(e => ligne(e.nom, endroits(e.nom, 'scene'), 'parScenes')));
   groupeRepliable(list, 'modeles:dansCases', tr('Used in Panels', 'Utilisés dans des Cases'),
-    g.dansCases.map(e => ligne(e.nom, [tr(`${e.count} Element(s)`, `${e.count} ${tr('Element(s)', 'Élément(s)')}`)])));
+    g.dansCases.map(e => ligne(e.nom, endroits(e.nom, 'panel'), 'dansCases')));
   groupeRepliable(list, 'modeles:nonUtilises', tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
+}
+
+/** Au-delà, les endroits d'un fichier se replient derrière « + N autre(s) ». */
+const ENDROITS_VISIBLES = 3;
+
+/**
+ * Les lignes dont l'utilisateur a déplié tous les endroits, par clé `modeles|images:{groupe}:{fichier}`.
+ *
+ * ⚠️ TENU HORS DU RENDU, et c'est tout l'objet : cliquer un endroit déplace l'écran, ce qui refait
+ * la liste (renderAll). Gardé dans la ligne elle-même, le dépliage se perdait à chaque clic, alors
+ * que ce n'est pas l'utilisateur qui avait choisi de replier (signalé à l'usage). Le temps de la
+ * session seulement : rouvrir l'application repart de la forme courte.
+ */
+const endroitsDeplies = new Set();
+
+/**
+ * Ajoute à `row` les boutons d'endroits : les `ENDROITS_VISIBLES` premiers, puis « + N autre(s) »
+ * qui déplie le reste, ou « Réduire » qui le replie. Partagé par les sections Modèles et Images.
+ * `refaire` redessine la liste : le choix est retenu dans `endroitsDeplies`, puis relu au rendu.
+ */
+function ajouterEndroits(row, cle, endroits, bouton, refaire){
+  const deplie = endroitsDeplies.has(cle);
+  (deplie ? endroits : endroits.slice(0, ENDROITS_VISIBLES)).forEach(e => row.appendChild(bouton(e)));
+  const reste = endroits.length - ENDROITS_VISIBLES;
+  if (reste <= 0) return;
+  const bascule = document.createElement('button');
+  bascule.type = 'button';
+  bascule.className = 'model-row-plus';
+  bascule.textContent = deplie ? tr('Show less', 'Réduire') : tr(`+ ${reste} more`, `+ ${reste} autre(s)`);
+  bascule.onclick = (e) => {
+    if (e) e.stopPropagation();
+    if (deplie) endroitsDeplies.delete(cle); else endroitsDeplies.add(cle);
+    return refaire();
+  };
+  row.appendChild(bascule);
 }
 
 /**
@@ -519,10 +556,9 @@ function groupeRepliable(list, cle, titre, lignes){
  *
  * 1. Deux groupes au lieu de trois, une image ne pouvant pas vivre dans une Scène (cf. l'en-tête
  *    de image-library.js).
- * 2. CE SONT LES ENDROITS QUI SONT CLIQUABLES, pas la ligne. Chez les modèles, un endroit peut
- *    contenir plusieurs Éléments du même fichier, d'où une modale pour choisir lequel ; ici chaque
- *    endroit EST une destination, et une modale n'aurait qu'à recopier la liste sous les yeux de
- *    l'utilisateur. Le nom de fichier reste un titre, ce qu'il a toujours été.
+ * 2. Un endroit EST une destination : jamais de modale. Chez les modèles, une même Case peut porter
+ *    plusieurs Éléments du fichier (« ×2 »), et le clic demande alors lequel. Dans les deux listes,
+ *    ce sont les endroits qui sont cliquables, et le nom de fichier reste un titre.
  */
 export async function renderImageList(){
   const list = document.getElementById('imageList');
@@ -547,21 +583,23 @@ export async function renderImageList(){
     n.textContent = nom;
     n.title = nom;
     row.appendChild(n);
-    endroits.forEach(endroit => {
+    const bouton = (endroit) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'image-row-where';
       b.textContent = imageUsageLabel(endroit, tr);
       b.title = b.textContent;
-      // Le DÉPLACEMENT lui-même est injecté, comme `openModelUsages` chez la jumelle : ce module
+      // Le DÉPLACEMENT lui-même est injecté, comme `openModelPlace` chez la jumelle : ce module
       // rend des listes, il ne décide pas de ce que devient l'écran. Ce qui se garde ici, et qui a
       // déjà mordu ailleurs, c'est que chaque bouton emporte SON endroit et pas celui d'un voisin.
       b.onclick = (e) => {
         e.stopPropagation();
         _cb.openImageUsage(endroit);
       };
-      row.appendChild(b);
-    });
+      return b;
+    };
+    // Comme chez les modèles : trois endroits, puis « + N autre(s) », et le dépliage survit au clic.
+    ajouterEndroits(row, `images:dansCases:${nom}`, endroits, bouton, renderImageList);
     // Une image introuvable se signale ICI aussi : c'est la liste où l'on vient chercher pourquoi
     // une Case affiche « Image introuvable ».
     if (!fichiers.includes(nom)) {

@@ -19,7 +19,7 @@
  *     actif en arrière-plan, où il se réveille à la prochaine ouverture.
  *
  * CE QU'ON N'AFFIRME PAS : que la modale s'affiche joliment, ni que le clic atteint la bonne ligne.
- * On affirme la DÉCISION (`resolveModelClick`) et son EFFET, pas le pixel.
+ * On affirme la DÉCISION (`resolvePlaceClick`) et son EFFET, pas le pixel.
  */
 import './helpers/dom-stub.mjs';
 import { test, describe, beforeEach } from 'node:test';
@@ -27,7 +27,7 @@ import assert from 'node:assert/strict';
 
 import {
   modelUsageLocations, usageLabel, usageElementLabels, countUsageTargets, firstUsageTarget,
-  targetFor, resolveModelClick, goToModelUsage, setModelUsagesCallbacks,
+  targetFor, resolvePlaceClick, goToModelUsage, setModelUsagesCallbacks,
 } from '../src/model-usages.js';
 import { S } from '../src/state.js';
 
@@ -110,14 +110,14 @@ describe('usageLabel : dire où, sans inventer', () => {
   test('une Case se situe : Tome › Page › Case', () => {
     assert.equal(
       usageLabel({ kind: 'panel', tomeName: 'Tome 1', tomeIndex: 0, pageNumber: 2, caseNumber: 3 }, FR),
-      'Tome 1 › Page 2 › Case 3');
+      'Tome 1 › Planche 2 › Case 3');
   });
 
   test('RÉGRESSION : sans numéro de Case, l\'étiquette s\'arrête à la Page', () => {
     // Écrire « Case 1 » par défaut désignerait une Case existante et enverrait chercher au mauvais
     // endroit. L'absence est une information ; la combler serait un mensonge.
     const l = usageLabel({ kind: 'panel', tomeName: 'Tome 1', tomeIndex: 0, pageNumber: 2, caseNumber: null }, FR);
-    assert.equal(l, 'Tome 1 › Page 2');
+    assert.equal(l, 'Tome 1 › Planche 2');
     assert.doesNotMatch(l, /Case/);
   });
 
@@ -168,18 +168,19 @@ describe('usageElementLabels : le rang ne s\'ajoute que s\'il départage', () =>
   });
 });
 
-describe('resolveModelClick : la décision, et elle seule', () => {
-  const projetAvec = (n) => ({ scenes: [], tomes: [{ name: 'T', pages: [{ objects:
-    [caseObj('c1', 1), ...Array.from({ length: n }, (_, i) => el('x.glb', 'M' + i, 'c1'))] }] }] });
+describe('resolvePlaceClick : la décision, et elle seule', () => {
+  // Le clic porte désormais sur UN endroit (une Case ici) : on lui passe le groupe de cet endroit.
+  const projetAvec = (n) => modelUsageLocations('x.glb', { scenes: [], tomes: [{ name: 'T', pages: [{ objects:
+    [caseObj('c1', 1), ...Array.from({ length: n }, (_, i) => el('x.glb', 'M' + i, 'c1'))] }] }] })[0];
 
   test('aucun usage : rien à faire', () => {
-    const r = resolveModelClick('x.glb', projetAvec(0));
+    const r = resolvePlaceClick(projetAvec(0));
     assert.equal(r.action, 'rien');
     assert.equal(r.count, 0);
   });
 
   test('un seul usage : on y va, sans modale', () => {
-    const r = resolveModelClick('x.glb', projetAvec(1));
+    const r = resolvePlaceClick(projetAvec(1));
     assert.equal(r.action, 'aller');
     assert.ok(r.cible && r.cible.elementId, 'aucune destination fournie');
   });
@@ -187,7 +188,7 @@ describe('resolveModelClick : la décision, et elle seule', () => {
   test('RÉGRESSION : DEUX exemplaires dans la même Case font choisir, pas aller', () => {
     // Le décompte porte sur les ÉLÉMENTS, pas sur les groupes. Compter les groupes ferait sauter
     // directement au premier des deux, un choix arbitraire déguisé en évidence.
-    const r = resolveModelClick('x.glb', projetAvec(2));
+    const r = resolvePlaceClick(projetAvec(2));
     assert.equal(r.action, 'choisir', 'un choix a été tranché à la place de l\'utilisateur');
     assert.equal(r.count, 2);
   });

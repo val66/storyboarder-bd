@@ -496,6 +496,19 @@ async function rendre(fichiers, projet){
 }
 
 describe('Affichage de la bibliothèque d\'images', () => {
+  test('comme les modèles : trois endroits, puis « + N autre(s) », et le dépliage survit au rendu suivant', async () => {
+    const projet = { tomes: [tome('T', page(...[1, 2, 3, 4, 5].map(n => caseObj('k' + n, 'mer.png', n))))] };
+    const boutons = (l) => l.children.filter(c => String(c.className || '') === 'image-row-where');
+    let [ligne] = await rendre(['mer.png'], projet);
+    assert.equal(boutons(ligne).length, 3);
+    await ligne.children.find(c => c.className === 'model-row-plus').onclick({ stopPropagation(){} });
+    [ligne] = await rendre(['mer.png'], projet);
+    assert.equal(boutons(ligne).length, 5);
+    boutons(ligne)[4].onclick({ stopPropagation(){} });
+    [ligne] = await rendre(['mer.png'], projet);
+    assert.equal(boutons(ligne).length, 5, 'cliquer un endroit a replié la liste');
+  });
+
   test('le nom d\'abord, puis un endroit par ligne', async () => {
     const [ligne] = await rendre(['ciel.png'], { tomes: [
       tome('Tome 1', page(caseObj('c1', 'ciel.png', 1), caseObj('c2', 'ciel.png', 2))),

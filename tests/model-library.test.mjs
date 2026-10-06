@@ -392,7 +392,7 @@ describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne'
     });
     assert.ok(ligne.children.length >= 2);
     ligne.children.forEach(c => {
-      assert.match(String(c.className), /model-row-name|model-row-where/,
+      assert.match(String(c.className), /model-row-name|model-row-where|image-row-where/,
         `texte sans classe coupante : « ${c.textContent} »`);
       assert.equal(c.title, c.textContent, 'le texte entier n\'est pas accessible au survol');
     });
@@ -402,7 +402,7 @@ describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne'
     // Deux fois déjà, un élément déclaré n'avait rien en face (le panneau sans setupDropdown, le
     // panneau sans `open`). Une classe posée par le JS et absente du CSS est le même défaut : la
     // ligne s'affiche, ne coupe rien, et déborde.
-    ['model-row', 'model-row-name', 'model-row-where'].forEach(c =>
+    ['model-row', 'model-row-name', 'model-row-where', 'image-row-where', 'model-row-plus'].forEach(c =>
       assert.match(CSS, new RegExp(`\\.${c}[\\s,{]`), `classe absente de style.css : .${c}`));
     const bloc = CSS.slice(CSS.indexOf('.model-row-name'));
     assert.match(bloc.slice(0, 300), /text-overflow:\s*ellipsis/,
@@ -581,37 +581,78 @@ describe('Les sous-sections de la section Modèles', () => {
 
 const { setProjectTreeCallbacks: _setTreeCb } = await import('../src/project-tree.js');
 
-describe('Bibliothèque : un clic gauche qui tient sa promesse', () => {
+describe('Bibliothèque : chaque ENDROIT mène à lui-même (même forme que la section Images)', () => {
   let demandes;
+  const boutons = (ligne) => ligne.children.filter(c => String(c.className) === 'image-row-where');
   const rendreAvecClic = async (fichiers, projet) => {
     demandes = [];
-    _setTreeCb({ openModelUsages: (nom) => demandes.push(nom), openModelContextMenu: () => {} });
+    _setTreeCb({ openModelPlace: (nom, endroit) => demandes.push([nom, endroit]), openModelContextMenu: () => {} });
     return rendre(fichiers, projet);
   };
 
-  test('RÉGRESSION : chaque ligne demande SES usages, pas ceux d\'une autre', async () => {
-    // Trois fichiers, et on interroge le DEUXIÈME. Avec un seul fichier, n'importe quelle
-    // expression rendant « le fichier » passait, y compris `fichiers[0]`, qui aurait fait pointer
-    // toutes les lignes vers la première. Les lignes sont construites en boucle : c'est exactement
-    // l'endroit où une fermeture mal fermée fait tout désigner la même chose.
+  test('RÉGRESSION : chaque bouton emporte SON fichier et SON endroit', async () => {
+    // Trois fichiers, deux Scènes chacun, et on clique le DEUXIÈME endroit du DEUXIÈME fichier : les
+    // lignes et les boutons sont construits en boucle, l'endroit classique où tout finit par
+    // désigner la même chose.
     const lignes = await rendreAvecClic(['a.glb', 'b.glb', 'c.glb'], {
-      scenes: [volume('Salon', el('a.glb'), el('b.glb'), el('c.glb'))],
+      scenes: [volume('Salon', el('a.glb'), el('b.glb'), el('c.glb')), volume('Cuisine', el('a.glb'), el('b.glb'), el('c.glb'))],
     });
     assert.equal(lignes.length, 3);
-    lignes.forEach(l => assert.equal(typeof l.onclick, 'function', 'une ligne ne réagit pas au clic'));
-    lignes[1].onclick();
-    assert.deepEqual(demandes, ['b.glb'], 'le clic a demandé les usages d\'un autre fichier');
+    assert.equal(lignes[1].onclick, undefined, 'le nom du fichier n\'est plus qu\'un titre');
+    boutons(lignes[1])[1].onclick({ stopPropagation(){} });
+    assert.equal(demandes.length, 1);
+    assert.equal(demandes[0][0], 'b.glb', 'le clic a désigné un autre fichier');
+    assert.equal(demandes[0][1].sceneName, 'Cuisine', 'le clic a désigné un autre endroit');
   });
 
-  test('RÉGRESSION : un modèle inutilisé ne réagit pas, ET le montre avant le clic', () => {
-    // Décision utilisateur : plutôt qu'une fenêtre disant « rien », la ligne est inerte, mais
-    // l'inertie doit se LIRE. Un clic sans effet, sur une ligne qui ressemble à toutes les autres,
-    // passe pour une panne.
-    return rendreAvecClic(['orphelin.glb'], {}).then(([ligne]) => {
-      assert.equal(ligne.onclick, undefined, 'une ligne inerte réagit quand même au clic');
-      assert.match(String(ligne.className), /model-row-inert/,
-        'rien ne distingue une ligne inerte d\'une ligne cliquable');
-    });
+  test('une Case porte son chemin, et « ×2 » si elle contient deux Éléments du fichier', async () => {
+    const page = { objects: [{ id: 'c1', type: 'panel', caseNumber: 4 }, { ...el('a.glb'), homePanelId: 'c1' }, { ...el('a.glb'), homePanelId: 'c1' }] };
+    const [ligne] = await rendreAvecClic(['a.glb'], { tomes: [{ name: 'Tome 1', pages: [{ objects: [] }, page] }] });
+    assert.deepEqual(boutons(ligne).map(b => b.textContent), ['Tome 1 › Planche 2 › Case 4 ×2']);
+  });
+
+  test('un fichier des deux usages : ses Scènes dans un groupe, ses Cases dans l\'autre', async () => {
+    const page = { objects: [{ id: 'c1', type: 'panel', caseNumber: 1 }, { ...el('a.glb'), homePanelId: 'c1' }] };
+    const lignes = await rendreAvecClic(['a.glb'], { scenes: [volume('Salon', el('a.glb'))], tomes: [{ name: 'T', pages: [page] }] });
+    assert.deepEqual(lignes.map(l => boutons(l).map(b => b.textContent)), [['Salon'], ['T › Planche 1 › Case 1']]);
+  });
+
+  test('au-delà de trois endroits, « + N autre(s) » déplie le reste, dans l\'ordre, et « Réduire » replie', async () => {
+    const scenes = ['S1', 'S2', 'S3', 'S4', 'S5'].map(n => volume(n, el('a.glb')));
+    let [ligne] = await rendreAvecClic(['a.glb'], { scenes });
+    assert.deepEqual(boutons(ligne).map(b => b.textContent), ['S1', 'S2', 'S3']);
+    const plus = ligne.children.find(c => c.className === 'model-row-plus');
+    assert.match(plus.textContent, /\+ 2/);
+    await plus.onclick({ stopPropagation(){} });
+    [ligne] = await rendre(['a.glb'], { scenes });
+    assert.deepEqual(boutons(ligne).map(b => b.textContent), ['S1', 'S2', 'S3', 'S4', 'S5']);
+    const moins = ligne.children.find(c => c.className === 'model-row-plus');
+    assert.match(moins.textContent, /Réduire|Show less/);
+    await moins.onclick({ stopPropagation(){} });
+    [ligne] = await rendre(['a.glb'], { scenes });
+    assert.equal(boutons(ligne).length, 3);
+  });
+
+  test('RÉGRESSION : le dépliage SURVIT au clic sur un endroit, qui refait la liste (signalé à l\'usage)', async () => {
+    // Cliquer un endroit déplace l'écran, et renderAll refait la liste. Le dépliage vivait dans la
+    // ligne elle-même et se perdait, alors que l'utilisateur n'avait rien replié.
+    const scenes = ['S1', 'S2', 'S3', 'S4'].map(n => volume(n, el('b.glb')));
+    let [ligne] = await rendreAvecClic(['b.glb'], { scenes });
+    await ligne.children.find(c => c.className === 'model-row-plus').onclick({ stopPropagation(){} });
+    [ligne] = await rendre(['b.glb'], { scenes });
+    boutons(ligne)[3].onclick({ stopPropagation(){} });
+    [ligne] = await rendre(['b.glb'], { scenes });   // ce que fait renderAll après le déplacement
+    assert.equal(boutons(ligne).length, 4, 'la liste s\'est repliée toute seule');
+    // Et un AUTRE fichier n'hérite pas du dépliage.
+    const [autre] = await rendre(['c.glb'], { scenes: ['S1', 'S2', 'S3', 'S4'].map(n => volume(n, el('c.glb'))) });
+    assert.equal(boutons(autre).length, 3, 'le dépliage d\'un fichier a déplié un autre');
+  });
+
+  test('RÉGRESSION : un modèle inutilisé ne réagit pas, ET le montre avant le clic', async () => {
+    const [ligne] = await rendreAvecClic(['orphelin.glb'], {});
+    assert.equal(boutons(ligne).length, 0);
+    assert.match(String(ligne.className), /model-row-inert/,
+      'rien ne distingue une ligne inerte d\'une ligne cliquable');
   });
 
   test('RÉGRESSION : la classe inerte existe VRAIMENT dans style.css, et retire le curseur', () => {
@@ -635,22 +676,16 @@ describe('Bibliothèque : un clic gauche qui tient sa promesse', () => {
 });
 
 /**
- * JOURNAL DE MUTATION : le clic gauche.
+ * JOURNAL DE MUTATION : les endroits cliquables (refaits quand la liste a pris la forme de la
+ * section Images).
  *
- *   T1 la ligne inutilisée reçoit quand même un onclick                          ROUGE
- *   T2 la classe .model-row-inert n'est plus posée                               ROUGE
- *   T3 `cursor: default` retiré du CSS                                           ROUGE
- *   T4 le clic demande les usages d'un AUTRE fichier                             ROUGE
+ *   T1 chaque bouton reçoit l'endroit d'un autre (fermeture mal fermée)          ROUGE
+ *   T2 les Scènes et les Cases mélangées dans les deux groupes                     ROUGE
+ *   T3 tous les endroits affichés d'emblée, sans « + N autres »                    ROUGE
+ *   T4 la classe .model-row-inert n'est plus posée                                 ROUGE
  *
- * T4 A ÉCHAPPÉ D'ABORD, et pour la raison la plus banale : mon montage n'avait qu'UN seul fichier.
- * Remplacer `nom` par `fichiers[0]` ne changeait donc rien, les deux désignaient la même chose. Or
- * c'est précisément la faute que ce test doit attraper : les lignes sont construites en boucle, et
- * c'est l'endroit classique où toutes finissent par désigner la même. Montage porté à TROIS
- * fichiers, en interrogeant celui du MILIEU ; la mutation devient rouge.
- *
- * C'est la deuxième fois qu'un montage trop régulier laisse passer une mutation dans ce dépôt (cf.
- * hit-test.test.mjs, où aucune Bulle ne se chevauchait). La leçon se répète : un montage où toutes
- * les valeurs coïncident ne teste pas qu'on a choisi la bonne.
+ * Même leçon que la version précédente de ce test : trois fichiers et deux endroits chacun, et l'on
+ * clique ceux du MILIEU. Avec un seul de chaque, toutes les fautes de boucle passaient.
  */
 
 

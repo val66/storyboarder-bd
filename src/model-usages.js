@@ -112,7 +112,8 @@ export function usageLabel(groupe, traduire){
   if (groupe.kind === 'scene') return groupe.sceneName || t('(unnamed Scene)', '(Scène sans nom)');
   const morceaux = [
     groupe.tomeName || t(`Volume ${groupe.tomeIndex + 1}`, `Tome ${groupe.tomeIndex + 1}`),
-    t(`Page ${groupe.pageNumber}`, `Page ${groupe.pageNumber}`),
+    // « Planche », comme la section Images : les deux listes se lisent côte à côte.
+    t(`Page ${groupe.pageNumber}`, `Planche ${groupe.pageNumber}`),
   ];
   if (groupe.caseNumber) morceaux.push(t(`Panel ${groupe.caseNumber}`, `Case ${groupe.caseNumber}`));
   return morceaux.join(' › ');
@@ -180,18 +181,17 @@ export function targetFor(groupe, element){
 }
 
 /**
- * Ce que doit produire un clic gauche sur une ligne de la bibliothèque. Fonction PURE.
+ * Ce que doit produire un clic sur UN ENDROIT de la bibliothèque (une Scène, une Case). Fonction PURE.
  *
- * C'est LA décision de cette fonctionnalité, et elle est ici plutôt que dans le câblage pour qu'elle
- * se teste : trois issues, `'rien' | 'aller' | 'choisir'`.
+ * Depuis que la liste montre les endroits eux-mêmes (demandé : la même forme que la section Images),
+ * c'est l'endroit qu'on clique, plus la ligne du fichier. Trois issues, `'rien' | 'aller' | 'choisir'`.
  *
- * Un usage unique mène DIRECTEMENT à destination (choix utilisateur) : une modale qui ne propose
- * qu'une ligne fait cliquer deux fois pour un choix qui n'existe pas. Le prix assumé de ce raccourci
- * est que le clic ne fait pas toujours la même chose, d'où l'importance que `'rien'` se voie AVANT
- * le clic, par le curseur, et pas seulement après.
+ * Un seul Élément du fichier à cet endroit : on y va DIRECTEMENT. Plusieurs dans la même Case ou
+ * Scène (affiché « ×2 ») : la modale demande lequel, car sauter au premier serait un choix
+ * arbitraire déguisé en évidence.
  */
-export function resolveModelClick(fichier, projet){
-  const groupes = modelUsageLocations(fichier, projet);
+export function resolvePlaceClick(groupe){
+  const groupes = groupe ? [groupe] : [];
   const count = countUsageTargets(groupes);
   if (count === 0) return { action: 'rien', groupes, count };
   if (count === 1) return { action: 'aller', cible: firstUsageTarget(groupes), groupes, count };

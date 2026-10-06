@@ -26,7 +26,7 @@ import {
 import { countModelUsages, messageSuppressionModele, messageRenommageModele,
   repointerModele3D, repointerPileAnnulation3D } from './model-library.js';
 import {
-  setModelUsagesCallbacks, resolveModelClick, goToModelUsage, usageLabel, usageElementLabels,
+  setModelUsagesCallbacks, resolvePlaceClick, goToModelUsage, usageLabel, usageElementLabels,
   targetFor,
 } from './model-usages.js';
 import {
@@ -392,7 +392,7 @@ setModelImportCallbacks({
   confirmerImport: (nomFichier) => proposerCorrespondance(nomFichier),
 });
 setProjectTreeCallbacks({
-  openModelContextMenu, openModelUsages, openImageContextMenu, openImageUsage,
+  openModelContextMenu, openModelPlace, openImageContextMenu, openImageUsage,
   createScene, openScene, disableSceneCameraMode,
   openPageContextMenu, openVolumeContextMenu, openSceneContextMenu, snapshot,
 });
@@ -5514,14 +5514,15 @@ document.getElementById('personaEditorMapBtn').onclick = async () => {
   drawPersonaEditor();
 };
 
-// ─── Bibliothèque de modèles : clic GAUCHE sur une ligne → ses usages ───
-// Le câblage seulement : la décision (rien / y aller / choisir) est prise par `resolveModelClick`
-// dans model-usages.js, où elle se teste. Ici on ne fait que la suivre.
+// ─── Bibliothèque de modèles : clic sur un ENDROIT (Scène ou Case) → y aller ───
+// Le câblage seulement : la décision (rien / y aller / choisir) est prise par `resolvePlaceClick`
+// dans model-usages.js, où elle se teste. Ici on ne fait que la suivre. La modale ne sert plus que
+// lorsque le même endroit porte plusieurs Éléments du fichier.
 const modelUsagesModal = document.getElementById('modelUsagesModal');
 const modelUsagesList  = document.getElementById('modelUsagesList');
 
-function openModelUsages(fichier){
-  const clic = resolveModelClick(fichier, { tomes: S.tomes, scenes: S.scenes });
+function openModelPlace(fichier, groupe){
+  const clic = resolvePlaceClick(groupe);
   if (clic.action === 'rien') return;
   if (clic.action === 'aller') { goToModelUsage(clic.cible); return; }
 
