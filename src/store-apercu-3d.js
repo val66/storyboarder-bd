@@ -16,6 +16,8 @@
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { CLE_ACTUELLE, AMBIANTE_ACTUELLE } from './lighting-3d.js';
 import { preparerModeleImporte3D } from './model-cache.js';
+import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
+import { maillagesHorsCorps3D, maillagesParNom3D } from './stray-meshes-3d.js';
 
 /** L'angle de vue de la caméra, en degrés. */
 const CHAMP = 35;
@@ -78,7 +80,11 @@ export async function ouvrirApercu3D(conteneur, octets){
   scene.add(cle);
   scene.add(modele);
 
-  const boite = new T.Box3().setFromObject(modele);
+  // Comme en Case : égarés masqués, pas d'élimination par le tronc de vue, et une boîte qui SUIT LE
+  // SQUELETTE (la géométrie brute d'un modèle articulé décentrait ou rapetissait le cadrage).
+  maillagesParNom3D(modele, maillagesHorsCorps3D(modele)).forEach(m => { m.visible = false; });
+  modele.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
+  const boite = box3FromObjectSkinAware3D(modele);
   const { centre, distance: distanceCadrage } = cadrage3D(boite.min.toArray(), boite.max.toArray());
   let distance = distanceCadrage;
   let angles = { lacet: 0.6, tangage: 0.25 };

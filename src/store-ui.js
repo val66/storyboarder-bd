@@ -18,7 +18,7 @@
 import { S } from './state.js';
 import { rangerModele, remplacerModele, readModel } from './model-store.js';
 import { entreesLocales, filtrerEntrees, NON_CLASSE, USAGES, TRIS_LOCAUX } from './local-library.js';
-import { preparerVignettes, vignetteLocale } from './model-thumbnails.js';
+import { preparerVignettes, vignetteLocale, metasLocales } from './model-thumbnails.js';
 import { usageLabel } from './model-usages.js';
 import { ouvrirApercu3D } from './store-apercu-3d.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
@@ -592,28 +592,35 @@ async function chercherLocal(moi){
   ]);
   if (moi !== generation) return;
   enCours = false;
-  const toutes = entreesLocales({ fichiers, attributions, projet: { tomes: S.tomes, scenes: S.scenes } });
-  const p = derniereRecherche || {};
-  entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom' });
-  cartesLocales.clear();
-  affiches = entreesAffichees.map(e => ({ ...e, local: true }));
-  affiches.forEach(e => $('storeGrille').appendChild(carte(e)));
-  $('storePlusBtn').hidden = true;
-  message(toutes.length ? (affiches.length ? '' : t.aucunLocal) : t.videLocal);
+  const afficher = () => {
+    const toutes = entreesLocales({ fichiers, attributions, projet: { tomes: S.tomes, scenes: S.scenes }, metas: metasLocales() });
+    const p = derniereRecherche || {};
+    entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom' });
+    cartesLocales.clear();
+    affiches = entreesAffichees.map(e => ({ ...e, local: true }));
+    $('storeGrille').replaceChildren(...affiches.map(carte));
+    $('storePlusBtn').hidden = true;
+    message(toutes.length ? (affiches.length ? '' : t.aucunLocal) : t.videLocal);
+  };
+  afficher();
   // Les vignettes manquantes se rendent en arrière-plan ; chaque carte se met à jour à son tour.
+  // Le rendu MESURE aussi chaque modèle (dimensions, noms des nœuds, d'où une catégorie mieux
+  // devinée) : la grille est refaite une fois à la fin, si l'on est toujours sur la liste.
   preparerVignettes((fait, total, nom) => {
     if (source !== LOCAL) return;
     if (nom && cartesLocales.has(nom)) poserVignette(cartesLocales.get(nom), nom);
     if (total) message(fait < total ? t.preparationVignettes(fait, total) : (affiches.length ? '' : t.aucunLocal));
   }).then(() => {
-    if (source === LOCAL) cartesLocales.forEach((c, nom) => poserVignette(c, nom));
+    if (source !== LOCAL || moi !== generation || !$('storeFiche').hidden) return;
+    afficher();
   });
 }
 
 function poserVignette(carteEl, nom){
   const url = vignetteLocale(nom);
   const cadre = carteEl && carteEl.children && carteEl.children[0];
-  if (!url || !cadre || cadre.tagName === 'IMG') return;
+  if (!url || !cadre) return;
+  if (cadre.tagName === 'IMG') { if (cadre.getAttribute('src') !== url) cadre.setAttribute('src', url); return; }
   carteEl.replaceChild(el('img', { attrs: { src: url, alt: '' } }), cadre);
 }
 
@@ -688,7 +695,7 @@ function ficheLocale(e){
       e.cases.length ? el('p', { texte: t.casesLibelle, classe: 'store-fiche-sous-titre' }) : null,
       ...e.cases.map(endroit),
     ].filter(Boolean)
-    : [el('p', { texte: t.nullePart, classe: 'store-note' })];
+    : [el('p', { texte: t.nullePart, classe: 'store-fiche-texte' })];
 
   const droite = [
     el('h4', { texte: e.titre }),
@@ -699,7 +706,8 @@ function ficheLocale(e){
       liste([a.licence.attribution ? t.attributionRequise : t.attributionLibre])]) : null,
     section(t.caracteristiques, [liste([
       t.ligneFichier(e.fichier),
-      t.ligneCategorie(nomCategorie(e.categorie)),
+      t.ligneCategorie(nomCategorie(e.categorie) + (e.categorieDevinee ? ` ${t.devinee}` : '')),
+      e.dimensions ? t.dimensions(e.dimensions) : null,
       e.taille ? t.ligneTaille(poidsLisible(e.taille, langue())) : null,
       a && a.resolution ? t.ligneResolution(a.resolution) : null,
       a ? t.depuisSource(nomSource) : null,
@@ -716,7 +724,9 @@ function ficheLocale(e){
   };
   const actions = e.introuvable
     ? [retour]
-    : [retour, action(t.squelette, 'squeletteModele'), action(t.renommer, 'renommerModele'), action(t.supprimer, 'supprimerModele', 'nav-btn store-action-danger')];
+    // Couleurs demandées : Renommer en jaune, Supprimer en rouge, texte blanc sur les deux.
+    : [retour, action(t.squelette, 'squeletteModele'), action(t.renommer, 'renommerModele', 'full-btn edit-btn store-action-blanc'),
+      action(t.supprimer, 'supprimerModele', 'full-btn delete-btn store-action-blanc')];
   fiche.replaceChildren(
     el('div', { classe: 'store-fiche-corps' }, [
       el('div', { classe: 'store-fiche-gauche' }, [visuel, boutons]),

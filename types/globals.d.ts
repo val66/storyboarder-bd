@@ -80,9 +80,10 @@ interface StoryboarderAPI {
   }>;
   storeChercher(sourceId: string, params: object): Promise<{ resultats?: object[]; suivant?: string | null; ecartes?: number; erreur?: string }>;
   modelesInfos(): Promise<{ nom: string; taille: number | null; modifie: number | null }[]>;
-  vignettesEtat(): Promise<{ aFaire: { nom: string; signature: string }[]; pretes: string[] }>;
+  vignettesEtat(): Promise<{ aFaire: { nom: string; signature: string }[]; aMesurer: { nom: string; signature: string }[]; pretes: string[]; metas: Record<string, { dimensions: number[] | null; noms: string[] }> }>;
   vignettesLire(nom: string): Promise<{ ok: boolean; data?: Uint8Array; type?: string }>;
-  vignettesEcrire(nom: string, data: Uint8Array): Promise<{ ok: boolean }>;
+  vignettesEcrire(nom: string, data: Uint8Array, meta?: object): Promise<{ ok: boolean }>;
+  vignettesMesures(nom: string, meta: object): Promise<{ ok: boolean }>;
   storeTelecharges(): Promise<{ source: string; id: string; fichier: string; resolution: string | null }[]>;
   storePoids(sourceId: string, id: string): Promise<{ options?: { resolution: string; octets: number }[]; erreur?: string }>;
   storeTelecharger(sourceId: string, id: string, resolution?: string): Promise<{ data?: Uint8Array; nom?: string; resolution?: string; erreur?: string }>;

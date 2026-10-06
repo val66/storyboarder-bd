@@ -81,6 +81,14 @@ describe('Le câblage', () => {
     assert.match(f, /if \(moi !== apercuGeneration\) \{ v\.fermer\(\); return; \}/);
     assert.match(UI, /function fermerFiche\(\)\{\n\s+fermerApercuLocal\(\);/);
   });
+  test('⚠️ vignettes et aperçu cadrent sur la boîte qui SUIT LE SQUELETTE (Hulk, worker_j décentrés)', () => {
+    for (const f of ['src/model-thumbnails.js', 'src/store-apercu-3d.js']) {
+      const s = lire(f);
+      assert.match(s, /box3FromObjectSkinAware3D\(modele\)/, f);
+      assert.doesNotMatch(s, /setFromObject\(/, `${f} : la géométrie brute d'un modèle articulé décentre le cadrage`);
+      assert.match(s, /n\.frustumCulled = false/, f);
+    }
+  });
   test('la visionneuse libère la carte graphique en se fermant', () => {
     const v = lire('src/store-apercu-3d.js');
     assert.match(v, /rendu\.dispose\(\);/);

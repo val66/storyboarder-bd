@@ -42,15 +42,65 @@ function typeImage(octets){
 
 const entrees = (index) => (index && typeof index === 'object' && index.vignettes && typeof index.vignettes === 'object' ? index.vignettes : {});
 
-/** Une vignette est-elle à (re)faire ? Absente, ou faite pour un autre état du fichier. */
+/**
+ * La VERSION DU RENDU des vignettes. L'augmenter fait refaire toutes les vignettes RENDUES (pas
+ * celles venues d'une source) : c'est ce qu'il faut quand la photo elle-même change. Version 2 :
+ * cadrage sur la boîte qui suit le squelette (les personnages articulés étaient décentrés ou
+ * minuscules), et mesure des dimensions.
+ */
+const VERSION_RENDU = 2;
+
+/**
+ * Une vignette est-elle à (re)faire ? Absente, faite pour un autre état du fichier, ou rendue par
+ * une version précédente du rendu.
+ */
 function aRefaire(index, nomModele, signature){
   const e = entrees(index)[nomModele];
-  return !e || e.signature !== signature;
+  if (!e || e.signature !== signature) return true;
+  return e.origine !== 'source' && (e.rendu || 1) < VERSION_RENDU;
 }
 
-/** Note une vignette. Rend un NOUVEL index. `origine` : 'rendu' ou 'source' (venue du store). */
-function noter(index, nomModele, signature, origine = 'rendu'){
-  return { version: 1, vignettes: { ...entrees(index), [nomModele]: { signature, origine } } };
+/**
+ * Note une vignette. Rend un NOUVEL index. `origine` : 'rendu' ou 'source' (venue du store).
+ * `meta` : ce que le rendu a mesuré, { dimensions: [l, p, h] en mètres, noms: [nœuds] }.
+ */
+function noter(index, nomModele, signature, origine = 'rendu', meta = null){
+  const e = { signature, origine, ...(origine === 'rendu' ? { rendu: VERSION_RENDU } : {}), ...metaPropre(meta) };
+  return { version: 1, vignettes: { ...entrees(index), [nomModele]: e } };
+}
+
+/** Ajoute des mesures à une vignette existante (celle d'une source, qu'on ne refait pas). */
+function noterMesures(index, nomModele, meta){
+  const e = entrees(index)[nomModele];
+  if (!e) return index;
+  return { version: 1, vignettes: { ...entrees(index), [nomModele]: { ...e, ...metaPropre(meta) } } };
+}
+
+/** Ne garde de `meta` que ce qu'on attend, nettoyé : un renderer ne remplit pas l'index à sa guise. */
+function metaPropre(meta){
+  const m = {};
+  if (meta && Array.isArray(meta.dimensions) && meta.dimensions.length === 3 && meta.dimensions.every(x => Number.isFinite(x) && x >= 0)) {
+    m.dimensions = meta.dimensions.map(x => Math.round(x * 1000) / 1000);
+  }
+  if (meta && Array.isArray(meta.noms)) m.noms = meta.noms.filter(n => typeof n === 'string').slice(0, 60).map(n => n.slice(0, 60));
+  return m;
+}
+
+/** Les modèles dont la vignette vient d'une source et qui n'ont pas encore leurs dimensions. */
+function aMesurer(index, fichiers){
+  return (fichiers || []).filter(f => {
+    const e = f && entrees(index)[f.nom];
+    return e && e.origine === 'source' && e.signature === f.signature && !e.dimensions;
+  });
+}
+
+/** Ce qui a été relevé pour chaque modèle : { nom: { dimensions, noms } }. */
+function metas(index){
+  const sortie = {};
+  for (const [nom, e] of Object.entries(entrees(index))) {
+    if (e.dimensions || e.noms) sortie[nom] = { dimensions: e.dimensions || null, noms: e.noms || [] };
+  }
+  return sortie;
 }
 
 /** Un modèle renommé : sa vignette suit, sous le nouveau nom. Rend un NOUVEL index. */
@@ -72,4 +122,4 @@ function aGenerer(index, fichiers){
   return (fichiers || []).filter(f => f && f.nom && aRefaire(index, f.nom, f.signature));
 }
 
-module.exports = { DOSSIER, INDEX, signatureFichier, nomVignette, typeImage, aRefaire, noter, renommer, oublier, aGenerer };
+module.exports = { DOSSIER, INDEX, VERSION_RENDU, signatureFichier, nomVignette, typeImage, aRefaire, noter, noterMesures, aMesurer, metas, renommer, oublier, aGenerer };

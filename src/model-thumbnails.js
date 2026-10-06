@@ -21,6 +21,7 @@ import { preparerModeleImporte3D } from './model-cache.js';
 import { maillagesHorsCorps3D, maillagesParNom3D } from './stray-meshes-3d.js';
 import { CLE_ACTUELLE, AMBIANTE_ACTUELLE } from './lighting-3d.js';
 import { cadrage3D, positionCamera3D } from './store-apercu-3d.js';
+import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 
 /** Le côté d'une vignette, en pixels : assez pour une carte de la grille, même sur écran dense. */
 export const TAILLE_VIGNETTE = 384;
@@ -28,6 +29,12 @@ export const TAILLE_VIGNETTE = 384;
 const ANGLES = { lacet: 0.6, tangage: 0.25 };
 
 const urls = new Map();   // nom de modèle → adresse d'image (blob:) de sa vignette
+const mesures = new Map();   // nom de modèle → { dimensions, noms }, relevés au rendu
+
+/** Ce qu'on sait de chaque modèle sans le décoder : { nom: { dimensions, noms } }. */
+export function metasLocales(){
+  return Object.fromEntries(mesures);
+}
 
 /** L'adresse de la vignette d'un modèle, si on l'a ; null sinon. */
 export function vignetteLocale(nom){
@@ -38,22 +45,6 @@ function retenir(nom, octets, type){
   const ancienne = urls.get(nom);
   if (ancienne && globalThis.URL && URL.revokeObjectURL) URL.revokeObjectURL(ancienne);
   urls.set(nom, URL.createObjectURL(new Blob([octets], { type })));
-}
-
-/** La boîte des maillages VISIBLES (Box3.setFromObject compterait aussi les égarés masqués). */
-function boiteVisible(racine){
-  const T = globalThis.THREE;
-  const boite = new T.Box3();
-  racine.updateMatrixWorld(true);
-  racine.traverse(n => {
-    if (!n.isMesh || !n.visible || !n.geometry) return;
-    let visible = true;
-    for (let p = n.parent; p; p = p.parent) if (!p.visible) { visible = false; break; }
-    if (!visible) return;
-    if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
-    boite.union(n.geometry.boundingBox.clone().applyMatrix4(n.matrixWorld));
-  });
-  return boite;
 }
 
 function liberer(racine){
@@ -82,22 +73,43 @@ function rendreLaToile(){
   rendu = null;
 }
 
-/** Photographie un modèle : rend les octets PNG de sa vignette, ou null s'il ne se lit pas. */
-async function photographier(nom){
-  const T = globalThis.THREE;
+/**
+ * Décode un modèle et le prépare comme une Case, égarés masqués. Rend `{ modele, boite, meta }`.
+ *
+ * ⚠️ LA BOÎTE SUIT LE SQUELETTE (box3FromObjectSkinAware3D), et c'est la correction de la version 2
+ * du rendu : la géométrie brute d'un modèle articulé décrit sa pose de liaison, parfois à une autre
+ * échelle (worker_j : facteur 7,7). Cadrée sur elle, la photo visait à côté (Hulk, worker_j, le
+ * dragon) ou montrait un personnage minuscule (anime_girl1). Et pas d'élimination par le tronc de
+ * vue, pour la même raison qu'en Case (cf. buildImportedModelRig3D) : la sphère englobante est
+ * fausse, des morceaux disparaissaient.
+ */
+async function decoderEtMesurer(nom){
   const octets = await readModel(nom);
   if (!octets) return null;
   const brut = octets.buffer.slice(octets.byteOffset, octets.byteOffset + octets.byteLength);
   const gltf = await new Promise((ok, ko) => { try { new GLTFLoader().parse(brut, '', ok, ko); } catch (e) { ko(e); } });
   const modele = preparerModeleImporte3D(gltf);
+  maillagesParNom3D(modele, maillagesHorsCorps3D(modele)).forEach(m => { m.visible = false; });
+  const noms = [];
+  modele.traverse(n => { if (n.isMesh) n.frustumCulled = false; if (n.name && noms.length < 60) noms.push(n.name); });
+  const boite = box3FromObjectSkinAware3D(modele);
+  // glTF : Y vers le haut. Largeur (X) × profondeur (Z) × hauteur (Y), en mètres.
+  const t = boite.isEmpty() ? null : boite.getSize(new globalThis.THREE.Vector3());
+  return { modele, boite, meta: { dimensions: t ? [t.x, t.z, t.y] : null, noms } };
+}
+
+/** Photographie un modèle : rend `{ png, meta }`, ou null s'il ne se lit pas. */
+async function photographier(nom){
+  const T = globalThis.THREE;
+  const d = await decoderEtMesurer(nom);
+  if (!d) return null;
+  const { modele, boite: b, meta } = d;
   try {
-    maillagesParNom3D(modele, maillagesHorsCorps3D(modele)).forEach(m => { m.visible = false; });
     const scene = new T.Scene();
     scene.add(new T.AmbientLight(0xffffff, AMBIANTE_ACTUELLE));
     const cle = new T.DirectionalLight(0xffffff, CLE_ACTUELLE);
     scene.add(cle);
     scene.add(modele);
-    const b = boiteVisible(modele);
     if (b.isEmpty()) return null;
     const { centre, distance } = cadrage3D(b.min.toArray(), b.max.toArray());
     const camera = new T.PerspectiveCamera(35, 1, distance / 100, distance * 20);
@@ -107,7 +119,7 @@ async function photographier(nom){
     const r = obtenirRendu();
     r.render(scene, camera);
     const blob = await new Promise(ok => r.domElement.toBlob(ok, 'image/png'));
-    return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+    return blob ? { png: new Uint8Array(await blob.arrayBuffer()), meta } : null;
   } finally {
     liberer(modele);
   }
@@ -125,22 +137,35 @@ export function preparerVignettes(avance){
     const pont = globalThis.window && window.storyboarderAPI;
     if (!pont || !pont.vignettesEtat) return;
     const etat = await pont.vignettesEtat();
+    Object.entries(etat.metas || {}).forEach(([nom, m]) => mesures.set(nom, m));
+    const aRefaire = new Set((etat.aFaire || []).map(f => f.nom));
     for (const nom of etat.pretes || []) {
-      if (urls.has(nom)) continue;
+      if (urls.has(nom) && !aRefaire.has(nom)) continue;
       const v = await pont.vignettesLire(nom);
       if (v && v.ok) retenir(nom, v.data, v.type);
     }
-    if (avance) avance(0, (etat.aFaire || []).length, null);
+    const total = (etat.aFaire || []).length + (etat.aMesurer || []).length;
+    if (avance) avance(0, total, null);
     let fait = 0;
     for (const { nom } of etat.aFaire || []) {
-      let png = null;
-      try { png = await photographier(nom); } catch (e) { png = null; }   // un modèle illisible n'arrête pas la série
-      if (png) {
-        await pont.vignettesEcrire(nom, png);
-        retenir(nom, png, 'image/png');
+      let photo = null;
+      try { photo = await photographier(nom); } catch (e) { photo = null; }   // un modèle illisible n'arrête pas la série
+      if (photo) {
+        await pont.vignettesEcrire(nom, photo.png, photo.meta);
+        retenir(nom, photo.png, 'image/png');
+        mesures.set(nom, photo.meta);
       }
       fait++;
-      if (avance) avance(fait, etat.aFaire.length, nom);
+      if (avance) avance(fait, total, nom);
+    }
+    // Les vignettes venues d'une source sont gardées ; on mesure seulement le modèle (dimensions).
+    for (const { nom } of etat.aMesurer || []) {
+      try {
+        const d = await decoderEtMesurer(nom);
+        if (d) { liberer(d.modele); await pont.vignettesMesures(nom, d.meta); mesures.set(nom, d.meta); }
+      } catch (e) { /* illisible : pas de dimensions, rien de plus */ }
+      fait++;
+      if (avance) avance(fait, total, nom);
     }
     rendreLaToile();
   })().finally(() => { enCours = null; });

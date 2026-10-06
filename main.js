@@ -525,13 +525,13 @@ async function signatureModele(nom){
   try { return vignettes.signatureFichier(await fs.promises.stat(path.join(getModelsDir(), nom))); } catch (e) { return null; }
 }
 /** Écrit la vignette d'un modèle (octets d'image) et la note avec la signature ACTUELLE du fichier. */
-async function ecrireVignette(nom, data, origine){
+async function ecrireVignette(nom, data, origine, meta){
   if (!nomDeModeleAcceptable(nom) || !data || !data.length || !vignettes.typeImage(data)) return { ok: false };
   const signature = await signatureModele(nom);
   if (!signature) return { ok: false };
   fs.mkdirSync(getVignettesDir(), { recursive: true });
   await fs.promises.writeFile(path.join(getVignettesDir(), vignettes.nomVignette(nom)), Buffer.from(data));
-  await modifierIndexVignettes(i => vignettes.noter(i, nom, signature, origine));
+  await modifierIndexVignettes(i => vignettes.noter(i, nom, signature, origine, meta));
   return { ok: true };
 }
 // Ce qui est à rendre, et ce qui est prêt.
@@ -540,9 +540,16 @@ ipcMain.handle('vignettes:etat', async () => {
   try { noms = fs.readdirSync(getModelsDir()).filter(nomDeModeleAcceptable); } catch (e) { return { aFaire: [], pretes: [] }; }
   const fichiers = await Promise.all(noms.map(async nom => ({ nom, signature: await signatureModele(nom) })));
   const index = await lireIndexVignettes();
-  const aFaire = vignettes.aGenerer(index, fichiers.filter(f => f.signature));
-  const aFaireNoms = new Set(aFaire.map(f => f.nom));
-  return { aFaire, pretes: noms.filter(n => !aFaireNoms.has(n)) };
+  const presents = fichiers.filter(f => f.signature);
+  const aFaire = vignettes.aGenerer(index, presents);
+  const connues = new Set(Object.keys(vignettes.metas(index)).concat(Object.keys((index && index.vignettes) || {})));
+  return {
+    aFaire,
+    aMesurer: vignettes.aMesurer(index, presents),
+    // Une vignette à refaire est quand même montrée en attendant la nouvelle : mieux qu'un cadre vide.
+    pretes: noms.filter(n => connues.has(n)),
+    metas: vignettes.metas(index),
+  };
 });
 // Le dossier Modeles avec, pour chaque fichier, sa taille et sa date (tri « récents »).
 ipcMain.handle('models:infos', async () => {
@@ -561,7 +568,12 @@ ipcMain.handle('vignettes:lire', async (event, nom) => {
     return type ? { ok: true, data: new Uint8Array(data), type } : { ok: false };
   } catch (e) { return { ok: false }; }
 });
-ipcMain.handle('vignettes:ecrire', async (event, nom, data) => ecrireVignette(nom, data, 'rendu'));
+ipcMain.handle('vignettes:ecrire', async (event, nom, data, meta) => ecrireVignette(nom, data, 'rendu', meta));
+ipcMain.handle('vignettes:mesures', async (event, nom, meta) => {
+  if (!nomDeModeleAcceptable(nom)) return { ok: false };
+  await modifierIndexVignettes(i => vignettes.noterMesures(i, nom, meta));
+  return { ok: true };
+});
 /** Un modèle renommé ou supprimé : sa vignette suit, ou s'en va. Rien de grave si elle manque. */
 async function suivreVignette(ancien, nouveau){
   const de = path.join(getVignettesDir(), vignettes.nomVignette(ancien));

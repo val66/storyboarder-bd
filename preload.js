@@ -57,7 +57,8 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   vignettesEtat: () => ipcRenderer.invoke('vignettes:etat'),
   modelesInfos: () => ipcRenderer.invoke('models:infos'),
   vignettesLire: (nom) => ipcRenderer.invoke('vignettes:lire', nom),
-  vignettesEcrire: (nom, data) => ipcRenderer.invoke('vignettes:ecrire', nom, data),
+  vignettesEcrire: (nom, data, meta) => ipcRenderer.invoke('vignettes:ecrire', nom, data, meta),
+  vignettesMesures: (nom, meta) => ipcRenderer.invoke('vignettes:mesures', nom, meta),
   // #445 : poids annoncé, téléchargement (le .glb revient ici pour être rangé), attribution.
   storePoids: (sourceId, id) => ipcRenderer.invoke('store:poids', sourceId, id),
   storeTelecharger: (sourceId, id, resolution) => ipcRenderer.invoke('store:telecharger', sourceId, id, resolution),

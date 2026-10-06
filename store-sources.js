@@ -175,6 +175,8 @@ function entreeAttribution(r, fichier, date = new Date(), resolution = null){
     resolution: typeof resolution === 'string' && /^\d+k$/.test(resolution) ? resolution : null,
     // La catégorie commune : le filtre de la bibliothèque locale s'en sert.
     categorie: typeof r.categorie === 'string' ? r.categorie : null,
+    // Les dimensions réelles si la source les donne (Poly Haven) : la fiche locale les reprend.
+    dimensions: r.details && Array.isArray(r.details.dimensions) ? r.details.dimensions : null,
     nom: r.nom,
     auteur: { nom: r.auteur.nom, url: r.auteur.url || null },
     licence: { code: r.licence.code, libelle: r.licence.libelle, url: r.licence.url || null, attribution: !!r.licence.attribution },

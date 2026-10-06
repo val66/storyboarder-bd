@@ -108,7 +108,7 @@ describe('Le fichier des attributions', () => {
       source: 'polyhaven', id: 'ArmChair_01', fichier: 'Arm Chair 01.glb', resolution: null, nom: 'Arm Chair 01',
       auteur: { nom: 'Kirill Sannikov', url: null },
       licence: { code: 'cc0', libelle: 'CC0 Public Domain', url: 'https://creativecommons.org/publicdomain/zero/1.0/', attribution: false },
-      categorie: null, url: 'https://polyhaven.com/a/ArmChair_01', date: '2026-10-06T10:00:00.000Z',
+      categorie: null, dimensions: null, url: 'https://polyhaven.com/a/ArmChair_01', date: '2026-10-06T10:00:00.000Z',
     });
   });
   test('retélécharger REMPLACE l\'entrée, sans en empiler une seconde', () => {

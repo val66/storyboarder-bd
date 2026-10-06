@@ -45,6 +45,31 @@ describe('Ce qui décide', () => {
   });
 });
 
+describe('Version du rendu et mesures', () => {
+  test('une vignette RENDUE par une version précédente est à refaire ; celle d\'une source, jamais', () => {
+    const vieux = { vignettes: { 'a.glb': { signature: 's', origine: 'rendu' }, 'b.glb': { signature: 's', origine: 'source' } } };
+    assert.equal(v.aRefaire(vieux, 'a.glb', 's'), true, 'les photos décentrées de la version 1 resteraient');
+    assert.equal(v.aRefaire(vieux, 'b.glb', 's'), false, 'la vignette de la source serait remplacée par notre rendu');
+    assert.equal(v.aRefaire(v.noter(null, 'a.glb', 's'), 'a.glb', 's'), false);
+  });
+  test('les mesures sont nettoyées : trois nombres positifs, des noms de nœuds bornés', () => {
+    const i = v.noter(null, 'a.glb', 's', 'rendu', { dimensions: [1.23456, 2, 3], noms: ['x'.repeat(100), 3], autre: 'non' });
+    assert.deepEqual(i.vignettes['a.glb'].dimensions, [1.235, 2, 3]);
+    assert.equal(i.vignettes['a.glb'].noms.length, 1);
+    assert.equal(i.vignettes['a.glb'].noms[0].length, 60);
+    assert.equal(i.vignettes['a.glb'].autre, undefined);
+    assert.equal(v.noter(null, 'b.glb', 's', 'rendu', { dimensions: [1, -2, 3] }).vignettes['b.glb'].dimensions, undefined);
+  });
+  test('une vignette de source sans dimensions est à MESURER, pas à refaire', () => {
+    const i = v.noter(null, 'a.glb', 's', 'source');
+    assert.deepEqual(v.aMesurer(i, [{ nom: 'a.glb', signature: 's' }]).map(f => f.nom), ['a.glb']);
+    const mesuree = v.noterMesures(i, 'a.glb', { dimensions: [1, 1, 1] });
+    assert.deepEqual(v.aMesurer(mesuree, [{ nom: 'a.glb', signature: 's' }]), []);
+    assert.equal(mesuree.vignettes['a.glb'].origine, 'source');
+    assert.deepEqual(v.metas(mesuree), { 'a.glb': { dimensions: [1, 1, 1], noms: [] } });
+  });
+});
+
 describe('Le câblage de main.js', () => {
   test('supprimer ou renommer un modèle fait suivre sa vignette', () => {
     assert.match(MAIN, /await fs\.promises\.unlink\(path\.join\(getModelsDir\(\), name\)\);\n\s+await suivreVignette\(name, null\);/);
