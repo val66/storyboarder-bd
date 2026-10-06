@@ -22,6 +22,8 @@ let derniereRecherche = null;
 let suivant = null;
 let enCours = false;
 let positionListe = 0;
+/** La pause de saisie avant de lancer la recherche. */
+export const PAUSE_SAISIE_MS = 450;
 
 function el(tag, { texte, classe, attrs } = {}, enfants = []){
   const e = document.createElement(tag);
@@ -55,7 +57,6 @@ export function rafraichirTextesStore(){
   if (!infos) return;
   $('storeTitre').textContent = t.titre;
   $('storeTexte').placeholder = t.placeholder;
-  $('storeChercherBtn').textContent = t.rechercher;
   $('storeCommercialLibelle').textContent = t.commercial;
   $('storePlusBtn').textContent = t.plus;
   const garder = (id, f) => { const v = $(id).value; f(); if ([...$(id).options].some(o => o.value === v)) $(id).value = v; };
@@ -101,37 +102,51 @@ function carte(r){
 function ouvrirFiche(r){
   const t = textesStore(langue());
   const fiche = $('storeFiche');
-  const visuel = el('div', { classe: 'store-fiche-visuel' }, [
-    r.vignettes.grande ? el('img', { attrs: { src: r.vignettes.grande, alt: '', referrerpolicy: 'no-referrer' } }) : null,
-  ]);
+  const image = () => (r.vignettes.grande ? [el('img', { attrs: { src: r.vignettes.grande, alt: '', referrerpolicy: 'no-referrer' } })] : []);
+  const visuel = el('div', { classe: 'store-fiche-visuel' }, image());
   const boutons = el('div', { classe: 'store-fiche-boutons' });
   if (r.apercu3D) {
-    const voir = el('button', { texte: t.voir3D, classe: 'nav-btn', attrs: { type: 'button' } });
-    // L'aperçu 3D ne se charge qu'à la demande : un lecteur WebGL par fiche ouverte pèserait lourd.
-    voir.onclick = () => {
-      const src = r.apercu3D + (r.apercu3D.includes('?') ? '&' : '?') + 'autostart=1&ui_infos=0&ui_watermark_link=0';
-      visuel.replaceChildren(el('iframe', { attrs: { src, title: r.nom, allow: 'autoplay; fullscreen; xr-spatial-tracking', allowfullscreen: '' } }));
-      voir.remove();
+    // Un BASCULEMENT image / 3D, et non un aller simple : on revient à l'image d'un clic (demandé).
+    // L'aperçu 3D ne se charge qu'à la demande : un lecteur WebGL par fiche ouverte pèserait lourd,
+    // et revenir à l'image le décharge.
+    const bascule = el('button', { texte: t.voir3D, classe: 'nav-btn', attrs: { type: 'button' } });
+    let en3D = false;
+    bascule.onclick = () => {
+      en3D = !en3D;
+      if (en3D) {
+        const src = r.apercu3D + (r.apercu3D.includes('?') ? '&' : '?') + 'autostart=1&ui_infos=0&ui_watermark_link=0';
+        visuel.replaceChildren(el('iframe', { attrs: { src, title: r.nom, allow: 'autoplay; fullscreen; xr-spatial-tracking', allowfullscreen: '' } }));
+      } else {
+        visuel.replaceChildren(...image());
+      }
+      bascule.textContent = en3D ? t.voirImage : t.voir3D;
     };
-    boutons.appendChild(voir);
+    boutons.appendChild(bascule);
   }
   boutons.appendChild(lien(t.voirSur(infos.source.nom), r.url, 'nav-btn store-lien-bouton'));
-  const telecharger = el('button', { texte: t.telecharger, classe: 'full-btn', attrs: { type: 'button', disabled: '' } });
-  const retour = el('button', { texte: '← ' + t.fermerFiche, classe: 'nav-btn store-retour', attrs: { type: 'button' } });
+
+  const retour = el('button', { texte: '← ' + t.fermerFiche, classe: 'nav-btn', attrs: { type: 'button' } });
   retour.onclick = fermerFiche;
-  fiche.replaceChildren(
-    retour,
+  const telecharger = el('button', { texte: t.telecharger, classe: 'full-btn', attrs: { type: 'button', disabled: '' } });
+  const section = (titre, lignes, avant = []) => el('section', { classe: 'store-fiche-section' }, [
+    el('h5', { texte: titre }), ...avant, el('ul', {}, lignes.map(p => el('li', { texte: p }))),
+  ]);
+  const details = lignesDetails(r, langue());
+  const enfants = [
     visuel,
     boutons,
     el('h4', { texte: r.nom }),
     el('p', {}, [el('span', { texte: t.par + ' ' }), lien(r.auteur.nom, r.auteur.url)]),
-    el('p', { classe: 'store-fiche-licence' }, [el('strong', { texte: t.licence + ' : ' }), lien(r.licence.libelle, r.licence.url)]),
-    el('ul', {}, phrasesLicence(r.licence, langue()).map(p => el('li', { texte: p }))),
-    el('ul', { classe: 'store-fiche-details' }, lignesDetails(r, langue()).map(p => el('li', { texte: p }))),
+    section(t.licence, phrasesLicence(r.licence, langue()), [el('p', {}, [lien(r.licence.libelle, r.licence.url)])]),
+    details.length ? section(t.caracteristiques, details) : null,
     estLourd(r) ? el('p', { texte: t.lourd, classe: 'store-avertissement' }) : null,
-    telecharger,
+    // Retour et Téléchargement côte à côte, en bas (demandé) : le gros bouton du haut prenait la
+    // place de l'aperçu.
+    el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
     el('p', { texte: t.bientot, classe: 'store-note' }),
-  );
+  ];
+  // ⚠️ replaceChildren(null) écrit « null » : un enfant conditionnel absent doit être RETIRÉ.
+  fiche.replaceChildren(...enfants.filter(Boolean));
   // La fiche REMPLACE la liste (demandé) ; on garde la position dans la liste pour le retour.
   positionListe = $('storeDefilement').scrollTop;
   $('storeGrille').hidden = true;
@@ -188,7 +203,14 @@ export function cablerStore(){
   const storeModal = document.getElementById('storeModal');
   if (!storeModal) return;
   $('storeOuvrirBtn').onclick = ouvrirStore;
-  $('storeFormulaire').addEventListener('submit', (e) => { e.preventDefault(); chercher(); });
+  // Pas de bouton « Rechercher » (demandé) : la saisie relance la recherche après une courte pause,
+  // pour ne pas lancer une requête par lettre tapée ; Entrée la lance tout de suite.
+  let minuterie = null;
+  $('storeTexte').addEventListener('input', () => {
+    clearTimeout(minuterie);
+    minuterie = setTimeout(() => chercher(), PAUSE_SAISIE_MS);
+  });
+  $('storeFormulaire').addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(minuterie); chercher(); });
   for (const id of ['storeCategorie', 'storeLicence', 'storeFaces', 'storeTri', 'storeCommercial']) {
     $(id).addEventListener('change', () => chercher());
   }

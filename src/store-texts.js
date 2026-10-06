@@ -9,7 +9,6 @@ const T = {
   fr: {
     ouvrir: 'Store en ligne',
     titre: 'Modèles en ligne',
-    rechercher: 'Rechercher',
     placeholder: 'Banc, voiture, chat…',
     toutesCategories: 'Toutes les catégories',
     toutesLicences: 'Toutes les licences',
@@ -29,6 +28,8 @@ const T = {
     simulation: 'Simulation (STORYBOARD_SIMULER_STORE) : résultats enregistrés, aucune requête. Pour revenir à la normale, fermez ce terminal ou tapez Remove-Item Env:STORYBOARD_SIMULER_STORE.',
     par: 'par',
     voir3D: 'Voir en 3D',
+    voirImage: 'Voir l\'image',
+    caracteristiques: 'Caractéristiques',
     voirSur: (s) => `Voir sur ${s}`,
     licence: 'Licence',
     attributionRequise: 'Créditer l\'auteur est obligatoire.',
@@ -48,7 +49,6 @@ const T = {
   en: {
     ouvrir: 'Online store',
     titre: 'Online models',
-    rechercher: 'Search',
     placeholder: 'Bench, car, cat…',
     toutesCategories: 'All categories',
     toutesLicences: 'All licenses',
@@ -68,6 +68,8 @@ const T = {
     simulation: 'Simulation (STORYBOARD_SIMULER_STORE): recorded results, no request. To go back to normal, close this terminal or type Remove-Item Env:STORYBOARD_SIMULER_STORE.',
     par: 'by',
     voir3D: 'View in 3D',
+    voirImage: 'View the image',
+    caracteristiques: 'Details',
     voirSur: (s) => `View on ${s}`,
     licence: 'License',
     attributionRequise: 'Crediting the author is required.',

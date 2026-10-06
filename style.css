@@ -2068,6 +2068,11 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-fiche-visuel{ width:100%; aspect-ratio:16/9; background:var(--creux); border-radius:8px; overflow:hidden; margin-top:8px; }
 .store-fiche-visuel img, .store-fiche-visuel iframe{ width:100%; height:100%; object-fit:contain; border:0; display:block; }
 .store-fiche-boutons{ display:flex; gap:8px; margin-top:8px; }
+.store-fiche-section{ margin:10px 0 0; }
+.store-fiche-section h5{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
+.store-fiche-actions{ display:flex; gap:8px; align-items:stretch; margin-top:12px; }
+.store-fiche-actions .nav-btn{ flex:none; margin:0; }
+.store-fiche-actions .full-btn{ flex:1 1 auto; margin:0; }
 .store-lien-bouton{ text-decoration:none; display:inline-flex; align-items:center; }
 .store-avertissement{ color:var(--warn); }
 .store-note{ font-size:12px; color:var(--ink-soft); }

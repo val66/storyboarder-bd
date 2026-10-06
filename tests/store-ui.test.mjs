@@ -121,6 +121,23 @@ describe('le câblage', () => {
     assert.match(css, /\.modal-box \.store-filtres select\{ flex:1 1 180px; width:auto; margin:0; \}/);
     assert.equal(textesStore('fr').ouvrir, 'Store en ligne');
   });
+  test('retours de Valentin (6 octobre 2026, 2e passe)', () => {
+    const f = UI.slice(UI.indexOf('function ouvrirFiche'));
+    // « null » écrit dans la fiche : les enfants conditionnels absents sont retirés.
+    assert.match(f, /fiche\.replaceChildren\(\.\.\.enfants\.filter\(Boolean\)\)/);
+    // L'aperçu 3D se BASCULE, et revenir à l'image le décharge.
+    assert.match(f, /en3D = !en3D;/);
+    assert.match(f, /visuel\.replaceChildren\(\.\.\.image\(\)\)/);
+    assert.match(f, /bascule\.textContent = en3D \? t\.voirImage : t\.voir3D;/);
+    // Retour et Télécharger côte à côte, en bas.
+    assert.match(f, /el\('div', \{ classe: 'store-fiche-actions' \}, \[retour, telecharger\]\)/);
+    // Deux sections titrées : licence, caractéristiques.
+    assert.match(f, /section\(t\.licence,/);
+    assert.match(f, /section\(t\.caracteristiques, details\)/);
+    // Plus de bouton Rechercher : la saisie relance après une pause, Entrée tout de suite.
+    assert.ok(!lire('index.html').includes('storeChercherBtn'));
+    assert.match(UI, /minuterie = setTimeout\(\(\) => chercher\(\), PAUSE_SAISIE_MS\);/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js']) assert.ok(pkg.build.files.includes(f), f);
