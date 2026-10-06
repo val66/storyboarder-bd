@@ -217,7 +217,10 @@ describe('le câblage', () => {
     const f = UI.slice(UI.indexOf('export function fermerStore('));
     assert.match(f, /aRouvrir = \{ fiche: ouverte \? ficheCourante : null,/);
     assert.match(UI, /if \(r\) \{ ouvrirFiche\(r\); positionListe = reprise\.position; return; \}/);
-    assert.match(UI.slice(UI.indexOf('function ficheLocale')), /if \(bascule3D\) bascule3D\.onclick\(\);/);
+    // La fiche locale s'ouvre sur l'IMAGE (demandé), rendue au format de son cadre.
+    const fl = UI.slice(UI.indexOf('function ficheLocale'));
+    assert.doesNotMatch(fl.slice(0, fl.indexOf('\n}\n')), /bascule3D\.onclick\(\)/);
+    assert.match(fl, /imageDeFiche\(e\.fichier, visuel\.clientWidth \* ratio, visuel\.clientHeight \* ratio\)/);
     assert.match(lire('style.css'), /justify-content:flex-start; text-align:left;/);
   });
   test('les modules du store voyagent avec l\'application', () => {

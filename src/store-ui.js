@@ -18,7 +18,7 @@
 import { S } from './state.js';
 import { rangerModele, remplacerModele, readModel } from './model-store.js';
 import { entreesLocales, filtrerEntrees, NON_CLASSE, USAGES, TRIS_LOCAUX } from './local-library.js';
-import { preparerVignettes, vignetteLocale, metasLocales } from './model-thumbnails.js';
+import { preparerVignettes, vignetteLocale, metasLocales, imageDeFiche } from './model-thumbnails.js';
 import { usageLabel } from './model-usages.js';
 import { groupeReplie, memoriserGroupe } from './section-memory.js';
 import { ouvrirApercu3D } from './store-apercu-3d.js';
@@ -666,8 +666,9 @@ function ficheLocale(e){
   const t = textesStore(langue());
   const fiche = $('storeFiche');
   const a = e.attribution;
+  let grande = null;   // l'image au format du cadre, dès qu'elle est rendue
   const image = () => {
-    const url = vignetteLocale(e.fichier);
+    const url = grande || vignetteLocale(e.fichier);
     return url ? [el('img', { attrs: { src: url, alt: '' } })] : [];
   };
   const visuel = el('div', { classe: 'store-fiche-visuel' }, image());
@@ -702,7 +703,8 @@ function ficheLocale(e){
     const replie = groupeReplie(globalThis.localStorage, cle);
     const fleche = el('span', { texte: replie ? '▸' : '▾', classe: 'model-group-caret' });
     const tete = el('button', { classe: 'store-fiche-sous-titre', attrs: { type: 'button', 'aria-expanded': String(!replie) } },
-      [fleche, el('span', { texte: titre, classe: 'model-group-nom' }), el('span', { texte: String(endroits.length), classe: 'model-group-nombre' })]);
+      // Le nombre entre parenthèses, à côté du titre (demandé) : « CASES (1) ».
+      [fleche, el('span', { texte: `${titre} (${endroits.length})`, classe: 'model-group-nom' })]);
     const contenu = el('div', { classe: 'store-usages-liste' }, endroits.map(endroit));
     contenu.hidden = replie;
     tete.onclick = () => {
@@ -766,10 +768,18 @@ function ficheLocale(e){
   message('');
   fiche.hidden = false;
   $('storeDefilement').scrollTop = 0;
-  // ⚠️ LA FICHE LOCALE S'OUVRE EN 3D (signalé : sa vignette, au format des cartes, flottait petite dans
-  // le grand cadre de la fiche, alors que l'aperçu 3D, cadré sur le cadre lui-même, était juste). Le
-  // fichier est sur le disque : rien à télécharger. « Voir l'image » ramène la vignette.
-  if (bascule3D) bascule3D.onclick();
+  // L'IMAGE AU FORMAT DU CADRE (signalé : la vignette, au format des cartes, flottait petite dans le
+  // grand cadre de la fiche). La vignette s'affiche tout de suite ; l'image cadrée sur la fiche la
+  // remplace dès qu'elle est rendue, si l'on est toujours sur cette fiche et pas passé en 3D.
+  if (!e.introuvable && visuel.clientWidth && visuel.clientHeight) {
+    const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
+    imageDeFiche(e.fichier, visuel.clientWidth * ratio, visuel.clientHeight * ratio).then(url => {
+      if (!url || ficheCourante !== e) return;
+      grande = url;
+      const img = visuel.children && visuel.children[0];
+      if (!img || img.tagName === 'IMG') visuel.replaceChildren(...image());
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

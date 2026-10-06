@@ -61,15 +61,24 @@ function liberer(racine){
 }
 
 let rendu = null;
-function obtenirRendu(){
+function obtenirRendu(largeur = LARGEUR_VIGNETTE, hauteur = HAUTEUR_VIGNETTE){
   const T = globalThis.THREE;
   if (!rendu) {
     rendu = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     rendu.setPixelRatio(1);
-    rendu.setSize(LARGEUR_VIGNETTE, HAUTEUR_VIGNETTE, false);
     rendu.setClearColor(0x000000, 0);
   }
+  rendu.setSize(largeur, hauteur, false);
   return rendu;
+}
+
+// Une seule photo à la fois sur la toile partagée : la série des vignettes et l'image d'une fiche
+// peuvent se croiser, et deux rendus entremêlés écriraient l'un dans l'image de l'autre.
+let _file = Promise.resolve();
+function enFile(tache){
+  const suite = _file.then(tache, tache);
+  _file = suite.catch(() => {});
+  return suite;
 }
 function rendreLaToile(){
   if (!rendu) return;
@@ -113,8 +122,14 @@ async function decoderEtMesurer(nom){
   return { modele, boite, meta: { dimensions: t ? [t.x, t.z, t.y] : null, noms, os } };
 }
 
-/** Photographie un modèle : rend `{ png, meta }`, ou null s'il ne se lit pas. */
-async function photographier(nom){
+/**
+ * Photographie un modèle, à la taille demandée (la vignette par défaut) : rend `{ png, meta }`, ou
+ * null s'il ne se lit pas. Le cadrage suit le FORMAT de l'image (cadrage3D).
+ */
+function photographier(nom, largeur = LARGEUR_VIGNETTE, hauteur = HAUTEUR_VIGNETTE){
+  return enFile(() => photographierMaintenant(nom, largeur, hauteur));
+}
+async function photographierMaintenant(nom, largeur, hauteur){
   const T = globalThis.THREE;
   const d = await decoderEtMesurer(nom);
   if (!d) return null;
@@ -126,12 +141,12 @@ async function photographier(nom){
     scene.add(cle);
     scene.add(modele);
     if (b.isEmpty()) return null;
-    const { centre, distance } = cadrage3D(b.min.toArray(), b.max.toArray(), 35, LARGEUR_VIGNETTE / HAUTEUR_VIGNETTE);
-    const camera = new T.PerspectiveCamera(35, LARGEUR_VIGNETTE / HAUTEUR_VIGNETTE, distance / 100, distance * 20);
+    const { centre, distance } = cadrage3D(b.min.toArray(), b.max.toArray(), 35, largeur / hauteur);
+    const camera = new T.PerspectiveCamera(35, largeur / hauteur, distance / 100, distance * 20);
     camera.position.fromArray(positionCamera3D(centre, distance, ANGLES));
     camera.lookAt(centre[0], centre[1], centre[2]);
     cle.position.copy(camera.position).add(new T.Vector3(distance * 0.5, distance, 0));
-    const r = obtenirRendu();
+    const r = obtenirRendu(largeur, hauteur);
     r.render(scene, camera);
     const blob = await new Promise(ok => r.domElement.toBlob(ok, 'image/png'));
     return blob ? { png: new Uint8Array(await blob.arrayBuffer()), meta } : null;
@@ -182,9 +197,31 @@ export function preparerVignettes(avance){
       fait++;
       if (avance) avance(fait, total, nom);
     }
-    rendreLaToile();
+    await enFile(() => rendreLaToile());
   })().finally(() => { enCours = null; });
   return enCours;
+}
+
+/**
+ * L'IMAGE D'UNE FICHE, au format de son cadre (signalé : la vignette, au format des cartes, flottait
+ * petite dans le grand cadre de la fiche). Rendue à la demande, gardée le temps de la session pour
+ * ce modèle et ce format (arrondi, pour qu'un redimensionnement minime ne refasse pas tout). Rend une
+ * adresse d'image, ou null.
+ */
+const grandes = new Map();
+export async function imageDeFiche(nom, largeur, hauteur){
+  const pas = 64;
+  const l = Math.max(pas, Math.min(1600, Math.round(largeur / pas) * pas));
+  const h = Math.max(pas, Math.min(1600, Math.round(hauteur / pas) * pas));
+  const cle = `${nom}:${l}x${h}`;
+  if (grandes.has(cle)) return grandes.get(cle);
+  let photo = null;
+  try { photo = await photographier(nom, l, h); } catch (e) { photo = null; }
+  enFile(() => { if (!enCours) rendreLaToile(); });   // hors d'une série, la toile ne reste pas allouée
+  if (!photo) return null;
+  const url = URL.createObjectURL(new Blob([photo.png], { type: 'image/png' }));
+  grandes.set(cle, url);
+  return url;
 }
 
 /** Oublie la vignette en mémoire d'un modèle (renommé, supprimé, remplacé) : elle sera relue. */
@@ -192,4 +229,7 @@ export function oublierVignette(nom){
   const u = urls.get(nom);
   if (u && globalThis.URL && URL.revokeObjectURL) URL.revokeObjectURL(u);
   urls.delete(nom);
+  for (const [cle, url] of grandes) {
+    if (cle.startsWith(nom + ':')) { if (globalThis.URL && URL.revokeObjectURL) URL.revokeObjectURL(url); grandes.delete(cle); }
+  }
 }
