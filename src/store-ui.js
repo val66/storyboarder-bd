@@ -106,8 +106,9 @@ function rendreOnglets(){
 }
 
 /**
- * Passer à une autre source. Le texte, le tri et la taille maximale sont gardés (ils ont le même sens
- * partout) ; la catégorie et la licence repartent de « toutes », car chaque source a les siennes.
+ * Passer à une autre source. Le texte, le tri, la taille maximale ET LA CATÉGORIE sont gardés : les
+ * catégories sont communes à toutes les sources (store-categories.js). La licence repart de
+ * « toutes », car chaque source a les siennes.
  */
 export async function choisirSource(id){
   if (!SOURCES_STORE.includes(id) || id === source) return;
@@ -115,7 +116,6 @@ export async function choisirSource(id){
   if (!infosPar[id]) infosPar[id] = await pont.storeInfos(id);
   source = id;
   infos = infosPar[id];
-  $('storeCategorie').value = '';
   $('storeLicence').value = '';
   rafraichirTextesStore();
   await chercher();

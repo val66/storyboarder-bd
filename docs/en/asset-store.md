@@ -49,6 +49,16 @@ Checked by calling the API on 6 October 2026 (`api.polyhaven.com`, guide: `polyh
   `.gltf` + `.bin` + textures, not as `.glb`.
 - **Early-access** models (publication date still to come) are left out.
 
+## Common categories
+
+One list of 17 categories for every source and for local models (`store-categories.js`). Each one
+targets **one** Sketchfab category (its API takes only one) and zero, one or several Poly Haven
+ones: "Furniture & home" groups `furniture-home` on one side, `furniture`, `containers-storage`,
+`lighting` and `office-stationery` on the other. A test requires every category found at a source
+to fall into exactly one common category; only Sketchfab's "News & Politics" is left out. Each
+result carries its common category, recorded in the attribution on download. Switching tabs keeps
+the chosen category.
+
 ## The source contract
 
 Two modules at the root, in CommonJS, tested under plain Node:

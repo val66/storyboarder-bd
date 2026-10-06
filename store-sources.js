@@ -26,6 +26,7 @@
  *     poids: 23795824 | null,      octets du fichier téléchargeable le plus proche de ce qu'on prendra
  *     details: { faces, textures, textureMax, anime, dimensions? } (modèles ; null si inconnu ;
  *              dimensions : [largeur, profondeur, hauteur] en mètres, quand la source les donne)
+ *     categorie: 'mobilier' | null,    la catégorie COMMUNE (store-categories.js)
  *     apercu3D: 'https://…' | null,    une page intégrable qui fait tourner le modèle
  *   }
  */
@@ -171,6 +172,8 @@ function entreeAttribution(r, fichier, date = new Date(), resolution = null){
     source: r.source, id: String(r.id), fichier,
     // La résolution des textures prise (« 1k »…) : la fiche propose d'en changer en remplaçant.
     resolution: typeof resolution === 'string' && /^\d+k$/.test(resolution) ? resolution : null,
+    // La catégorie commune : le filtre de la bibliothèque locale s'en sert.
+    categorie: typeof r.categorie === 'string' ? r.categorie : null,
     nom: r.nom,
     auteur: { nom: r.auteur.nom, url: r.auteur.url || null },
     licence: { code: r.licence.code, libelle: r.licence.libelle, url: r.licence.url || null, attribution: !!r.licence.attribution },

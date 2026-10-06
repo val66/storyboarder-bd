@@ -21,6 +21,7 @@
  */
 'use strict';
 const { licence, PAR_PAGE } = require('./store-sources');
+const communes = require('./store-categories');
 
 const API = 'https://api.sketchfab.com/v3';
 
@@ -35,7 +36,10 @@ const CODES_PAR_LIBELLE = {
   'CC0 Public Domain': 'cc0',
 };
 
-/** Les 18 catégories de Sketchfab (/v3/categories), avec leur nom dans les deux langues. */
+/**
+ * Les 18 catégories de Sketchfab (/v3/categories), telles que relevées. L'interface ne les montre plus :
+ * elle propose les catégories COMMUNES (store-categories.js), traduites ici à la recherche.
+ */
 const CATEGORIES = [
   ['animals-pets', 'Animaux', 'Animals & Pets'],
   ['architecture', 'Architecture', 'Architecture'],
@@ -67,7 +71,8 @@ const TRI_SKETCHFAB = { populaires: '-likeCount', recents: '-publishedAt', perti
 function urlRecherche(r){
   const q = new URLSearchParams({ type: 'models', downloadable: 'true', archives_flavours: 'false', count: String(PAR_PAGE) });
   if (r.texte) q.set('q', r.texte);
-  if (r.categorie && CATEGORIES.some(c => c.slug === r.categorie)) q.set('categories', r.categorie);
+  const cat = r.categorie ? communes.versSketchfab(r.categorie) : null;
+  if (cat) q.set('categories', cat);
   if (r.licence) q.set('license', r.licence);
   if (r.facesMax) q.set('max_face_count', String(r.facesMax));
   if (TRI_SKETCHFAB[r.tri]) q.set('sort_by', TRI_SKETCHFAB[r.tri]);
@@ -122,6 +127,8 @@ function modeleNormalise(m){
       textureMax: glb && Number.isFinite(glb.textureMaxResolution) ? glb.textureMaxResolution : null,
       anime: m.animationCount > 0,
     },
+    // La catégorie COMMUNE de la première catégorie Sketchfab qui en a une.
+    categorie: (Array.isArray(m.categories) ? m.categories : []).map(c => c && communes.depuisSketchfab(c.name)).find(Boolean) || null,
     apercu3D: typeof m.embedUrl === 'string' && /^https:\/\/sketchfab\.com\//.test(m.embedUrl) ? m.embedUrl : null,
   };
 }

@@ -121,7 +121,8 @@ function infos(sourceId){
   if (!module || !source) return null;
   return {
     source: { id: source.id, nom: source.nom, site: source.site, credit: source.credit, connexion: source.connexion },
-    categories: module.CATEGORIES || [],
+    // Les catégories COMMUNES, les mêmes pour toutes les sources et pour les modèles locaux.
+    categories: require('./store-categories').pourInterface(),
     // Poly Haven n'a qu'une licence, CC0 : l'interface cache alors le filtre de licence.
     licences: Object.entries(sources.LICENCES)
       .filter(([code]) => module !== polyhaven || code === 'cc0')

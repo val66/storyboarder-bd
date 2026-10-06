@@ -73,7 +73,7 @@ describe('Sketchfab : l\'adresse de recherche', () => {
     assert.equal(u.searchParams.get('sort_by'), '-likeCount');
   });
   test('chaque filtre trouve son paramètre', () => {
-    const u = url({ texte: 'banc & chaise', categorie: 'furniture-home', licence: 'cc0', facesMax: 20000, tri: 'recents', curseur: '24' });
+    const u = url({ texte: 'banc & chaise', categorie: 'mobilier', licence: 'cc0', facesMax: 20000, tri: 'recents', curseur: '24' });
     assert.equal(u.searchParams.get('q'), 'banc & chaise');
     assert.equal(u.searchParams.get('categories'), 'furniture-home');
     assert.equal(u.searchParams.get('license'), 'cc0');
@@ -81,7 +81,7 @@ describe('Sketchfab : l\'adresse de recherche', () => {
     assert.equal(u.searchParams.get('sort_by'), '-publishedAt');
     assert.equal(u.searchParams.get('cursor'), '24');
   });
-  test('la pertinence n\'envoie pas de tri ; une catégorie inconnue de Sketchfab n\'est pas envoyée', () => {
+  test('la pertinence n\'envoie pas de tri ; une catégorie commune inconnue n\'est pas envoyée', () => {
     assert.equal(url({ texte: 'banc' }).searchParams.has('sort_by'), false);
     assert.equal(url({ categorie: 'jardin' }).searchParams.has('categories'), false);
   });
@@ -107,6 +107,7 @@ describe('Sketchfab : les résultats', () => {
       licence: { code: 'by', ...LICENCES.by },
       poids: 23795824,
       details: { faces: 49980, textures: 1, textureMax: 8192, anime: false },
+      categorie: 'patrimoine',   // cultural-heritage-history, sa première catégorie Sketchfab
       apercu3D: BANC.embedUrl,
     });
     assert.ok(resultatValide(r));

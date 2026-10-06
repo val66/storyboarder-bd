@@ -21,11 +21,15 @@
  */
 'use strict';
 const { licence, PAR_PAGE } = require('./store-sources');
+const communes = require('./store-categories');
 
 const API = 'https://api.polyhaven.com';
 const SITE = 'https://polyhaven.com';
 
-/** Les 15 catégories de premier niveau (/taxonomy/models), avec leur nom dans les deux langues. */
+/**
+ * Les 15 catégories de premier niveau (/taxonomy/models), telles que relevées. L'interface propose
+ * les catégories COMMUNES (store-categories.js) ; une commune peut en regrouper plusieurs d'ici.
+ */
 const CATEGORIES = [
   ['apparel-personal-items', 'Vêtements & objets personnels', 'Apparel & Personal Items'],
   ['architecture', 'Architecture', 'Architecture'],
@@ -109,6 +113,7 @@ function modeleNormalise(id, m, maintenant = Date.now()){
       anime: false,
       dimensions: dims,
     },
+    categorie: communes.depuisPolyhaven(slugCategorie(typeof m.category === 'string' ? m.category.split('/')[0] : '')),
     apercu3D: null,
   };
 }
@@ -123,9 +128,10 @@ function catalogueNormalise(json, maintenant = Date.now()){
   for (const [id, m] of Object.entries(json)) {
     const r = modeleNormalise(id, m, maintenant);
     if (!r) continue;
+    const cat = slugCategorie(typeof m.category === 'string' ? m.category.split('/')[0] : '');
     sortie.push({
       r,
-      categorie: slugCategorie(typeof m.category === 'string' ? m.category.split('/')[0] : ''),
+      categorie: cat,
       telechargements: Number.isFinite(m.download_count) ? m.download_count : 0,
       date: Number.isFinite(m.date_published) ? m.date_published : 0,
     });
@@ -156,7 +162,10 @@ function pageLocale(catalogue, recherche, ids){
     liste = liste.filter(e => rang.has(e.r.id));
     if (recherche.tri === 'pertinence') liste.sort((a, b) => rang.get(a.r.id) - rang.get(b.r.id));
   }
-  if (recherche.categorie) liste = liste.filter(e => e.categorie === recherche.categorie);
+  if (recherche.categorie) {
+    const voulues = communes.versPolyhaven(recherche.categorie);
+    liste = liste.filter(e => voulues.includes(e.categorie));
+  }
   if (recherche.licence && recherche.licence !== 'cc0') liste = [];
   if (recherche.facesMax) liste = liste.filter(e => e.r.details.faces != null && e.r.details.faces <= recherche.facesMax);
   if (recherche.tri === 'recents') liste.sort((a, b) => b.date - a.date);

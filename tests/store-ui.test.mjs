@@ -188,6 +188,6 @@ describe('le câblage', () => {
   });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
-    for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js']) assert.ok(pkg.build.files.includes(f), f);
+    for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);
   });
 });
