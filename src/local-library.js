@@ -31,7 +31,7 @@ export const TRIS_LOCAUX = ['nom', 'recents'];
  * mot-clé, ou s'il COMMENCE par lui quand le mot-clé a au moins quatre lettres (« centaur1 »,
  * « dragons ») : les mots-clés courts (« car », « bug », « tv ») exigent le mot exact, sans quoi
  * « carpet » serait une voiture. La catégorie qui a le plus de mots l'emporte ; à égalité, l'ordre de
- * la table décide (les créatures avant les personnes : « anime_girl » est un personnage).
+ * la table décide.
  *
  * Écartés exprès, parce qu'ils sont aussi des noms de nœuds par défaut de Blender ou des exports :
  * « plane », « camera », « armature » (« arme »), « skeleton », et « char » (début de « character »).
@@ -40,8 +40,10 @@ export const TRIS_LOCAUX = ['nom', 'recents'];
  * pourra la corriger quand les catégories personnelles existeront.
  */
 const MOTS_CLES = [
-  ['personnages', ['dragon', 'centaur', 'centaure', 'cerberus', 'cerbere', 'kraken', 'hulk', 'monster', 'monstre', 'creature', 'demon', 'zombie', 'robot', 'alien', 'troll', 'orc', 'goblin', 'gobelin', 'elf', 'elfe', 'knight', 'chevalier', 'warrior', 'guerrier', 'anime', 'character', 'personnage', 'hero', 'heros', 'witch', 'sorciere', 'wizard', 'ghost', 'fantome']],
-  ['personnes', ['man', 'woman', 'girl', 'boy', 'homme', 'femme', 'fille', 'garcon', 'person', 'personne', 'worker', 'ouvrier', 'human', 'humain', 'people', 'child', 'enfant', 'kid', 'soldier', 'soldat', 'police', 'doctor', 'docteur']],
+  ['personnages', ['dragon', 'centaur', 'centaure', 'cerberus', 'cerbere', 'kraken', 'hulk', 'monster', 'monstre', 'creature', 'demon', 'zombie', 'robot', 'alien', 'troll', 'orc', 'goblin', 'gobelin', 'elf', 'elfe', 'knight', 'chevalier', 'warrior', 'guerrier', 'anime', 'character', 'personnage', 'hero', 'heros', 'witch', 'sorciere', 'wizard', 'ghost', 'fantome',
+    // Les humains aussi (retour de Valentin : worker_j est un personnage) : dans un storyboard, une
+    // figure humaine est un personnage. « Personnes » reste la catégorie que Sketchfab donne.
+    'man', 'woman', 'girl', 'boy', 'homme', 'femme', 'fille', 'garcon', 'person', 'personne', 'worker', 'ouvrier', 'human', 'humain', 'people', 'child', 'enfant', 'kid', 'soldier', 'soldat', 'police', 'doctor', 'docteur']],
   ['animaux', ['dog', 'chien', 'cat', 'chat', 'bird', 'oiseau', 'bison', 'horse', 'cheval', 'gecko', 'lizard', 'lezard', 'spider', 'araignee', 'bug', 'insect', 'insecte', 'snake', 'serpent', 'fish', 'poisson', 'labrador', 'cow', 'vache', 'wolf', 'loup', 'bear', 'ours', 'rabbit', 'lapin', 'deer', 'cerf', 'lion', 'tiger', 'tigre', 'raptor', 'dinosaur', 'dinosaure', 'shark', 'requin', 'whale', 'baleine', 'monkey', 'singe', 'pig', 'cochon', 'sheep', 'mouton', 'chicken', 'poule', 'frog', 'grenouille', 'animal']],
   ['vehicules', ['car', 'porsche', 'voiture', 'truck', 'camion', 'bus', 'bike', 'velo', 'moto', 'motorcycle', 'vehicle', 'vehicule', 'airplane', 'aircraft', 'avion', 'boat', 'bateau', 'ship', 'navire', 'train', 'tank', 'helicopter', 'helicoptere', 'ferrari', 'bmw', 'audi', 'jeep', 'taxi', 'van']],
   ['armes', ['sword', 'epee', 'gun', 'pistol', 'pistolet', 'rifle', 'fusil', 'weapon', 'knife', 'couteau', 'axe', 'hache', 'bow', 'shield', 'bouclier', 'spear', 'lance', 'katana']],
@@ -100,6 +102,8 @@ export function entreesLocales({ fichiers = [], attributions = [], projet = {}, 
       categorieDevinee: !!devinee,
       // Largeur × profondeur × hauteur, en mètres : la source s'il la donne, sinon la mesure du rendu.
       dimensions: (a && Array.isArray(a.dimensions) ? a.dimensions : null) || (Array.isArray(m.dimensions) ? m.dimensions : null),
+      // Le nombre d'os, relevé au rendu ; null tant qu'on ne sait pas. Zéro : pas de « Squelette ».
+      os: Number.isInteger(m.os) ? m.os : null,
       attribution: a,
       taille: f ? f.taille : null,
       modifie: f ? f.modifie : null,

@@ -84,7 +84,7 @@ describe('Deviner la catégorie d\'un modèle importé à la main', () => {
   test('les fichiers du dossier de développement', () => {
     const attendu = {
       '2022_porsche_macan_gts': 'vehicules', anime_girl1: 'personnages', bed_bug: 'animaux', centaur3: 'personnages',
-      desert_dragon: 'personnages', labrador_dog: 'animaux', office_is_old_abandoned_free: 'lieux', worker_j: 'personnes', scene: null,
+      desert_dragon: 'personnages', labrador_dog: 'animaux', office_is_old_abandoned_free: 'lieux', worker_j: 'personnages', scene: null,   // worker_j : retour de Valentin
     };
     for (const [nom, cat] of Object.entries(attendu)) assert.equal(devinerCategorie([nom]), cat, nom);
   });

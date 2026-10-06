@@ -202,6 +202,17 @@ describe('le câblage', () => {
     const f = UI.slice(UI.indexOf('function ficheLocale'));
     assert.match(f, /b\.onclick = \(\) => \{ fermerStore\(\); if \(_rappels\.ouvrirEndroitModele\)/, 'aller à un endroit doit fermer la fenêtre');
   });
+  test('« Squelette » décode le modèle AVANT de lire ses os (il ne s\'ouvrait jamais depuis « Mes modèles »)', () => {
+    const ev = sans(lire('src/events.js'));
+    const f = ev.slice(ev.indexOf('async function openSkeletonMapModal('));
+    assert.ok(f.indexOf('await preloadModels([nomFichier]);') >= 0 && f.indexOf('await preloadModels([nomFichier]);') < f.indexOf('osDuModele(nomFichier)'));
+  });
+  test('la fiche locale : sous-sections repliables, zone des endroits qui défile seule', () => {
+    const f = UI.slice(UI.indexOf('function ficheLocale'));
+    assert.match(f, /const cle = 'fiche-modele:' \+ id;/);
+    assert.match(lire('style.css'), /\.store-usages\{ max-height:38vh; overflow-y:auto;/);
+    assert.match(lire('style.css'), /\.store-usages-groupe \+ \.store-usages-groupe\{ margin-top:16px; \}/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);

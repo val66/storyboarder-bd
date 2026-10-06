@@ -23,8 +23,13 @@ import { CLE_ACTUELLE, AMBIANTE_ACTUELLE } from './lighting-3d.js';
 import { cadrage3D, positionCamera3D } from './store-apercu-3d.js';
 import { box3FromObjectSkinAware3D } from './skinned-box-3d.js';
 
-/** Le côté d'une vignette, en pixels : assez pour une carte de la grille, même sur écran dense. */
-export const TAILLE_VIGNETTE = 384;
+/**
+ * La taille d'une vignette, en pixels : AU FORMAT DES CARTES (16:9). Carrée, elle était rognée en haut
+ * et en bas par la carte (signalé : têtes et pattes coupées) ; au bon format, le cadrage la remplit
+ * sans rien perdre.
+ */
+export const LARGEUR_VIGNETTE = 512;
+export const HAUTEUR_VIGNETTE = 288;
 /** L'angle de la photo : de trois quarts, un peu au-dessus, comme l'aperçu 3D à son ouverture. */
 const ANGLES = { lacet: 0.6, tangage: 0.25 };
 
@@ -61,7 +66,7 @@ function obtenirRendu(){
   if (!rendu) {
     rendu = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     rendu.setPixelRatio(1);
-    rendu.setSize(TAILLE_VIGNETTE, TAILLE_VIGNETTE, false);
+    rendu.setSize(LARGEUR_VIGNETTE, HAUTEUR_VIGNETTE, false);
     rendu.setClearColor(0x000000, 0);
   }
   return rendu;
@@ -91,11 +96,21 @@ async function decoderEtMesurer(nom){
   const modele = preparerModeleImporte3D(gltf);
   maillagesParNom3D(modele, maillagesHorsCorps3D(modele)).forEach(m => { m.visible = false; });
   const noms = [];
-  modele.traverse(n => { if (n.isMesh) n.frustumCulled = false; if (n.name && noms.length < 60) noms.push(n.name); });
+  let os = 0;
+  let articule = false;
+  modele.traverse(n => {
+    if (n.isMesh) n.frustumCulled = false;
+    if (n.isSkinnedMesh) articule = true;
+    if (n.isBone) os++;
+    if (n.name && noms.length < 60) noms.push(n.name);
+  });
   const boite = box3FromObjectSkinAware3D(modele);
   // glTF : Y vers le haut. Largeur (X) × profondeur (Z) × hauteur (Y), en mètres.
-  const t = boite.isEmpty() ? null : boite.getSize(new globalThis.THREE.Vector3());
-  return { modele, boite, meta: { dimensions: t ? [t.x, t.z, t.y] : null, noms } };
+  // ⚠️ PAS DE TAILLE POUR UN MODÈLE ARTICULÉ : son fichier mêle souvent deux échelles (worker_j
+  // mesurait « 42 m »). La Case le pose de toute façon à la hauteur choisie ; une taille fausse
+  // affichée comme vraie ferait plus de mal que son absence.
+  const t = boite.isEmpty() || articule ? null : boite.getSize(new globalThis.THREE.Vector3());
+  return { modele, boite, meta: { dimensions: t ? [t.x, t.z, t.y] : null, noms, os } };
 }
 
 /** Photographie un modèle : rend `{ png, meta }`, ou null s'il ne se lit pas. */
@@ -112,7 +127,7 @@ async function photographier(nom){
     scene.add(modele);
     if (b.isEmpty()) return null;
     const { centre, distance } = cadrage3D(b.min.toArray(), b.max.toArray());
-    const camera = new T.PerspectiveCamera(35, 1, distance / 100, distance * 20);
+    const camera = new T.PerspectiveCamera(35, LARGEUR_VIGNETTE / HAUTEUR_VIGNETTE, distance / 100, distance * 20);
     camera.position.fromArray(positionCamera3D(centre, distance, ANGLES));
     camera.lookAt(centre[0], centre[1], centre[2]);
     cle.position.copy(camera.position).add(new T.Vector3(distance * 0.5, distance, 0));

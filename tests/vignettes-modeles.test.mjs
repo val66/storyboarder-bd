@@ -66,7 +66,17 @@ describe('Version du rendu et mesures', () => {
     const mesuree = v.noterMesures(i, 'a.glb', { dimensions: [1, 1, 1] });
     assert.deepEqual(v.aMesurer(mesuree, [{ nom: 'a.glb', signature: 's' }]), []);
     assert.equal(mesuree.vignettes['a.glb'].origine, 'source');
-    assert.deepEqual(v.metas(mesuree), { 'a.glb': { dimensions: [1, 1, 1], noms: [] } });
+    assert.deepEqual(v.metas(mesuree), { 'a.glb': { dimensions: [1, 1, 1], noms: [], os: null } });
+  });
+});
+
+describe('Version 3 du rendu', () => {
+  test('le nombre d\'os est noté (zéro : pas de bouton « Squelette »), un nombre faux est refusé', () => {
+    assert.equal(v.noter(null, 'a.glb', 's', 'rendu', { os: 0 }).vignettes['a.glb'].os, 0);
+    assert.equal(v.noter(null, 'a.glb', 's', 'rendu', { os: 1.5 }).vignettes['a.glb'].os, undefined);
+  });
+  test('une vignette de la version 2 (carrée, rognée par la carte) est refaite', () => {
+    assert.equal(v.aRefaire({ vignettes: { 'a.glb': { signature: 's', origine: 'rendu', rendu: 2 } } }, 'a.glb', 's'), true);
   });
 });
 

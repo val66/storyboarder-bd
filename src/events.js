@@ -51,7 +51,7 @@ import { placerMenuFlottant3D } from './ui-scale.js';
 import { delaiFermetureSousMenu3D, sousMenusAFermer3D } from './menu-timing.js';
 import { clicDeselectionne3D } from './deselection.js';
 import { champsLumierePosee3D, estUneLumiere3D, OBJ_TYPE_LUMIERE } from './light-source-3d.js';
-import { setModelCacheCallbacks, clearModelCache, getLoadedModel } from './model-cache.js';
+import { setModelCacheCallbacks, clearModelCache, getLoadedModel, preloadModels } from './model-cache.js';
 import { setImageCacheCallbacks, preloadImagesFor, clearImageCache, getLoadedImage } from './image-cache.js';
 import {
   importImage, imageDeLaCase3D, casePorteUneImage3D, entreesImageDuMenu3D, CHAMP_IMAGE_CASE,
@@ -4788,6 +4788,10 @@ function osDuModele(nomFichier){
  * inutile : il donne une raison de le garder. Il est supprimé plutôt que corrigé.
  */
 async function openSkeletonMapModal(nomFichier, { pendantImport = false } = {}){
+  // ⚠️ DÉCODER D'ABORD (signalé à l'usage : « Squelette » ne s'ouvrait jamais depuis « Mes
+  // modèles »). Les os se lisent sur le modèle DÉCODÉ, et seuls les modèles utilisés par le Projet le
+  // sont : pour un autre, osDuModele rendait une liste vide, et l'écran répondait « pas de squelette ».
+  await preloadModels([nomFichier]);
   const os = osDuModele(nomFichier);
   if (!os.length) {
     alertAction(tr(`"${nomFichier}" has no skeleton: there is nothing to map.`,

@@ -20,6 +20,7 @@ import { rangerModele, remplacerModele, readModel } from './model-store.js';
 import { entreesLocales, filtrerEntrees, NON_CLASSE, USAGES, TRIS_LOCAUX } from './local-library.js';
 import { preparerVignettes, vignetteLocale, metasLocales } from './model-thumbnails.js';
 import { usageLabel } from './model-usages.js';
+import { groupeReplie, memoriserGroupe } from './section-memory.js';
 import { ouvrirApercu3D } from './store-apercu-3d.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
 
@@ -640,7 +641,7 @@ function nomCategorie(slug){
 function carteLocale(e){
   const t = textesStore(langue());
   const url = vignetteLocale(e.fichier);
-  const c = el('button', { classe: 'store-carte' + (e.introuvable ? ' store-carte-introuvable' : ''), attrs: { type: 'button', title: e.fichier } }, [
+  const c = el('button', { classe: 'store-carte store-carte-locale' + (e.introuvable ? ' store-carte-introuvable' : ''), attrs: { type: 'button', title: e.fichier } }, [
     url ? el('img', { attrs: { src: url, alt: '' } }) : el('div', { classe: 'store-sans-vignette' }),
     el('span', { texte: e.titre, classe: 'store-carte-nom' }),
     el('span', { texte: e.introuvable ? '⚠ ' + t.introuvableFiche.split(' :')[0] : t.resumeUsages(e.scenes.length, e.cases.length), classe: 'store-carte-auteur' }),
@@ -688,13 +689,32 @@ function ficheLocale(e){
     b.onclick = () => { fermerStore(); if (_rappels.ouvrirEndroitModele) _rappels.ouvrirEndroitModele(e.fichier, g); };
     return b;
   };
+  // Deux sous-sections REPLIABLES (demandé), Scènes et Cases, avec leur nombre ; l'état est retenu
+  // comme les groupes du menu de gauche (clé `fiche-modele:…`). Le tout défile dans sa propre zone
+  // quand la liste est longue (demandé), plutôt que d'allonger la fiche entière.
+  const sousSection = (id, titre, endroits) => {
+    if (!endroits.length) return null;
+    const cle = 'fiche-modele:' + id;
+    const replie = groupeReplie(globalThis.localStorage, cle);
+    const fleche = el('span', { texte: replie ? '▸' : '▾', classe: 'model-group-caret' });
+    const tete = el('button', { classe: 'store-fiche-sous-titre', attrs: { type: 'button', 'aria-expanded': String(!replie) } },
+      [fleche, el('span', { texte: titre, classe: 'model-group-nom' }), el('span', { texte: String(endroits.length), classe: 'model-group-nombre' })]);
+    const contenu = el('div', { classe: 'store-usages-liste' }, endroits.map(endroit));
+    contenu.hidden = replie;
+    tete.onclick = () => {
+      const r = !groupeReplie(globalThis.localStorage, cle);
+      memoriserGroupe(globalThis.localStorage, cle, r);
+      contenu.hidden = r;
+      fleche.textContent = r ? '▸' : '▾';
+      tete.setAttribute('aria-expanded', String(!r));
+    };
+    return el('div', { classe: 'store-usages-groupe' }, [tete, contenu]);
+  };
   const usages = (e.scenes.length || e.cases.length)
-    ? [
-      e.scenes.length ? el('p', { texte: t.scenesLibelle, classe: 'store-fiche-sous-titre' }) : null,
-      ...e.scenes.map(endroit),
-      e.cases.length ? el('p', { texte: t.casesLibelle, classe: 'store-fiche-sous-titre' }) : null,
-      ...e.cases.map(endroit),
-    ].filter(Boolean)
+    ? [el('div', { classe: 'store-usages' }, [
+      sousSection('scenes', t.scenesLibelle, e.scenes),
+      sousSection('cases', t.casesLibelle, e.cases),
+    ].filter(Boolean))]
     : [el('p', { texte: t.nullePart, classe: 'store-fiche-texte' })];
 
   const droite = [
@@ -725,14 +745,15 @@ function ficheLocale(e){
   const actions = e.introuvable
     ? [retour]
     // Couleurs demandées : Renommer en jaune, Supprimer en rouge, texte blanc sur les deux.
-    : [retour, action(t.squelette, 'squeletteModele'), action(t.renommer, 'renommerModele', 'full-btn edit-btn store-action-blanc'),
+    // « Squelette » seulement pour un modèle qui en a un (ou dont on ne sait pas encore).
+    : [retour, e.os === 0 ? null : action(t.squelette, 'squeletteModele'), action(t.renommer, 'renommerModele', 'full-btn edit-btn store-action-blanc'),
       action(t.supprimer, 'supprimerModele', 'full-btn delete-btn store-action-blanc')];
   fiche.replaceChildren(
     el('div', { classe: 'store-fiche-corps' }, [
       el('div', { classe: 'store-fiche-gauche' }, [visuel, boutons]),
       el('div', { classe: 'store-fiche-droite' }, droite.filter(Boolean)),
     ]),
-    el('div', { classe: 'store-fiche-pied' }, [el('div', { classe: 'store-fiche-actions store-fiche-actions-locales' }, actions)]),
+    el('div', { classe: 'store-fiche-pied' }, [el('div', { classe: 'store-fiche-actions store-fiche-actions-locales' }, actions.filter(Boolean))]),
   );
   positionListe = $('storeDefilement').scrollTop;
   $('storeGrille').hidden = true;

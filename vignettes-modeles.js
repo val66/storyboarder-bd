@@ -48,7 +48,7 @@ const entrees = (index) => (index && typeof index === 'object' && index.vignette
  * cadrage sur la boîte qui suit le squelette (les personnages articulés étaient décentrés ou
  * minuscules), et mesure des dimensions.
  */
-const VERSION_RENDU = 2;
+const VERSION_RENDU = 3;   // 3 : au format des cartes (16:9), plus rognées en haut et en bas
 
 /**
  * Une vignette est-elle à (re)faire ? Absente, faite pour un autre état du fichier, ou rendue par
@@ -82,6 +82,7 @@ function metaPropre(meta){
   if (meta && Array.isArray(meta.dimensions) && meta.dimensions.length === 3 && meta.dimensions.every(x => Number.isFinite(x) && x >= 0)) {
     m.dimensions = meta.dimensions.map(x => Math.round(x * 1000) / 1000);
   }
+  if (meta && Number.isInteger(meta.os) && meta.os >= 0) m.os = meta.os;
   if (meta && Array.isArray(meta.noms)) m.noms = meta.noms.filter(n => typeof n === 'string').slice(0, 60).map(n => n.slice(0, 60));
   return m;
 }
@@ -98,7 +99,7 @@ function aMesurer(index, fichiers){
 function metas(index){
   const sortie = {};
   for (const [nom, e] of Object.entries(entrees(index))) {
-    if (e.dimensions || e.noms) sortie[nom] = { dimensions: e.dimensions || null, noms: e.noms || [] };
+    if (e.dimensions || e.noms || Number.isInteger(e.os)) sortie[nom] = { dimensions: e.dimensions || null, noms: e.noms || [], os: Number.isInteger(e.os) ? e.os : null };
   }
   return sortie;
 }
