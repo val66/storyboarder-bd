@@ -56,7 +56,8 @@ const T = {
     telecharger: 'Télécharger',
     noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.'
-      : 'Le modèle et ses textures, réunis dans un seul fichier .glb.'),
+      // Rien à dire quand on peut télécharger (retour de Valentin) : le bouton dit déjà tout.
+      : ''),
     texturesLibelle: 'Qualité des textures',
     optionResolution: (res, p) => `${res} · ${parseInt(res, 10) * 1024} px · ${p}`,
     remplacer: (res, p) => `Remplacer (${p} · ${res})`,
@@ -115,7 +116,7 @@ const T = {
     telecharger: 'Download',
     noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Downloading will require signing in to Sketchfab: it is coming in a future version.'
-      : 'The model and its textures, packed into a single .glb file.'),
+      : ''),
     texturesLibelle: 'Texture quality',
     optionResolution: (res, p) => `${res} · ${parseInt(res, 10) * 1024} px · ${p}`,
     remplacer: (res, p) => `Replace (${p} · ${res})`,

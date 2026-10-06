@@ -230,6 +230,8 @@ describe('Le bouton dit ce qu\'il fera', () => {
     assert.equal(etat({}).texte, 'Télécharger (781 Ko · 1k)');
     assert.equal(etat({ choisie: '2k' }).texte, 'Télécharger (2,8 Mo · 2k)');
     assert.equal(etat({}).actif, true);
+    // Pas de phrase sous le bouton quand il suffit à lui-même (retour de Valentin).
+    assert.equal(etat({}).note, '');
   });
   test('déjà là dans cette résolution : rien à faire', () => {
     const e = etat({ possede: { fichier: 'a.glb', resolution: '1k' } });
