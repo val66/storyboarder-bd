@@ -119,4 +119,30 @@ function lireGlb(octets){
   return { json, bin };
 }
 
-module.exports = { empaqueterGlb, lireGlb, MIME };
+/** Les `uri` EXTERNES d'un glTF (buffers et images), dans l'ordre, sans doublon ni donnée intégrée. */
+function ressourcesExternes(gltf){
+  const uris = [...(gltf.buffers || []), ...(gltf.images || [])]
+    .map(x => x && x.uri).filter(u => typeof u === 'string' && !/^data:/.test(u));
+  return [...new Set(uris)];
+}
+
+/**
+ * Les extensions OBLIGATOIRES qu'on ne sait pas décoder. Le GLTFLoader de l'application (three
+ * 0.128) n'a ni décodeur Draco, ni Meshopt, ni KTX2 : un fichier qui les exige ne se lit pas. Mieux
+ * vaut le dire à l'import que de ranger un fichier qui s'affichera en boîte « introuvable ».
+ */
+const SANS_DECODEUR = ['KHR_draco_mesh_compression', 'EXT_meshopt_compression', 'KHR_texture_basisu'];
+function extensionsNonPrisesEnCharge(gltf){
+  return ((gltf && gltf.extensionsRequired) || []).filter(e => SANS_DECODEUR.includes(e));
+}
+
+/** Le JSON d'un modèle, .glb ou .gltf (texte). null s'il n'est ni l'un ni l'autre. */
+function jsonDuModele(octets){
+  const b = Buffer.from(octets);
+  try {
+    if (b.toString('ascii', 0, 4) === 'glTF') return lireGlb(b).json;
+    return JSON.parse(b.toString('utf8'));
+  } catch (e) { return null; }
+}
+
+module.exports = { empaqueterGlb, lireGlb, ressourcesExternes, extensionsNonPrisesEnCharge, jsonDuModele, MIME };

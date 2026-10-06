@@ -164,10 +164,10 @@ function applyAnisotropy(scene){
  * des couleurs : on n'y touche pas.
  *
  * Une fois par matériau : les clones posés dans les Cases le PARTAGENT (cf. applyAnisotropy), et
- * convertir deux fois éclaircirait encore. Exportée : l'aperçu 3D du store (store-apercu-3d.js) passe
- * par la même conversion, pour montrer le modèle tel qu'il sera dans une Case.
+ * convertir deux fois éclaircirait encore. L'aperçu 3D du store y passe aussi, par
+ * preparerModeleImporte3D, pour montrer le modèle tel qu'il sera dans une Case.
  */
-export function couleursPourAffichage3D(scene){
+function couleursPourAffichage3D(scene){
   const T = globalThis.THREE;
   if (!scene || !T) return;
   scene.traverse(n => {
@@ -184,6 +184,117 @@ export function couleursPourAffichage3D(scene){
       m.needsUpdate = true;
     });
   });
+}
+
+/** Linéaire → écran (sRGB), une composante entre 0 et 1. */
+const versEcran = (v) => (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+
+/**
+ * Les COULEURS DE SOMMETS (COLOR_0), même famille que les textures plus haut : le glTF les écrit en
+ * linéaire, et sans conversion un modèle peint par sommets sortait assombri et saturé. Converties
+ * une fois par géométrie (les clones la partagent). L'alpha, quatrième composante, n'est pas une
+ * couleur : on n'y touche pas. Les attributs entiers normalisés (octets, mots) sont ramenés à 0-1,
+ * convertis, puis réécrits dans leur échelle.
+ */
+function couleursDeSommetsPourAffichage3D(scene){
+  scene.traverse(n => {
+    const attr = n.isMesh && n.geometry && n.geometry.attributes && n.geometry.attributes.color;
+    if (!attr || (n.geometry.userData && n.geometry.userData.couleursAffichage3D)) return;
+    n.geometry.userData = n.geometry.userData || {};
+    n.geometry.userData.couleursAffichage3D = true;
+    const t = attr.array;
+    const max = attr.normalized && !(t instanceof Float32Array) ? (t instanceof Uint8Array ? 255 : t instanceof Uint16Array ? 65535 : 1) : 1;
+    for (let i = 0; i < attr.count; i++) {
+      for (let c = 0; c < Math.min(3, attr.itemSize); c++) {
+        const k = i * attr.itemSize + c;
+        const v = versEcran(Math.max(0, Math.min(1, t[k] / max)));
+        t[k] = max === 1 ? v : Math.round(v * max);
+      }
+    }
+    attr.needsUpdate = true;
+  });
+}
+
+/**
+ * L'INTENSITÉ D'ÉMISSION (extension KHR_materials_emissive_strength), que le GLTFLoader de three
+ * 0.128 ignore : un phare, un écran, des yeux lumineux exportés de Blender au-dessus de 1 sortaient
+ * éteints. Lue dans le JSON du fichier, par l'association matériau → index que tient le chargeur.
+ */
+function intensiteDEmission3D(gltf){
+  const parser = gltf && gltf.parser;
+  const defs = parser && parser.json && parser.json.materials;
+  if (!defs || !parser.associations) return;
+  gltf.scene.traverse(n => {
+    if (!n.isMesh || !n.material) return;
+    (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => {
+      const a = parser.associations.get(m);
+      const def = a && a.type === 'materials' ? defs[a.index] : null;
+      const ext = def && def.extensions && def.extensions.KHR_materials_emissive_strength;
+      if (ext && Number.isFinite(ext.emissiveStrength) && ext.emissiveStrength > 0) m.emissiveIntensity = ext.emissiveStrength;
+    });
+  });
+}
+
+/**
+ * L'AMBIANTE SUR LES MÉTAUX. Dans three, la lumière ambiante n'éclaire que la part DIFFUSE d'un
+ * matériau ; un métal n'en a pas, il ne vit que de ce qu'il reflète. Sans carte d'environnement (on
+ * n'en a pas : les Cases ont une ambiante et un soleil), un métal ne recevait que le reflet du soleil
+ * et sortait presque noir, là où son auteur le voyait dans un studio éclairé de partout.
+ *
+ * On lui fait refléter l'AMBIANTE elle-même, comme un environnement uniforme de sa couleur : une
+ * ligne dans le shader, après le calcul des reflets. Elle suit donc l'éclairage de CHAQUE Case (nuit
+ * comprise), sans carte d'environnement, sans double comptage du diffus. Un non-métal n'y gagne que
+ * son petit reflet (4 % de face, davantage en incidence rasante) : ce qu'il aurait sous un ciel.
+ *
+ * Enchaîné sur un éventuel `onBeforeCompile` existant, et nommé dans la clé de programme : sans
+ * cela, three réutiliserait un shader compilé sans la ligne.
+ */
+const LIGNE_AMBIANTE_METAUX = '#if defined( RE_IndirectSpecular ) && !defined( USE_ENVMAP )\n\tradiance += ambientLightColor;\n#endif';
+function ambianteSurLesMetaux3D(scene){
+  scene.traverse(n => {
+    if (!n.isMesh || !n.material) return;
+    (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => {
+      if (!m || !m.isMeshStandardMaterial || (m.userData && m.userData.ambianteMetaux3D)) return;
+      m.userData = m.userData || {};
+      m.userData.ambianteMetaux3D = true;
+      const precedent = m.onBeforeCompile;
+      const clePrecedente = m.customProgramCacheKey ? m.customProgramCacheKey() : '';
+      m.onBeforeCompile = (shader, renderer) => {
+        if (precedent) precedent(shader, renderer);
+        shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
+          '#include <lights_fragment_maps>\n' + LIGNE_AMBIANTE_METAUX);
+      };
+      m.customProgramCacheKey = () => clePrecedente + '+ambiante-metaux-1';
+      m.needsUpdate = true;
+    });
+  });
+}
+
+/**
+ * Les lumières et caméras qu'un fichier peut porter (KHR_lights_punctual) : GLTFLoader les AJOUTE à
+ * la scène du modèle. Posé dans une Case, un modèle éclairerait alors toute la Case, et dix exemplaires
+ * dix fois plus. L'éclairage appartient à la Case : on les retire.
+ */
+function sansLumieresNiCameras3D(scene){
+  const aRetirer = [];
+  scene.traverse(n => { if (n !== scene && (n.isLight || n.isCamera)) aRetirer.push(n); });
+  aRetirer.forEach(n => n.parent && n.parent.remove(n));
+}
+
+/**
+ * TOUT ce qu'un modèle importé doit subir pour s'afficher juste, dans l'ordre, une fois au décodage.
+ * Le cache des Cases ET l'aperçu 3D du store passent par ici : un seul chemin, sinon l'aperçu
+ * finirait par montrer autre chose que la Case. Rend la scène.
+ */
+export function preparerModeleImporte3D(gltf){
+  const scene = gltf && gltf.scene;
+  if (!scene) return null;
+  sansLumieresNiCameras3D(scene);
+  intensiteDEmission3D(gltf);
+  couleursPourAffichage3D(scene);
+  couleursDeSommetsPourAffichage3D(scene);
+  ambianteSurLesMetaux3D(scene);
+  return scene;
 }
 
 /**
@@ -218,7 +329,7 @@ export async function preloadModels(noms){
       // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée, cf.
       // src/skinned-box-3d.js.
       applyAnisotropy(scene);
-      couleursPourAffichage3D(scene);
+      preparerModeleImporte3D(gltf);
       const _tMesures = sondeDebut();
       const _entree = {
         scene,

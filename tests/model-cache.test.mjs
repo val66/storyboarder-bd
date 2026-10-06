@@ -26,7 +26,7 @@ import { dirname, join } from 'node:path';
 import {
   collectModelFiles, modelState, getLoadedModel, modelCacheSignature,
   preloadModels, clearModelCache, setModelCacheCallbacks, _setModelCacheEntry,
-  _applyAnisotropyForTests, couleursPourAffichage3D,
+  _applyAnisotropyForTests, preparerModeleImporte3D,
 } from '../src/model-cache.js';
 import { setModelBridge } from '../src/model-store.js';
 
@@ -265,25 +265,25 @@ describe('Les couleurs d\'un modèle importé, comme le reste de l\'application 
 
   test('la texture de couleur est lue telle quelle, et la couleur convertie vers l\'écran', () => {
     const n = maille();
-    couleursPourAffichage3D(scene(n));
+    preparerModeleImporte3D({ scene: scene(n) });
     assert.equal(n.material.map.encoding, T.LinearEncoding);
     assert.ok(Math.abs(n.material.color.r - 0.735) < 0.01, `0,5 linéaire doit valoir ~0,735 à l'écran, pas ${n.material.color.r}`);
   });
   test('les cartes techniques (normales…) ne sont pas touchées', () => {
     const n = maille();
     n.material.normalMap.encoding = 1234;
-    couleursPourAffichage3D(scene(n));
+    preparerModeleImporte3D({ scene: scene(n) });
     assert.equal(n.material.normalMap.encoding, 1234);
   });
   test('appliqué à CHAQUE modèle décodé, juste après l\'anisotropie', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'model-cache.js'), 'utf8');
-    assert.match(src, /applyAnisotropy\(scene\);\n\s+couleursPourAffichage3D\(scene\);/);
+    assert.match(src, /applyAnisotropy\(scene\);\n\s+preparerModeleImporte3D\(gltf\);/);
   });
   test('⚠️ un matériau PARTAGÉ par deux mailles n\'est converti qu\'une fois', () => {
     const a = maille();
     const b = { isMesh: true, material: a.material };
-    couleursPourAffichage3D(scene(a, b));
-    couleursPourAffichage3D(scene(a));     // un second décodage du même cache
+    preparerModeleImporte3D({ scene: scene(a, b) });
+    preparerModeleImporte3D({ scene: scene(a) });     // un second décodage du même cache
     assert.ok(Math.abs(a.material.color.r - 0.735) < 0.01, 'converti deux fois : il s\'éclaircit encore');
   });
 });

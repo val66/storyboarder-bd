@@ -4,8 +4,8 @@
  * Poly Haven). Le .glb arrive du processus principal, EN MÉMOIRE (store:apercu) : rien n'est rangé
  * dans le dossier Modeles tant qu'on n'a pas cliqué « Télécharger ».
  *
- * Même chaîne que les Cases, pour que l'aperçu ne mente pas : GLTFLoader, les couleurs ramenées à
- * celles de l'application (couleursPourAffichage3D), l'éclairage par défaut d'une Case (ambiante et
+ * Même chaîne que les Cases, pour que l'aperçu ne mente pas : GLTFLoader, la préparation des modèles
+ * importés (preparerModeleImporte3D : couleurs, émission, métaux), l'éclairage par défaut d'une Case (ambiante et
  * clé de lighting-3d.js). On tourne autour au glisser, on zoome à la molette.
  *
  * Le dessin se fait À LA DEMANDE (un geste, un redimensionnement), pas en boucle : une fiche ouverte
@@ -15,7 +15,7 @@
  */
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { CLE_ACTUELLE, AMBIANTE_ACTUELLE } from './lighting-3d.js';
-import { couleursPourAffichage3D } from './model-cache.js';
+import { preparerModeleImporte3D } from './model-cache.js';
 
 /** L'angle de vue de la caméra, en degrés. */
 const CHAMP = 35;
@@ -70,8 +70,7 @@ function decoder(octets){
 export async function ouvrirApercu3D(conteneur, octets){
   const T = globalThis.THREE;
   const gltf = await decoder(octets);
-  const modele = gltf.scene;
-  couleursPourAffichage3D(modele);
+  const modele = preparerModeleImporte3D(gltf);
 
   const scene = new T.Scene();
   scene.add(new T.AmbientLight(0xffffff, AMBIANTE_ACTUELLE));

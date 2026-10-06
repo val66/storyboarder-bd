@@ -429,12 +429,49 @@ ipcMain.handle('models:pick', async (event) => {
   });
   if (canceled || !filePaths || !filePaths.length) return { canceled: true };
   try {
-    const data = await fs.promises.readFile(filePaths[0]);
-    return { canceled: false, name: path.basename(filePaths[0]), data: new Uint8Array(data) };
+    return { canceled: false, ...(await modeleAImporter(filePaths[0])) };
   } catch (err) {
     return { canceled: false, error: String(err) };
   }
 });
+
+/**
+ * Le fichier choisi, prêt à ranger : `{ name, data }` ou `{ error }`.
+ *
+ * ⚠️ UN .gltf N'EST PAS UN FICHIER, C'EST UN DOSSIER (relevé à l'audit qui a suivi le canard orange).
+ * Son JSON renvoie vers un .bin et des textures VOISINS ; seul le JSON était recopié, sous un nom en
+ * .glb, et le modèle s'affichait ensuite en boîte « introuvable » alors que le fichier était là. On
+ * lit donc ses voisins et on empaquette le tout en un vrai .glb (gltf-glb.js, le même que pour Poly
+ * Haven). Un voisin hors du dossier du .gltf est refusé : le JSON ne dicte pas où l'on lit.
+ *
+ * Un fichier qui EXIGE une compression qu'on ne sait pas décoder (Draco, Meshopt, KTX2) est refusé
+ * avec son nom, plutôt que rangé pour rien.
+ */
+async function modeleAImporter(chemin){
+  const gltfGlb = require('./gltf-glb');
+  let data = await fs.promises.readFile(chemin);
+  let name = path.basename(chemin);
+  if (/\.gltf$/i.test(name)) {
+    let json;
+    try { json = JSON.parse(data.toString('utf8')); } catch (e) { return { error: 'ce fichier .gltf est illisible' }; }
+    const dossier = path.dirname(path.resolve(chemin));
+    const ressources = new Map();
+    for (const uri of gltfGlb.ressourcesExternes(json)) {
+      let relatif = uri;
+      try { relatif = decodeURIComponent(uri); } catch (e) { /* telle quelle */ }
+      const voisin = path.resolve(dossier, relatif);
+      if (!voisin.startsWith(dossier + path.sep)) return { error: `ressource hors du dossier du .gltf : ${uri}` };
+      try { ressources.set(uri, await fs.promises.readFile(voisin)); } catch (e) {
+        return { error: `fichier manquant à côté du .gltf : ${relatif}` };
+      }
+    }
+    data = gltfGlb.empaqueterGlb(json, ressources);
+    name = name.replace(/\.gltf$/i, '.glb');
+  }
+  const refus = gltfGlb.extensionsNonPrisesEnCharge(gltfGlb.jsonDuModele(data));
+  if (refus.length) return { error: `ce modèle utilise une compression que l'application ne sait pas lire (${refus.join(', ')}) : réexportez-le sans compression` };
+  return { name, data: new Uint8Array(data) };
+}
 
 ipcMain.handle('models:write', async (event, name, data) => {
   if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
