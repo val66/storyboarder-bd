@@ -198,7 +198,37 @@ function renommerDansAttributions(attributions, ancien, nouveau){
   return { ...vide(), ressources: liste(attributions).map(e => (String(e.fichier).toLowerCase() === a ? { ...e, fichier: nouveau } : e)) };
 }
 
+/**
+ * Une mémoire BORNÉE, la plus ancienne consultée part la première (#445, aperçus 3D). Bornée en
+ * nombre ET en octets : parcourir vingt fiches ne doit pas garder vingt modèles en mémoire. Ne vit
+ * que le temps de la session : rien n'est écrit sur le disque.
+ */
+function memoireBornee(maxEntrees, maxOctets){
+  const m = new Map();
+  let octets = 0;
+  const taille = (v) => (v && v.length) || 0;
+  return {
+    get(cle){
+      if (!m.has(cle)) return null;
+      const v = m.get(cle);
+      m.delete(cle); m.set(cle, v);   // consultée : redevient la plus récente
+      return v;
+    },
+    set(cle, v){
+      if (taille(v) > maxOctets) return;   // à elle seule trop grosse : on ne garde rien
+      if (m.has(cle)) { octets -= taille(m.get(cle)); m.delete(cle); }
+      m.set(cle, v); octets += taille(v);
+      while (m.size > maxEntrees || octets > maxOctets) {
+        const [ancienne] = m.keys();
+        octets -= taille(m.get(ancienne)); m.delete(ancienne);
+      }
+    },
+    get taille(){ return { entrees: m.size, octets }; },
+  };
+}
+
 module.exports = {
+  memoireBornee,
   LICENCES, SOURCES, TRIS, PAR_PAGE, FICHIER_ATTRIBUTIONS,
   licence, rechercheNormalisee, resultatValide, pageAffichable, ligneDeCredit, telechargesPresents,
   entreeAttribution, ajouterAttribution, renommerDansAttributions,

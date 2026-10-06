@@ -58,4 +58,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   storeTelecharger: (sourceId, id, resolution) => ipcRenderer.invoke('store:telecharger', sourceId, id, resolution),
   storeAttribuer: (resultat, fichier, resolution) => ipcRenderer.invoke('store:attribuer', resultat, fichier, resolution),
   onStoreProgression: (callback) => ipcRenderer.on('store:progression', (e, recus, total) => callback(recus, total)),
+  // L'aperçu 3D d'une fiche : le .glb en mémoire, jamais rangé.
+  storeApercu: (sourceId, id) => ipcRenderer.invoke('store:apercu', sourceId, id),
+  onStoreApercuProgression: (callback) => ipcRenderer.on('store:apercuProgression', (e, s, id, recus, total) => callback(s, id, recus, total)),
 });

@@ -758,6 +758,12 @@ ipcMain.handle('store:telecharger', async (event, sourceId, id, resolution) =>
   store.telecharger(sourceId, id, resolution, (recus, total) => {
     if (!event.sender.isDestroyed()) event.sender.send('store:progression', recus, total);
   }, SIMULATION_STORE ? __dirname : null));
+// L'aperçu 3D d'une fiche : un .glb en mémoire, rien sur le disque. Sa progression a son canal, pour
+// ne pas se mêler à celle d'un téléchargement en cours.
+ipcMain.handle('store:apercu', async (event, sourceId, id) =>
+  store.apercu(sourceId, id, (recus, total) => {
+    if (!event.sender.isDestroyed()) event.sender.send('store:apercuProgression', sourceId, id, recus, total);
+  }, SIMULATION_STORE ? __dirname : null));
 ipcMain.handle('store:attribuer', async (event, resultat, fichier, resolution) => store.attribuer(getProjectsDir(), resultat, fichier, resolution));
 
 // Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on

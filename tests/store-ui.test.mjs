@@ -102,9 +102,9 @@ describe('le câblage', () => {
     assert.match(MAIN, /const SIMULATION_STORE = !app\.isPackaged && !!process\.env\.STORYBOARD_SIMULER_STORE;/);
     assert.match(MAIN, /store\.chercher\(sourceId, params, SIMULATION_STORE \? __dirname : null\)/);
   });
-  test('le pont n\'expose que les six appels du store (et une écoute)', () => {
+  test('le pont n\'expose que les sept appels du store (et deux écoutes)', () => {
     const pre = lire('preload.js');
-    assert.equal((pre.match(/ipcRenderer\.invoke\('store:/g) || []).length, 6);
+    assert.equal((pre.match(/ipcRenderer\.invoke\('store:/g) || []).length, 7);
     assert.match(pre, /storeTelecharges: \(\) => ipcRenderer\.invoke\('store:telecharges'\)/);
     assert.match(MAIN, /store\.telecharges\(getProjectsDir\(\), SIMULATION_STORE \? __dirname : null\)/);
     assert.match(pre, /storeInfos: \(sourceId\) => ipcRenderer\.invoke\('store:infos', sourceId\)/);

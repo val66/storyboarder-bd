@@ -164,9 +164,10 @@ function applyAnisotropy(scene){
  * des couleurs : on n'y touche pas.
  *
  * Une fois par matériau : les clones posés dans les Cases le PARTAGENT (cf. applyAnisotropy), et
- * convertir deux fois éclaircirait encore.
+ * convertir deux fois éclaircirait encore. Exportée : l'aperçu 3D du store (store-apercu-3d.js) passe
+ * par la même conversion, pour montrer le modèle tel qu'il sera dans une Case.
  */
-function couleursPourAffichage3D(scene){
+export function couleursPourAffichage3D(scene){
   const T = globalThis.THREE;
   if (!scene || !T) return;
   scene.traverse(n => {
@@ -508,4 +509,3 @@ export function _setModelCacheEntry(nom, valeur){ _cache.set(nom, valeur); }
 
 /** Pour les tests : appliquer l'anisotropie sans passer par un décodage GLTF complet. */
 export function _applyAnisotropyForTests(scene){ applyAnisotropy(scene); }
-export function _couleursPourAffichageForTests(scene){ couleursPourAffichage3D(scene); }

@@ -195,7 +195,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'store', title: 'Online models', paragraphs: [
     '"Online library", at the top of the Models section, opens a search window over free models: keywords, category, license, maximum size, sorting. One tab per source: Sketchfab, and Poly Haven, all in CC0 (free for any use, no credit required).',
-    'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around. Heavy models are flagged before downloading.',
+    'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around (drag, wheel). Heavy models are flagged before downloading. On Poly Haven, the preview loads the model in memory without saving it: downloading it right after is instant.',
     '"Download" on a Poly Haven model puts it in your models, as a single .glb; it then appears in the Models section. Textures: 1k by default, 2k or 4k for a close-up. Another resolution replaces the file, and its panels follow. From Sketchfab, downloading will require signing in to an account: it is coming in a future version.',
     'A model you already downloaded carries a tick at the top right of its thumbnail, and its details give the file name instead of downloading it twice.',
   ]},
@@ -397,7 +397,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'store', title: 'Modèles en ligne', paragraphs: [
     "« Bibliothèque en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans des modèles gratuits : mots-clés, catégorie, licence, taille maximale, tri. Un onglet par source : Sketchfab, et Poly Haven, tout en CC0 (libre pour tout usage, sans crédit obligatoire).",
-    "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner. Les modèles lourds sont signalés avant le téléchargement.",
+    "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner (glisser, molette). Les modèles lourds sont signalés avant le téléchargement. Chez Poly Haven, l'aperçu charge le modèle en mémoire, sans le ranger : le télécharger juste après est immédiat.",
     "« Télécharger », sur un modèle Poly Haven, le range dans vos modèles, en un seul .glb ; il apparaît aussitôt dans la section Modèles. Textures : 1k par défaut, 2k ou 4k pour un gros plan. Une autre résolution remplace le fichier, et ses Cases suivent. Depuis Sketchfab, le téléchargement demandera de se connecter à un compte : il arrive dans une prochaine version.",
     "Un modèle déjà téléchargé porte une coche en haut à droite de sa vignette, et sa fiche donne le nom du fichier au lieu de le télécharger une seconde fois.",
   ]},

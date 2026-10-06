@@ -205,16 +205,30 @@ async function poids(sourceId, id, simulation){
  * En SIMULATION, rien n'est téléchargé : aucune réponse enregistrée ne contient de fichiers, et un
  * faux modèle rangé dans le dossier de l'utilisateur serait pire que pas de modèle.
  */
+/**
+ * Les modèles déjà téléchargés PENDANT CETTE SESSION, en mémoire seulement : l'aperçu 3D d'une fiche
+ * les charge, et « Télécharger » juste après, dans la même résolution, les reprend sans refaire le
+ * réseau. Fermer la fiche ou le store, changer d'onglet ne les efface pas ; quitter l'application,
+ * si. Six modèles ou 80 Mo au plus.
+ */
+const recents = sources.memoireBornee(6, 80 * 1024 * 1024);
+
 async function telecharger(sourceId, id, resolution, progression, simulation){
   if (sourceId !== 'polyhaven') return { erreur: 'source' };
   if (simulation) return { erreur: 'simulation' };
+  const resDemandee = polyhaven.RESOLUTIONS.includes(resolution) ? resolution : polyhaven.RESOLUTION;
+  const deja = recents.get(`${sourceId}:${id}:${resDemandee}`);
+  if (deja) {
+    if (progression) progression(deja.length, deja.length);
+    return { data: deja, nom: id, resolution: resDemandee };
+  }
   const url = polyhaven.urlFichiers(id);
   if (!url) return { erreur: 'reponse' };
   const liste = await lireJson(url);
   if (liste.erreur) return liste;
   // Une résolution hors de la liste proposée retombe sur celle par défaut : le renderer ne choisit
   // pas, il demande.
-  const res = polyhaven.RESOLUTIONS.includes(resolution) ? resolution : polyhaven.RESOLUTION;
+  const res = resDemandee;
   const plan = polyhaven.planTelechargement(liste.json, res);
   if (!plan) return { erreur: 'reponse' };
   if (plan.total > POIDS_MAX) return { erreur: 'tropLourd' };
@@ -237,8 +251,9 @@ async function telecharger(sourceId, id, resolution, progression, simulation){
     ressources.set(f.chemin, r.octets);
   }
   try {
-    const glb = empaqueterGlb(JSON.parse(gltf.octets.toString('utf8')), ressources);
-    return { data: new Uint8Array(glb), nom: id, resolution: plan.resolution };
+    const glb = new Uint8Array(empaqueterGlb(JSON.parse(gltf.octets.toString('utf8')), ressources));
+    recents.set(`${sourceId}:${id}:${plan.resolution}`, glb);
+    return { data: glb, nom: id, resolution: plan.resolution };
   } catch (e) {
     return { erreur: 'reponse' };
   }
@@ -286,7 +301,15 @@ async function renommerAttribution(dossierProjets, ancien, nouveau){
   try { await ecrireAttributions(dossierProjets, sources.renommerDansAttributions(a, ancien, nouveau)); } catch (e) { /* l'attribution se perd, pas le modèle */ }
 }
 
+/**
+ * L'aperçu 3D d'une fiche (#445) : le modèle en 1k, gardé en mémoire (`recents`), JAMAIS rangé dans
+ * le dossier Modeles. C'est le même téléchargement que « Télécharger », d'où la reprise sans réseau.
+ */
+function apercu(sourceId, id, progression, simulation){
+  return telecharger(sourceId, id, polyhaven.RESOLUTION, progression, simulation);
+}
+
 module.exports = {
-  chercher, infos, telecharges, poids, telecharger, attribuer, renommerAttribution,
+  chercher, infos, telecharges, poids, telecharger, apercu, attribuer, renommerAttribution,
   DELAI_MS, DUREE_CATALOGUE_MS, POIDS_MAX,
 };

@@ -17,6 +17,7 @@
  */
 import { S } from './state.js';
 import { rangerModele, remplacerModele } from './model-store.js';
+import { ouvrirApercu3D } from './store-apercu-3d.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
 
 /**
@@ -212,6 +213,9 @@ function ouvrirFiche(r){
       bascule.textContent = en3D ? t.voirImage : t.voir3D;
     };
     boutons.appendChild(bascule);
+  } else if (apercuLocalPossible(r)) {
+    // Pas de visionneuse chez la source (Poly Haven) : la nôtre, sur le modèle chargé en mémoire.
+    boutons.appendChild(boutonApercuLocal(r, visuel, image));
   }
   boutons.appendChild(lien(t.voirSur(infos.source.nom), r.url, 'nav-btn store-lien-bouton'));
 
@@ -409,7 +413,67 @@ function progression(recus, total){
   enTelechargement.bouton.textContent = textesStore(langue()).telechargement(Math.floor((recus / total) * 100));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// L'aperçu 3D local (#445) : pour une source sans visionneuse intégrable (Poly Haven)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Le .glb arrive EN MÉMOIRE (store:apercu) et n'est jamais rangé. Le processus principal le garde le
+// temps de la session (store.js, `recents`) : rouvrir la fiche, changer d'onglet ou fermer le store
+// ne le perd pas, et « Télécharger » en 1k juste après le reprend sans réseau. Côté fenêtre, la
+// visionneuse est libérée dès qu'on revient à l'image ou qu'on quitte la fiche.
+
+let apercuCourant = null;    // { fermer } de la visionneuse ouverte
+let apercuGeneration = 0;    // chaque ouverture ou fermeture l'incrémente : une réponse en retard s'ignore
+let apercuAttendu = null;    // { cle, etiquette } de l'aperçu en cours de chargement
+
+function apercuLocalPossible(r){
+  const pont = window.storyboarderAPI;
+  return !r.apercu3D && !!(infos && infos.source.connexion && infos.source.connexion.telechargement === false)
+    && !!(pont && pont.storeApercu);
+}
+
+function fermerApercuLocal(){
+  apercuGeneration++;
+  apercuAttendu = null;
+  if (apercuCourant) { apercuCourant.fermer(); apercuCourant = null; }
+}
+
+function boutonApercuLocal(r, visuel, image){
+  const t = textesStore(langue());
+  const b = el('button', { texte: t.voir3D, classe: 'nav-btn', attrs: { type: 'button' } });
+  let en3D = false;
+  b.onclick = async () => {
+    en3D = !en3D;
+    b.textContent = en3D ? t.voirImage : t.voir3D;
+    fermerApercuLocal();
+    if (!en3D) { visuel.replaceChildren(...image()); return; }
+    const moi = apercuGeneration;
+    const etiquette = el('p', { texte: t.chargementApercu(0), classe: 'store-apercu-chargement' });
+    visuel.replaceChildren(etiquette);
+    apercuAttendu = { cle: cleDe(r), etiquette };
+    const dire = (texte) => { etiquette.textContent = texte; etiquette.classList.add('erreur'); visuel.replaceChildren(etiquette); };
+    let rep;
+    try { rep = await window.storyboarderAPI.storeApercu(r.source, r.id); } catch (e) { rep = { erreur: 'reseau' }; }
+    if (moi !== apercuGeneration) return;   // revenu à l'image, ou fiche fermée, entre-temps
+    apercuAttendu = null;
+    if (!rep || rep.erreur || !rep.data) { dire(t.erreurs[rep && rep.erreur] || t.erreurs.reponse); return; }
+    visuel.replaceChildren();
+    let v = null;
+    try { v = await ouvrirApercu3D(visuel, rep.data); } catch (e) { dire(t.apercuIllisible); return; }
+    if (moi !== apercuGeneration) { v.fermer(); return; }   // fermé pendant le décodage
+    apercuCourant = v;
+  };
+  return b;
+}
+
+/** La progression de l'aperçu en cours de chargement (store:apercuProgression). */
+function progressionApercu(source, id, recus, total){
+  if (!apercuAttendu || apercuAttendu.cle !== `${source}:${id}` || !(total > 0)) return;
+  apercuAttendu.etiquette.textContent = textesStore(langue()).chargementApercu(Math.floor((recus / total) * 100));
+}
+
 function fermerFiche(){
+  fermerApercuLocal();
   const ouverte = !$('storeFiche').hidden;
   $('storeFiche').hidden = true;
   $('storeFiche').replaceChildren();   // arrête un aperçu 3D en cours
@@ -481,6 +545,7 @@ export function cablerStore(rappels = {}){
   if (!storeModal) return;
   const pont = window.storyboarderAPI;
   if (pont && pont.onStoreProgression) pont.onStoreProgression(progression);
+  if (pont && pont.onStoreApercuProgression) pont.onStoreApercuProgression(progressionApercu);
   $('storeOuvrirBtn').onclick = ouvrirStore;
   // Pas de bouton « Rechercher » (demandé) : la saisie relance la recherche après une courte pause,
   // pour ne pas lancer une requête par lettre tapée ; Entrée la lance tout de suite.

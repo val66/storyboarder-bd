@@ -129,6 +129,14 @@ Fait pour Poly Haven (#445) ; Sketchfab réutilisera le même chemin une fois la
    renommage du modèle la fait suivre (`models:rename`). La coche apparaît, la section Modèles se
    rafraîchit.
 
+**Aperçu 3D** (Poly Haven n'a pas de visionneuse intégrable) : « Voir en 3D » demande le modèle en
+1k (`store:apercu`), en mémoire seulement, et l'affiche dans `src/store-apercu-3d.js`, par la même
+chaîne que les Cases (GLTFLoader, `couleursPourAffichage3D`, éclairage par défaut), dessiné à la
+demande, libéré en revenant à l'image ou en quittant la fiche. Le processus principal garde les
+modèles chargés pendant la session (`memoireBornee` : six modèles, 80 Mo) : fermer le store ou
+changer d'onglet ne les perd pas, et « Télécharger » en 1k juste après les reprend sans réseau.
+Rien n'est écrit sur le disque avant « Télécharger ».
+
 Un seul téléchargement à la fois ; il continue si l'on ferme la fiche. En simulation, rien n'est
 téléchargé (aucune réponse enregistrée ne contient de fichiers).
 
