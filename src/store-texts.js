@@ -54,7 +54,11 @@ const T = {
     telecharger: 'Télécharger',
     noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.'
-      : 'Textures en 1024 px, rangées avec le modèle dans un seul fichier .glb.'),
+      : 'Le modèle et ses textures, réunis dans un seul fichier .glb.'),
+    texturesLibelle: 'Textures',
+    optionResolution: (res, p) => `${res} (${parseInt(res, 10) * 1024} px) · ${p}`,
+    remplacer: (res, p) => `Remplacer par ${res} (${p})`,
+    remplacerNote: (f, res) => `Déjà dans vos modèles${res ? ` en ${res}` : ''}, sous « ${f} ». Le remplacer met à jour toutes les Cases qui l'utilisent.`,
     telechargerPoids: (p) => `Télécharger (${p})`,
     telechargement: (pct) => `Téléchargement… ${pct} %`,
     rangement: 'Rangement…',
@@ -107,7 +111,11 @@ const T = {
     telecharger: 'Download',
     noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Downloading will require signing in to Sketchfab: it is coming in a future version.'
-      : 'Textures at 1024 px, packed with the model into a single .glb file.'),
+      : 'The model and its textures, packed into a single .glb file.'),
+    texturesLibelle: 'Textures',
+    optionResolution: (res, p) => `${res} (${parseInt(res, 10) * 1024} px) · ${p}`,
+    remplacer: (res, p) => `Replace with ${res} (${p})`,
+    remplacerNote: (f, res) => `Already in your models${res ? ` at ${res}` : ''}, as "${f}". Replacing it updates every panel that uses it.`,
     telechargerPoids: (p) => `Download (${p})`,
     telechargement: (pct) => `Downloading… ${pct}%`,
     rangement: 'Saving…',

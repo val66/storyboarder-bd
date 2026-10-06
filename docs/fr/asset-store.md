@@ -115,14 +115,17 @@ listent les ressources attribuables présentes dans les Planches exportées (#44
 
 Fait pour Poly Haven (#445) ; Sketchfab réutilisera le même chemin une fois la connexion faite.
 
-1. `store:poids` annonce le poids sur le bouton (`planTelechargement`, d'après `/files/{id}`).
+1. `store:poids` donne le poids de chaque résolution proposée (`optionsTelechargement`) (`planTelechargement`, d'après `/files/{id}`).
 2. `store:telecharger` (processus principal) télécharge le `.gltf` et chacun de ses fichiers inclus
-   en **1k**, seulement depuis `dl.polyhaven.org`, vérifie chaque md5, refuse au-delà de 300 Mo, puis
+   dans la résolution choisie sur la fiche (**1k** par défaut, 2k ou 4k ; jamais 8k, trop lourde pour
+   une Case ; le choix est retenu), seulement depuis `dl.polyhaven.org`, vérifie chaque md5, refuse au-delà de 300 Mo, puis
    **empaquette** le tout en un `.glb` (`gltf-glb.js`, sans dépendance). La progression remonte par
    `store:progression`.
 3. Le renderer **range** le `.glb` par le chemin de l'import (`rangerModele`, src/model-store.js) :
    même assainissement, mêmes collisions (« (2) »), même détection du doublon à l'identique.
-4. `store:attribuer` note l'entrée dans `attributions-modeles.json` (revalidée côté principal) ; un
+4. Un modèle déjà là, retéléchargé dans une **autre résolution**, est **remplacé** sous le même nom
+   (`remplacerModele`) : les Cases qui le citent suivent, le cache est vidé pour le relire.
+5. `store:attribuer` note l'entrée (avec sa résolution) dans `attributions-modeles.json` (revalidée côté principal) ; un
    renommage du modèle la fait suivre (`models:rename`). La coche apparaît, la section Modèles se
    rafraîchit.
 

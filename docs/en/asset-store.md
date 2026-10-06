@@ -113,13 +113,17 @@ present in the exported Pages (#444f). The store shows "Models provided by Sketc
 
 Done for Poly Haven (#445); Sketchfab will reuse the same path once signing in exists.
 
-1. `store:poids` shows the size on the button (`planTelechargement`, from `/files/{id}`).
-2. `store:telecharger` (main process) downloads the `.gltf` and each included file at **1k**, only
+1. `store:poids` gives the size of each offered resolution (`optionsTelechargement`) (`planTelechargement`, from `/files/{id}`).
+2. `store:telecharger` (main process) downloads the `.gltf` and each included file at the resolution
+   chosen in the details view (**1k** by default, 2k or 4k; never 8k, too heavy for a panel; the
+   choice is remembered), only
    from `dl.polyhaven.org`, checks every md5, refuses beyond 300 MB, then **packs** everything into a
    `.glb` (`gltf-glb.js`, no dependency). Progress comes back through `store:progression`.
 3. The renderer **saves** the `.glb` through the import path (`rangerModele`, src/model-store.js):
    same sanitising, same collisions ("(2)"), same detection of an identical duplicate.
-4. `store:attribuer` records the entry in `attributions-modeles.json` (validated again in the main
+4. A model already there, downloaded again at **another resolution**, is **replaced** under the
+   same name (`remplacerModele`): the panels that use it follow, and the cache is cleared to reread it.
+5. `store:attribuer` records the entry (with its resolution) in `attributions-modeles.json` (validated again in the main
    process); renaming the model carries it along (`models:rename`). The tick appears and the Models
    section refreshes.
 

@@ -168,6 +168,22 @@ export async function importModel(){
 }
 
 /**
+ * Remplace le contenu d'un modèle DÉJÀ rangé, sous le même nom (#445 : retélécharger un modèle du
+ * store dans une autre résolution de textures). Le nom est gardé exprès : toutes les Cases qui le
+ * citent suivent sans rien repointer. Refuse un nom qui n'existe pas : ce n'est pas un import.
+ */
+export async function remplacerModele(nom, data){
+  const p = pont();
+  if (!p || !p.writeModelFile) return { ok: false, error: 'indisponible hors de l\'application' };
+  if (!data || !data.length) return { ok: false, error: 'fichier vide' };
+  const existants = await listModels();
+  if (sanitizeModelName(nom) !== nom || !existants.includes(nom)) return { ok: false, error: 'modèle introuvable' };
+  const écrit = await p.writeModelFile(nom, data);
+  if (!écrit || !écrit.ok) return { ok: false, error: (écrit && écrit.error) || 'écriture refusée' };
+  return { ok: true, name: nom };
+}
+
+/**
  * Range des octets de modèle dans le dossier Modeles, sous un nom libre. Le chemin COMMUN de l'import
  * et du store (#445) : même assainissement, mêmes collisions, même détection du doublon à l'identique.
  * Rend { ok: true, name, déjàPrésent } ou { ok: false, error }.

@@ -754,11 +754,11 @@ ipcMain.handle('store:telecharges', async () => store.telecharges(getProjectsDir
 // #445 : le téléchargement. Le .glb revient au renderer, qui le RANGE par le chemin de l'import
 // (src/model-store.js : nom libre, doublon à l'identique) ; puis il demande l'attribution.
 ipcMain.handle('store:poids', async (event, sourceId, id) => store.poids(sourceId, id, SIMULATION_STORE ? __dirname : null));
-ipcMain.handle('store:telecharger', async (event, sourceId, id) =>
-  store.telecharger(sourceId, id, (recus, total) => {
+ipcMain.handle('store:telecharger', async (event, sourceId, id, resolution) =>
+  store.telecharger(sourceId, id, resolution, (recus, total) => {
     if (!event.sender.isDestroyed()) event.sender.send('store:progression', recus, total);
   }, SIMULATION_STORE ? __dirname : null));
-ipcMain.handle('store:attribuer', async (event, resultat, fichier) => store.attribuer(getProjectsDir(), resultat, fichier));
+ipcMain.handle('store:attribuer', async (event, resultat, fichier, resolution) => store.attribuer(getProjectsDir(), resultat, fichier, resolution));
 
 // Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on
 // joue une progression factice et on s'arrête là : `npm start` n'a rien à remplacer.

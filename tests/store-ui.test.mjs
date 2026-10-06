@@ -161,7 +161,8 @@ describe('le câblage', () => {
     const f = UI.slice(UI.indexOf('function ouvrirFiche'), UI.indexOf('function fermerFiche'));
     assert.match(f, /el\('div', \{ classe: 'store-fiche-gauche' \}, \[visuel, boutons\]\)/);
     assert.match(f, /el\('div', \{ classe: 'store-fiche-droite' \}, droite\.filter\(Boolean\)\)/);
-    assert.match(f, /el\('div', \{ classe: 'store-fiche-pied' \}, \[\n\s+el\('div', \{ classe: 'store-fiche-actions' \}, \[retour, telecharger\]\)/);
+    // Le choix de résolution (#445) se glisse au-dessus des deux boutons, dans le même pied.
+    assert.match(f, /el\('div', \{ classe: 'store-fiche-pied' \}, \[\n\s+ligneChoix,\n\s+el\('div', \{ classe: 'store-fiche-actions' \}, \[retour, telecharger\]\)/);
     const css = lire('style.css');
     assert.match(css, /\.store-fiche-pied\{ position:sticky; bottom:0;/);
     assert.match(css, /\.store-fiche-corps\{ flex:1 1 auto; display:grid; grid-template-columns:minmax\(0, 3fr\) minmax\(0, 2fr\);/);

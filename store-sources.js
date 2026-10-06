@@ -158,7 +158,7 @@ function telechargesPresents(attributions, fichiersPresents){
   return liste
     .filter(e => e && typeof e.source === 'string' && e.id != null && typeof e.fichier === 'string')
     .filter(e => presents.has(e.fichier.toLowerCase()))
-    .map(e => ({ source: e.source, id: String(e.id), fichier: e.fichier }));
+    .map(e => ({ source: e.source, id: String(e.id), fichier: e.fichier, resolution: typeof e.resolution === 'string' ? e.resolution : null }));
 }
 
 /**
@@ -166,9 +166,11 @@ function telechargesPresents(attributions, fichiersPresents){
  * commun) et du fichier où elle a été rangée. Tout ce qu'il faut pour la créditer plus tard, même
  * si la source disparaît : nom, auteur, licence, adresse, date.
  */
-function entreeAttribution(r, fichier, date = new Date()){
+function entreeAttribution(r, fichier, date = new Date(), resolution = null){
   return {
     source: r.source, id: String(r.id), fichier,
+    // La résolution des textures prise (« 1k »…) : la fiche propose d'en changer en remplaçant.
+    resolution: typeof resolution === 'string' && /^\d+k$/.test(resolution) ? resolution : null,
     nom: r.nom,
     auteur: { nom: r.auteur.nom, url: r.auteur.url || null },
     licence: { code: r.licence.code, libelle: r.licence.libelle, url: r.licence.url || null, attribution: !!r.licence.attribution },

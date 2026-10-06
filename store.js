@@ -183,15 +183,18 @@ async function lireOctets(url, chaque){
 
 const md5 = (b) => require('crypto').createHash('md5').update(b).digest('hex');
 
-/** Ce que pèsera le téléchargement d'une ressource, en octets, ou `{ erreur }`. */
+/**
+ * Ce que peut peser le téléchargement d'une ressource : `{ options: [{ resolution, octets }] }`, une
+ * entrée par résolution proposée, ou `{ erreur }`.
+ */
 async function poids(sourceId, id, simulation){
   if (sourceId !== 'polyhaven') return { erreur: 'source' };
   const url = polyhaven.urlFichiers(id);
   if (!url) return { erreur: 'reponse' };
   const r = simulation ? { json: fixture(simulation, 'polyhaven-fichiers.json') } : await lireJson(url);
   if (r.erreur) return r;
-  const plan = polyhaven.planTelechargement(r.json);
-  return plan ? { octets: plan.total, resolution: plan.resolution } : { erreur: 'reponse' };
+  const options = polyhaven.optionsTelechargement(r.json);
+  return options.length ? { options } : { erreur: 'reponse' };
 }
 
 /**
@@ -202,14 +205,17 @@ async function poids(sourceId, id, simulation){
  * En SIMULATION, rien n'est téléchargé : aucune réponse enregistrée ne contient de fichiers, et un
  * faux modèle rangé dans le dossier de l'utilisateur serait pire que pas de modèle.
  */
-async function telecharger(sourceId, id, progression, simulation){
+async function telecharger(sourceId, id, resolution, progression, simulation){
   if (sourceId !== 'polyhaven') return { erreur: 'source' };
   if (simulation) return { erreur: 'simulation' };
   const url = polyhaven.urlFichiers(id);
   if (!url) return { erreur: 'reponse' };
   const liste = await lireJson(url);
   if (liste.erreur) return liste;
-  const plan = polyhaven.planTelechargement(liste.json);
+  // Une résolution hors de la liste proposée retombe sur celle par défaut : le renderer ne choisit
+  // pas, il demande.
+  const res = polyhaven.RESOLUTIONS.includes(resolution) ? resolution : polyhaven.RESOLUTION;
+  const plan = polyhaven.planTelechargement(liste.json, res);
   if (!plan) return { erreur: 'reponse' };
   if (plan.total > POIDS_MAX) return { erreur: 'tropLourd' };
 
@@ -232,7 +238,7 @@ async function telecharger(sourceId, id, progression, simulation){
   }
   try {
     const glb = empaqueterGlb(JSON.parse(gltf.octets.toString('utf8')), ressources);
-    return { data: new Uint8Array(glb), nom: id };
+    return { data: new Uint8Array(glb), nom: id, resolution: plan.resolution };
   } catch (e) {
     return { erreur: 'reponse' };
   }
@@ -260,12 +266,12 @@ async function ecrireAttributions(dossierProjets, attributions){
  * revalidé ici (format commun, source connue), un processus principal ne croit pas son renderer
  * sur parole.
  */
-async function attribuer(dossierProjets, resultat, fichier){
+async function attribuer(dossierProjets, resultat, fichier, resolution){
   if (!sources.resultatValide(resultat) || typeof fichier !== 'string' || !/\.glb$/i.test(fichier) || fichier !== path.basename(fichier)) {
     return { ok: false, raison: 'refuse' };
   }
   try {
-    const a = sources.ajouterAttribution(await lireAttributions(dossierProjets), sources.entreeAttribution(resultat, fichier));
+    const a = sources.ajouterAttribution(await lireAttributions(dossierProjets), sources.entreeAttribution(resultat, fichier, new Date(), resolution));
     await ecrireAttributions(dossierProjets, a);
     return { ok: true };
   } catch (e) {

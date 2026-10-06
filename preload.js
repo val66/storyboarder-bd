@@ -55,7 +55,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   storeTelecharges: () => ipcRenderer.invoke('store:telecharges'),
   // #445 : poids annoncé, téléchargement (le .glb revient ici pour être rangé), attribution.
   storePoids: (sourceId, id) => ipcRenderer.invoke('store:poids', sourceId, id),
-  storeTelecharger: (sourceId, id) => ipcRenderer.invoke('store:telecharger', sourceId, id),
-  storeAttribuer: (resultat, fichier) => ipcRenderer.invoke('store:attribuer', resultat, fichier),
+  storeTelecharger: (sourceId, id, resolution) => ipcRenderer.invoke('store:telecharger', sourceId, id, resolution),
+  storeAttribuer: (resultat, fichier, resolution) => ipcRenderer.invoke('store:attribuer', resultat, fichier, resolution),
   onStoreProgression: (callback) => ipcRenderer.on('store:progression', (e, recus, total) => callback(recus, total)),
 });

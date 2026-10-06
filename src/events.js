@@ -8646,8 +8646,10 @@ if (helpModalOverlay) {
 enregistrerFermeture('helpModal', () => closeHelpModal());
 enregistrerFermeture('majModal', fermerModaleMaj);
 enregistrerFermeture('storeModal', fermerStore);
-// #445 : un modèle téléchargé depuis le store apparaît aussitôt dans la section Modèles.
-cablerStore({ apresTelechargement: () => renderAll() });
+// #445 : un modèle téléchargé depuis le store apparaît aussitôt dans la section Modèles. REMPLACÉ
+// (autre résolution, même nom), le cache garde l'ancien décodé : le vider fait relire le nouveau
+// par toutes les Cases qui l'utilisent.
+cablerStore({ apresTelechargement: (fichier, remplace) => { if (remplace) clearModelCache(); renderAll(); } });
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));

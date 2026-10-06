@@ -2131,6 +2131,11 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-fiche-pied{ position:sticky; bottom:0; background:var(--paper-dark); padding:10px 0 2px; margin-top:12px; }
 .store-fiche-pied .store-fiche-actions{ margin-top:0; }
 .store-fiche-pied .store-note{ margin:6px 0 0; }
+/* Le choix de la résolution des textures (#445), au-dessus des deux boutons, aligné à droite sous
+   « Télécharger » qu'il règle. */
+.store-resolution-ligne{ display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0 0 8px; font-size:12.5px; color:var(--ink-soft); }
+.store-resolution-ligne[hidden]{ display:none; }
+.modal-box .store-resolution-ligne select{ width:auto; margin:0; }
 /* Le message vide ne doit pas creuser d'écart entre le titre et la fiche (demandé). */
 .store-box .maj-message:empty{ display:none; }
 .store-fiche-visuel img, .store-fiche-visuel iframe{ width:100%; height:100%; object-fit:contain; border:0; display:block; }

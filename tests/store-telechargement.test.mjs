@@ -105,7 +105,7 @@ describe('Le fichier des attributions', () => {
   test('une entrée garde de quoi créditer, même si la source disparaît', () => {
     const e = sources.entreeAttribution(r, 'Arm Chair 01.glb', new Date('2026-10-06T10:00:00Z'));
     assert.deepEqual(e, {
-      source: 'polyhaven', id: 'ArmChair_01', fichier: 'Arm Chair 01.glb', nom: 'Arm Chair 01',
+      source: 'polyhaven', id: 'ArmChair_01', fichier: 'Arm Chair 01.glb', resolution: null, nom: 'Arm Chair 01',
       auteur: { nom: 'Kirill Sannikov', url: null },
       licence: { code: 'cc0', libelle: 'CC0 Public Domain', url: 'https://creativecommons.org/publicdomain/zero/1.0/', attribution: false },
       url: 'https://polyhaven.com/a/ArmChair_01', date: '2026-10-06T10:00:00.000Z',
@@ -130,7 +130,7 @@ describe('Le fichier des attributions', () => {
 // Le parcours dans la fenêtre
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { telechargerModele, cablerStore, rafraichirPossedes, fichierPossede } = await import('../src/store-ui.js');
+const { telechargerModele, cablerStore, rafraichirPossedes, fichierPossede, etatBoutonTelechargement } = await import('../src/store-ui.js');
 const { setModelBridge } = await import('../src/model-store.js');
 
 const RESULTAT = {
@@ -138,9 +138,9 @@ const RESULTAT = {
   url: 'https://polyhaven.com/a/ArmChair_01', vignettes: {}, licence: sources.licence('cc0'), poids: null, details: {},
 };
 
-function monter({ telecharger, existants = [] } = {}){
-  const journal = { ecrits: [], attribues: [], apres: [] };
-  let telecharges = [];
+async function monter({ telecharger, existants = [], dejaTelecharges = [] } = {}){
+  const journal = { ecrits: [], attribues: [], apres: [], demandes: [] };
+  let telecharges = dejaTelecharges;
   const disque = new Map(existants.map(n => [n, new Uint8Array([9])]));
   const pontModeles = {
     listModelFiles: async () => [...disque.keys()],
@@ -150,39 +150,40 @@ function monter({ telecharger, existants = [] } = {}){
   setModelBridge(pontModeles);
   window.storyboarderAPI = {
     ...pontModeles,
-    storeTelecharger: telecharger || (async () => ({ data: new Uint8Array([1, 2, 3]), nom: 'ArmChair_01' })),
-    storeAttribuer: async (r, f) => { journal.attribues.push([r.id, f]); telecharges = [{ source: r.source, id: r.id, fichier: f }]; return { ok: true }; },
+    storeTelecharger: telecharger || (async (s, id, res) => { journal.demandes.push(res); return { data: new Uint8Array([1, 2, 3]), nom: 'ArmChair_01', resolution: res }; }),
+    storeAttribuer: async (r, f, res) => { journal.attribues.push([r.id, f, res]); telecharges = [{ source: r.source, id: r.id, fichier: f, resolution: res }]; return { ok: true }; },
     storeTelecharges: async () => telecharges,
   };
-  cablerStore({ apresTelechargement: (f) => journal.apres.push(f) });
+  cablerStore({ apresTelechargement: (f, remplace) => journal.apres.push([f, remplace]) });
+  await rafraichirPossedes();
   return journal;
 }
 const elt = () => document.createElement('button');
 
 describe('Télécharger depuis la fiche', () => {
   test('rangé sous le nom du modèle, attribué, coché, et la section Modèles prévenue', async () => {
-    const j = monter();
+    const j = await monter();
     await rafraichirPossedes();
     const bouton = elt(); const note = elt();
-    const issue = await telechargerModele(RESULTAT, bouton, note);
-    assert.deepEqual(issue, { ok: true, fichier: 'Arm Chair 01.glb' });
+    const issue = await telechargerModele(RESULTAT, { bouton: bouton, note: note });
+    assert.deepEqual(issue, { ok: true, fichier: 'Arm Chair 01.glb', remplace: false, resolution: '1k' });
     assert.deepEqual(j.ecrits, ['Arm Chair 01.glb']);
-    assert.deepEqual(j.attribues, [['ArmChair_01', 'Arm Chair 01.glb']]);
-    assert.deepEqual(j.apres, ['Arm Chair 01.glb']);
+    assert.deepEqual(j.attribues, [['ArmChair_01', 'Arm Chair 01.glb', '1k']]);
+    assert.deepEqual(j.apres, [['Arm Chair 01.glb', false]]);
     assert.equal(fichierPossede(RESULTAT), 'Arm Chair 01.glb', 'la coche ne suit pas');
     assert.match(bouton.textContent, /Déjà téléchargé|Already downloaded/);
     assert.match(note.textContent, /Arm Chair 01\.glb/);
   });
   test('un nom déjà pris par un AUTRE fichier : rangé à côté, rien n\'est écrasé', async () => {
-    const j = monter({ existants: ['Arm Chair 01.glb'] });
-    const issue = await telechargerModele(RESULTAT, elt(), elt());
+    const j = await monter({ existants: ['Arm Chair 01.glb'] });
+    const issue = await telechargerModele(RESULTAT, { bouton: elt(), note: elt() });
     assert.equal(issue.fichier, 'Arm Chair 01 (2).glb');
     assert.deepEqual(j.ecrits, ['Arm Chair 01 (2).glb']);
   });
   test('un échec ne range rien, n\'attribue rien, le dit, et laisse réessayer', async () => {
-    const j = monter({ telecharger: async () => ({ erreur: 'corrompu' }) });
+    const j = await monter({ telecharger: async () => ({ erreur: 'corrompu' }) });
     const bouton = elt(); const note = elt();
-    const issue = await telechargerModele(RESULTAT, bouton, note);
+    const issue = await telechargerModele(RESULTAT, { bouton: bouton, note: note });
     assert.equal(issue.ok, false);
     assert.deepEqual(j.ecrits, []);
     assert.deepEqual(j.attribues, []);
@@ -190,16 +191,87 @@ describe('Télécharger depuis la fiche', () => {
     assert.ok(note.classList.contains('erreur'));
     assert.equal(bouton.disabled, false, 'le bouton reste bloqué après un échec');
   });
+  test('la résolution choisie est celle demandée, et notée dans l\'attribution', async () => {
+    const j = await monter();
+    await rafraichirPossedes();
+    await telechargerModele(RESULTAT, { bouton: elt(), note: elt() }, '2k');
+    assert.deepEqual(j.demandes, ['2k']);
+    assert.equal(j.attribues[0][2], '2k');
+  });
+  test('⚠️ une AUTRE résolution d\'un modèle déjà là REMPLACE son fichier, sous le MÊME nom', async () => {
+    // Le nom est gardé exprès : toutes les Cases qui le citent suivent. Un « (2) » laisserait les
+    // Cases sur l'ancien et doublerait le modèle dans la liste.
+    const j = await monter({ existants: ['Arm Chair 01.glb'],
+      dejaTelecharges: [{ source: 'polyhaven', id: 'ArmChair_01', fichier: 'Arm Chair 01.glb', resolution: '1k' }] });
+    await rafraichirPossedes();
+    const issue = await telechargerModele(RESULTAT, { bouton: elt(), note: elt() }, '4k');
+    assert.deepEqual(issue, { ok: true, fichier: 'Arm Chair 01.glb', remplace: true, resolution: '4k' });
+    assert.deepEqual(j.ecrits, ['Arm Chair 01.glb']);
+    assert.deepEqual(j.apres, [['Arm Chair 01.glb', true]], 'les Cases ne sont pas prévenues du remplacement');
+  });
   test('un seul téléchargement à la fois', async () => {
     const liberations = [];
-    monter({ telecharger: () => new Promise(res => { liberations.push(() => res({ data: new Uint8Array([1]) })); }) });
-    const premier = telechargerModele(RESULTAT, elt(), elt());
+    await monter({ telecharger: () => new Promise(res => { liberations.push(() => res({ data: new Uint8Array([1]) })); }) });
+    const premier = telechargerModele(RESULTAT, { bouton: elt(), note: elt() });
     await new Promise(r => setTimeout(r, 0));
-    const second = telechargerModele({ ...RESULTAT, id: 'autre' }, elt(), elt());
+    const second = telechargerModele({ ...RESULTAT, id: 'autre' }, { bouton: elt(), note: elt() });
     await new Promise(r => setTimeout(r, 0));
     assert.equal(liberations.length, 1, 'un second téléchargement a démarré pendant le premier');
     liberations.forEach(l => l());
     assert.equal((await second).ok, false);
     assert.equal((await premier).ok, true);
+  });
+});
+
+describe('Le bouton dit ce qu\'il fera', () => {
+  const options = [{ resolution: '1k', octets: 800000 }, { resolution: '2k', octets: 2900000 }];
+  const etat = (p) => etatBoutonTelechargement({ source: 'polyhaven', possible: true, options, choisie: '1k', possede: null, ...p });
+  test('absent : télécharger, avec le poids de la résolution choisie', () => {
+    assert.equal(etat({}).texte, 'Télécharger (781 Ko)');
+    assert.equal(etat({ choisie: '2k' }).texte, 'Télécharger (2,8 Mo)');
+    assert.equal(etat({}).actif, true);
+  });
+  test('déjà là dans cette résolution : rien à faire', () => {
+    const e = etat({ possede: { fichier: 'a.glb', resolution: '1k' } });
+    assert.equal(e.actif, false);
+    assert.match(e.texte, /Déjà téléchargé/);
+  });
+  test('déjà là dans une autre : remplacer, et la note dit que les Cases suivront', () => {
+    const e = etat({ possede: { fichier: 'a.glb', resolution: '1k' }, choisie: '2k' });
+    assert.equal(e.actif, true);
+    assert.equal(e.remplace, true);
+    assert.equal(e.texte, 'Remplacer par 2k (2,8 Mo)');
+    assert.match(e.note, /en 1k.*a\.glb.*Cases/);
+  });
+  test('téléchargé avant le choix de résolution : compté comme 1k', () => {
+    assert.equal(etat({ possede: { fichier: 'a.glb', resolution: null } }).actif, false);
+  });
+  test('source sans téléchargement possible (Sketchfab) : désactivé, et la note dit pourquoi', () => {
+    const e = etatBoutonTelechargement({ source: 'sketchfab', possible: false, options: [], choisie: '1k', possede: null });
+    assert.equal(e.actif, false);
+    assert.match(e.note, /Sketchfab/);
+  });
+});
+
+describe('Poly Haven : les résolutions proposées', () => {
+  test('1k, 2k et 4k, avec le poids réel de chacune ; jamais au-delà', () => {
+    const o = ph.optionsTelechargement(FICHIERS);
+    assert.deepEqual(o.map(x => x.resolution), ['1k', '2k', '4k']);
+    assert.equal(o[1].octets, 2643 + 1482566 + 154012 + 723200 + 442886);
+    const avec8k = { gltf: { ...FICHIERS.gltf, '8k': FICHIERS.gltf['4k'] } };
+    assert.ok(!ph.optionsTelechargement(avec8k).some(x => x.resolution === '8k'));
+  });
+  test('une résolution absente n\'est pas proposée (le poids d\'une autre mentirait)', () => {
+    const sans2k = { gltf: { '1k': FICHIERS.gltf['1k'], '4k': FICHIERS.gltf['4k'] } };
+    assert.deepEqual(ph.optionsTelechargement(sans2k).map(x => x.resolution), ['1k', '4k']);
+  });
+});
+
+const { remplacerModele } = await import('../src/model-store.js');
+describe('Remplacer un modèle', () => {
+  test('refuse un nom qui n\'existe pas : ce n\'est pas un import', async () => {
+    await monter({ existants: ['a.glb'] });
+    assert.equal((await remplacerModele('b.glb', new Uint8Array([1]))).ok, false);
+    assert.equal((await remplacerModele('a.glb', new Uint8Array([1]))).ok, true);
   });
 });

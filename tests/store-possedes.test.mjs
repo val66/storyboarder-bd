@@ -16,7 +16,7 @@ const entree = (id, fichier, source = 'sketchfab') => ({ source, id, fichier, no
 describe('telechargesPresents', () => {
   test('ne garde que les fichiers encore sur le disque', () => {
     const r = telechargesPresents(attributions(entree('a', 'banc.glb'), entree('b', 'parti.glb')), ['banc.glb']);
-    assert.deepEqual(r, [{ source: 'sketchfab', id: 'a', fichier: 'banc.glb' }]);
+    assert.deepEqual(r, [{ source: 'sketchfab', id: 'a', fichier: 'banc.glb', resolution: null }]);
   });
   test('la casse du nom de fichier ne compte pas, comme sous Windows', () => {
     assert.equal(telechargesPresents(attributions(entree('a', 'Banc.GLB')), ['banc.glb']).length, 1);

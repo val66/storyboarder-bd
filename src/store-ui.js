@@ -16,7 +16,7 @@
  * fichier des attributions (store.js, telecharges), relue à chaque ouverture du store.
  */
 import { S } from './state.js';
-import { rangerModele } from './model-store.js';
+import { rangerModele, remplacerModele } from './model-store.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
 
 /**
@@ -35,7 +35,7 @@ let derniereRecherche = null;
 let suivant = null;
 let enCours = false;
 let positionListe = 0;
-/** Les modèles déjà téléchargés : `source:id` → nom du fichier. */
+/** Les modèles déjà téléchargés : `source:id` → { fichier, resolution }. */
 let possedes = new Map();
 /** Les résultats affichés, pour refaire les cartes sans nouvelle requête. */
 let affiches = [];
@@ -134,14 +134,15 @@ function parametres(curseur){
 
 /** Le fichier local d'un résultat déjà téléchargé, ou null. */
 export function fichierPossede(r){
-  return possedes.get(`${r.source}:${r.id}`) || null;
+  const e = possedes.get(`${r.source}:${r.id}`);
+  return e ? e.fichier : null;
 }
 
 /** Recharge la liste des modèles déjà téléchargés. Exportée pour les tests. */
 export async function rafraichirPossedes(){
   const pont = window.storyboarderAPI;
   const liste = pont && pont.storeTelecharges ? await pont.storeTelecharges() : [];
-  possedes = new Map((Array.isArray(liste) ? liste : []).map(e => [`${e.source}:${e.id}`, e.fichier]));
+  possedes = new Map((Array.isArray(liste) ? liste : []).map(e => [`${e.source}:${e.id}`, { fichier: e.fichier, resolution: e.resolution || null }]));
 }
 
 /**
@@ -219,7 +220,11 @@ function ouvrirFiche(r){
   const fichier = fichierPossede(r);
   const telecharger = el('button', { texte: fichier ? '✓ ' + t.possede : t.telecharger, classe: 'full-btn', attrs: { type: 'button' } });
   const note = el('p', { texte: fichier ? t.possedeFiche(fichier) : t.noteTelechargement(r.source), classe: 'store-note' });
-  brancherTelechargement(r, telecharger, note, fichier);
+  // Le choix de la résolution des textures (demandé), caché tant que la source n'en propose pas.
+  const choix = el('select', { classe: 'store-resolution', attrs: { 'aria-label': t.texturesLibelle } });
+  const ligneChoix = el('label', { classe: 'store-resolution-ligne' }, [el('span', { texte: t.texturesLibelle }), choix]);
+  ligneChoix.hidden = true;
+  brancherTelechargement(r, { bouton: telecharger, note, choix, ligneChoix });
   const section = (titre, lignes, avant = []) => el('section', { classe: 'store-fiche-section' }, [
     el('h5', { texte: titre }), ...avant, el('ul', {}, lignes.map(p => el('li', { texte: p }))),
   ]);
@@ -241,6 +246,7 @@ function ouvrirFiche(r){
     ]),
     // Retour et Télécharger TOUJOURS visibles (demandé) : un pied collé au bas de la zone qui défile.
     el('div', { classe: 'store-fiche-pied' }, [
+      ligneChoix,
       el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
       note,
     ]),
@@ -257,80 +263,142 @@ function ouvrirFiche(r){
 }
 
 /**
- * Le bouton « Télécharger » d'une fiche (#445). Trois états, que le bouton dit lui-même :
- *   - indisponible : modèle déjà là (« ✓ Déjà téléchargé »), ou source qui demande une connexion
- *     qu'on n'a pas encore (Sketchfab) ;
- *   - prêt : « Télécharger (1,2 Mo) », le poids arrivant un instant après l'ouverture de la fiche ;
- *   - en cours : « Téléchargement… 45 % », puis « ✓ Déjà téléchargé » et le nom du fichier rangé.
+ * Le bouton « Télécharger » d'une fiche (#445), et le choix de la résolution des textures.
  *
- * Le téléchargement continue si l'on ferme la fiche ou le store : il se termine, se range, et la
- * coche apparaît sur la carte. Un seul à la fois : la barre de progression n'a qu'un sens.
+ *   - indisponible : source qui demande une connexion qu'on n'a pas encore (Sketchfab) ;
+ *   - déjà là, dans la résolution choisie : « ✓ Déjà téléchargé », désactivé ;
+ *   - déjà là, dans une AUTRE résolution : « Remplacer par 2k (2,8 Mo) ». Le fichier garde son nom,
+ *     et toutes les Cases qui l'utilisent suivent ;
+ *   - absent : « Télécharger (0,8 Mo) » ;
+ *   - en cours : « Téléchargement… 45 % ».
+ *
+ * La résolution choisie est retenue d'une fiche à l'autre (localStorage), 1k par défaut. Le
+ * téléchargement continue si l'on ferme la fiche ou le store. Un seul à la fois.
  */
 let enTelechargement = null;   // { cle, bouton, note } du téléchargement en cours
 const cleDe = (r) => `${r.source}:${r.id}`;
-
-function brancherTelechargement(r, bouton, note, fichier){
-  const t = textesStore(langue());
-  const pont = window.storyboarderAPI;
-  const possible = !fichier && infos && infos.source.connexion && infos.source.connexion.telechargement === false
-    && pont && pont.storeTelecharger;
-  if (enTelechargement && enTelechargement.cle === cleDe(r)) {
-    // On rouvre la fiche d'un modèle en cours de téléchargement : elle reprend la progression.
-    enTelechargement.bouton = bouton;
-    enTelechargement.note = note;
-    bouton.disabled = true;
-    bouton.textContent = t.telechargement(0);
-    return;
-  }
-  bouton.disabled = !possible || !!enTelechargement;
-  if (!possible) return;
-  if (pont.storePoids) {
-    pont.storePoids(r.source, r.id).then(p => {
-      if (p && p.octets && !bouton.disabled) bouton.textContent = t.telechargerPoids(poidsLisible(p.octets, langue()));
-    }).catch(() => {});
-  }
-  bouton.onclick = () => telechargerModele(r, bouton, note);
+const RESOLUTION_DEFAUT = '1k';
+const CLE_RESOLUTION = 'store:resolution';
+function resolutionPreferee(){
+  try { return globalThis.localStorage.getItem(CLE_RESOLUTION) || RESOLUTION_DEFAUT; } catch (e) { return RESOLUTION_DEFAUT; }
+}
+function memoriserResolution(res){
+  try { globalThis.localStorage.setItem(CLE_RESOLUTION, res); } catch (e) { /* une préférence perdue, rien de plus */ }
 }
 
-/** Télécharge, range par le chemin de l'import, puis note l'attribution. Exportée pour les tests. */
-export async function telechargerModele(r, bouton, note){
+/**
+ * Ce que dit le bouton, d'après l'état : fonction PURE de ses entrées, exportée pour les tests.
+ * `possede` : { fichier, resolution } ou null ; `options` : [{ resolution, octets }] ; `choisie` :
+ * la résolution sélectionnée. Rend `{ texte, actif, note, remplace }`.
+ */
+export function etatBoutonTelechargement({ source, possible, possede, options, choisie, lang = 'fr' }){
+  const t = textesStore(lang);
+  const opt = (options || []).find(o => o.resolution === choisie);
+  const poids = opt ? poidsLisible(opt.octets, lang) : null;
+  if (!possible) {
+    return { texte: possede ? '✓ ' + t.possede : t.telecharger, actif: false,
+      note: possede ? t.possedeFiche(possede.fichier) : t.noteTelechargement(source), remplace: false };
+  }
+  // Un modèle téléchargé avant le choix de résolution l'a été en 1k.
+  if (possede && (possede.resolution || RESOLUTION_DEFAUT) === choisie) {
+    return { texte: '✓ ' + t.possede, actif: false, note: t.possedeFiche(possede.fichier), remplace: false };
+  }
+  if (possede) {
+    return { texte: poids ? t.remplacer(choisie, poids) : t.remplacer(choisie, '…'), actif: true,
+      note: t.remplacerNote(possede.fichier, possede.resolution || RESOLUTION_DEFAUT), remplace: true };
+  }
+  return { texte: poids ? t.telechargerPoids(poids) : t.telecharger, actif: true, note: t.noteTelechargement(source), remplace: false };
+}
+
+function brancherTelechargement(r, ui){
+  const t = textesStore(langue());
+  const pont = window.storyboarderAPI;
+  const possible = !!(infos && infos.source.connexion && infos.source.connexion.telechargement === false
+    && pont && pont.storeTelecharger);
+  let options = [];
+  const appliquer = () => {
+    if (enTelechargement && enTelechargement.cle === cleDe(r)) {
+      // On rouvre la fiche d'un modèle en cours de téléchargement : elle reprend la progression.
+      enTelechargement.bouton = ui.bouton;
+      enTelechargement.note = ui.note;
+      ui.bouton.disabled = true;
+      ui.choix.disabled = true;
+      return;
+    }
+    const e = etatBoutonTelechargement({
+      source: r.source, possible, possede: possedes.get(cleDe(r)) || null, options,
+      choisie: ui.choix.value || resolutionPreferee(), lang: langue(),
+    });
+    ui.bouton.textContent = e.texte;
+    ui.bouton.disabled = !e.actif || !!enTelechargement;
+    ui.note.textContent = e.note;
+    ui.note.classList.remove('erreur');
+  };
+  appliquer();
+  if (enTelechargement && enTelechargement.cle === cleDe(r)) ui.bouton.textContent = t.telechargement(0);
+  if (!possible) return;
+  ui.choix.onchange = () => { memoriserResolution(ui.choix.value); appliquer(); };
+  ui.bouton.onclick = () => telechargerModele(r, ui, ui.choix.value || resolutionPreferee());
+  if (!pont.storePoids) return;
+  pont.storePoids(r.source, r.id).then(p => {
+    if (!p || !Array.isArray(p.options) || !p.options.length) return;
+    options = p.options;
+    ui.choix.replaceChildren(...options.map(o => el('option', {
+      texte: t.optionResolution(o.resolution, poidsLisible(o.octets, langue())), attrs: { value: o.resolution },
+    })));
+    const voulue = resolutionPreferee();
+    ui.choix.value = options.some(o => o.resolution === voulue) ? voulue : options[0].resolution;
+    ui.ligneChoix.hidden = false;
+    appliquer();
+  }).catch(() => {});
+}
+
+/**
+ * Télécharge dans la résolution demandée, puis RANGE (nouveau modèle, par le chemin de l'import) ou
+ * REMPLACE (même modèle, autre résolution : même nom de fichier), et note l'attribution.
+ * Exportée pour les tests.
+ */
+export async function telechargerModele(r, ui, resolution = RESOLUTION_DEFAUT){
   if (enTelechargement) return { ok: false };
   const t = textesStore(langue());
   const pont = window.storyboarderAPI;
-  enTelechargement = { cle: cleDe(r), bouton, note };
+  const deja = possedes.get(cleDe(r)) || null;
+  enTelechargement = { cle: cleDe(r), bouton: ui.bouton, note: ui.note };
   const dire = (texteBouton, texteNote, erreur = false) => {
-    const e = enTelechargement || { bouton, note };
+    const e = enTelechargement || ui;
     if (texteBouton != null && e.bouton) e.bouton.textContent = texteBouton;
     if (texteNote != null && e.note) { e.note.textContent = texteNote; e.note.classList.toggle('erreur', erreur); }
   };
-  bouton.disabled = true;
+  ui.bouton.disabled = true;
+  if (ui.choix) ui.choix.disabled = true;
   dire(t.telechargement(0), '');
   let issue;
   try {
-    const rep = await pont.storeTelecharger(r.source, r.id);
+    const rep = await pont.storeTelecharger(r.source, r.id, resolution);
     if (!rep || rep.erreur || !rep.data) {
       issue = { ok: false, erreur: (rep && rep.erreur) || 'reponse' };
     } else {
       dire(t.rangement, null);
-      const range = await rangerModele(r.nom + '.glb', rep.data);
-      issue = range.ok ? { ok: true, fichier: range.name } : { ok: false, erreur: 'ecriture' };
+      const range = deja ? await remplacerModele(deja.fichier, rep.data) : await rangerModele(r.nom + '.glb', rep.data);
+      issue = range.ok ? { ok: true, fichier: range.name, remplace: !!deja, resolution: rep.resolution || resolution } : { ok: false, erreur: 'ecriture' };
     }
   } catch (e) {
     issue = { ok: false, erreur: 'reseau' };
   }
+  const courant = enTelechargement;
+  enTelechargement = null;
+  if (ui.choix) ui.choix.disabled = false;
   if (issue.ok) {
-    if (pont.storeAttribuer) await pont.storeAttribuer(r, issue.fichier);
+    if (pont.storeAttribuer) await pont.storeAttribuer(r, issue.fichier, issue.resolution);
     await rafraichirPossedes();
-    dire('✓ ' + t.possede, t.telechargeOk(issue.fichier));
-    enTelechargement = null;
-    // La coche sur la carte, et la section Modèles du menu de gauche.
+    if (courant && courant.bouton) { courant.bouton.textContent = '✓ ' + t.possede; courant.bouton.disabled = true; }
+    if (courant && courant.note) { courant.note.textContent = t.telechargeOk(issue.fichier); courant.note.classList.remove('erreur'); }
+    // La coche sur la carte, et la section Modèles du menu de gauche (et les Cases, si remplacé).
     $('storeGrille').replaceChildren(...affiches.map(carte));
-    if (_rappels.apresTelechargement) _rappels.apresTelechargement(issue.fichier);
+    if (_rappels.apresTelechargement) _rappels.apresTelechargement(issue.fichier, issue.remplace);
   } else {
-    dire(t.telecharger, t.erreurs[issue.erreur] || t.erreurs.reponse, true);
-    const e = enTelechargement;
-    enTelechargement = null;
-    if (e && e.bouton) e.bouton.disabled = false;
+    if (courant && courant.bouton) { courant.bouton.textContent = t.telecharger; courant.bouton.disabled = false; }
+    if (courant && courant.note) { courant.note.textContent = t.erreurs[issue.erreur] || t.erreurs.reponse; courant.note.classList.add('erreur'); }
   }
   return issue;
 }

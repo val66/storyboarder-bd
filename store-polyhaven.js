@@ -171,11 +171,15 @@ function pageLocale(catalogue, recherche, ids){
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * La résolution des textures prise au téléchargement. 1k (1024 px) : une Case de storyboard montre
- * rarement un objet plus grand qu'un quart d'écran, et 4k pèserait dix fois plus pour rien de
- * visible. C'est aussi ce qui garde le modèle léger dans les Cases qui l'affichent.
+ * La résolution des textures proposée PAR DÉFAUT. 1k (1024 px) : une Case de storyboard montre
+ * rarement un objet plus grand qu'un quart d'écran, et chaque cran pèse environ quatre fois plus,
+ * au téléchargement comme dans la mémoire de la carte graphique.
+ *
+ * L'utilisateur choisit sur la fiche parmi RESOLUTIONS (demandé) : 2k ou 4k pour un gros plan. Pas
+ * au-delà : 8k pèse des dizaines de Mo et ralentit les Cases pour un gain invisible à cette taille.
  */
 const RESOLUTION = '1k';
+const RESOLUTIONS = ['1k', '2k', '4k'];
 
 /** Seuls les fichiers servis par Poly Haven sont téléchargés, quoi que dise la réponse. */
 const HOTE_FICHIERS = /^https:\/\/dl\.polyhaven\.org\//;
@@ -213,8 +217,20 @@ function planTelechargement(fichiers, resolution = RESOLUTION){
   return { resolution: res, gltf: { url: g.url, taille: g.size, md5: g.md5 || null }, inclus, total };
 }
 
+/**
+ * Les résolutions proposées pour un modèle, avec le poids de chacune : `[{ resolution, octets }]`.
+ * Seules celles que Poly Haven sert VRAIMENT pour ce modèle (planTelechargement retomberait sinon
+ * sur une autre, et le poids affiché mentirait).
+ */
+function optionsTelechargement(fichiers){
+  return RESOLUTIONS.map(res => {
+    const p = planTelechargement(fichiers, res);
+    return p && p.resolution === res ? { resolution: res, octets: p.total } : null;
+  }).filter(Boolean);
+}
+
 module.exports = {
-  API, SITE, CATEGORIES, RESOLUTION,
+  API, SITE, CATEGORIES, RESOLUTION, RESOLUTIONS, optionsTelechargement,
   slugCategorie, urlCatalogue, urlRecherche, idValide, vignetteDeTaille,
   modeleNormalise, catalogueNormalise, idsRecherche, pageLocale,
   urlFichiers, planTelechargement,
