@@ -2037,7 +2037,7 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-filtres{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
 .store-filtres .modal-input{ flex:1 1 260px; margin:0; }
 .store-filtres .full-btn{ width:auto; margin:0; padding:8px 18px; }
-.modal-box .store-filtres select{ flex:1 1 180px; width:auto; margin:0; }
+.modal-box .store-filtres select{ flex:1 1 180px; max-width:260px; width:auto; margin:0; }
 .store-case{ font-size:12.5px; display:flex; align-items:center; gap:6px; }
 .store-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px; }
 /* ⚠️ `hidden` ne l'emporte pas sur un `display` posé par une classe : sans ces règles, la grille
@@ -2061,7 +2061,7 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-badge.store-badge-nc{ background:var(--line); color:var(--ink-soft); }
 .store-plus{ display:block; margin:12px auto 0; }
 .store-fiche{ font-size:13px; line-height:1.45; }
-.store-fiche h4{ margin:10px 0 4px; font-size:15px; }
+.store-fiche h4{ margin:14px 0 4px; font-size:20px; line-height:1.25; }
 .store-fiche p{ margin:0 0 6px; }
 .store-fiche ul{ margin:0 0 8px; padding-left:18px; }
 .store-fiche a{ color:var(--accent); }
@@ -2071,9 +2071,10 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-fiche-section{ margin:10px 0 0; }
 .store-fiche-section h5{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
 .store-fiche-actions{ display:flex; gap:8px; align-items:stretch; margin-top:12px; }
-.store-fiche-actions .nav-btn{ flex:none; margin:0; }
+.store-fiche-actions .nav-btn{ flex:none; width:auto; margin:0; padding-left:18px; padding-right:18px; }
 .store-fiche-actions .full-btn{ flex:1 1 auto; margin:0; }
-.store-lien-bouton{ text-decoration:none; display:inline-flex; align-items:center; }
+.store-lien-bouton{ text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+.store-fiche-boutons > *{ flex:1 1 0; margin:0; }
 .store-avertissement{ color:var(--warn); }
 .store-note{ font-size:12px; color:var(--ink-soft); }
 .store-credit{ font-size:11.5px; color:var(--ink-soft); margin:12px 0 0; text-align:right; }

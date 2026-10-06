@@ -125,7 +125,7 @@ function ouvrirFiche(r){
   }
   boutons.appendChild(lien(t.voirSur(infos.source.nom), r.url, 'nav-btn store-lien-bouton'));
 
-  const retour = el('button', { texte: '← ' + t.fermerFiche, classe: 'nav-btn', attrs: { type: 'button' } });
+  const retour = el('button', { texte: t.fermerFiche, classe: 'nav-btn', attrs: { type: 'button' } });
   retour.onclick = fermerFiche;
   const telecharger = el('button', { texte: t.telecharger, classe: 'full-btn', attrs: { type: 'button', disabled: '' } });
   const section = (titre, lignes, avant = []) => el('section', { classe: 'store-fiche-section' }, [

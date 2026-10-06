@@ -118,7 +118,7 @@ describe('le câblage', () => {
     const zone = html.slice(html.indexOf('id="storeDefilement"'), html.indexOf('id="storeCredit"'));
     for (const id of ['storeGrille', 'storePlusBtn', 'storeFiche']) assert.ok(zone.includes(`id="${id}"`), id);
     assert.match(css, /\.store-badge\{ min-width:0;[^}]*white-space:nowrap;/);
-    assert.match(css, /\.modal-box \.store-filtres select\{ flex:1 1 180px; width:auto; margin:0; \}/);
+    assert.match(css, /\.modal-box \.store-filtres select\{ flex:1 1 180px; max-width:260px; width:auto; margin:0; \}/);
     assert.equal(textesStore('fr').ouvrir, 'Store en ligne');
   });
   test('retours de Valentin (6 octobre 2026, 2e passe)', () => {
@@ -137,6 +137,14 @@ describe('le câblage', () => {
     // Plus de bouton Rechercher : la saisie relance après une pause, Entrée tout de suite.
     assert.ok(!lire('index.html').includes('storeChercherBtn'));
     assert.match(UI, /minuterie = setTimeout\(\(\) => chercher\(\), PAUSE_SAISIE_MS\);/);
+  });
+  test('retours de Valentin (3e passe) : le bouton Télécharger ne sort plus de la fiche', () => {
+    const css = lire('style.css');
+    // `.nav-btn` porte width:100% : sans width:auto, « Retour » prenait toute la ligne et poussait
+    // « Télécharger » hors de la fiche (barre de défilement horizontale sur la capture).
+    assert.match(css, /\.store-fiche-actions \.nav-btn\{ flex:none; width:auto;/);
+    assert.match(css, /\.store-lien-bouton\{[^}]*justify-content:center;/);
+    assert.ok(!UI.includes("'← ' + t.fermerFiche"));
   });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
