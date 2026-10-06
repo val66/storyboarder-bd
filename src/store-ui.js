@@ -224,11 +224,15 @@ function ouvrirFiche(r){
   const fichier = fichierPossede(r);
   const telecharger = el('button', { texte: fichier ? '✓ ' + t.possede : t.telecharger, classe: 'full-btn', attrs: { type: 'button' } });
   const note = el('p', { texte: fichier ? t.possedeFiche(fichier) : t.noteTelechargement(r.source), classe: 'store-note' });
-  // Le choix de la résolution des textures (demandé), caché tant que la source n'en propose pas.
-  const choix = el('select', { classe: 'store-resolution', attrs: { 'aria-label': t.texturesLibelle } });
-  const ligneChoix = el('label', { classe: 'store-resolution-ligne' }, [el('span', { texte: t.texturesLibelle }), choix]);
-  ligneChoix.hidden = true;
-  brancherTelechargement(r, { bouton: telecharger, note, choix, ligneChoix });
+  // BOUTON SCINDÉ (demandé) : « Télécharger (2,9 Mo · 1k) » à gauche, et à droite une flèche qui
+  // ouvre le choix de la qualité des textures. La flèche reste cachée tant que la source n'en propose
+  // pas plusieurs.
+  const fleche = el('button', { texte: '▾', classe: 'full-btn store-bouton-fleche', attrs: { type: 'button', 'aria-label': t.texturesLibelle, 'aria-haspopup': 'menu' } });
+  fleche.hidden = true;
+  const menu = el('div', { classe: 'store-menu-resolutions', attrs: { role: 'menu' } });
+  menu.hidden = true;
+  const scinde = el('div', { classe: 'store-bouton-scinde' }, [telecharger, fleche, menu]);
+  brancherTelechargement(r, { bouton: telecharger, note, fleche, menu, choisie: null });
   const section = (titre, lignes, avant = []) => el('section', { classe: 'store-fiche-section' }, [
     el('h5', { texte: titre }), ...avant, el('ul', {}, lignes.map(p => el('li', { texte: p }))),
   ]);
@@ -250,8 +254,7 @@ function ouvrirFiche(r){
     ]),
     // Retour et Télécharger TOUJOURS visibles (demandé) : un pied collé au bas de la zone qui défile.
     el('div', { classe: 'store-fiche-pied' }, [
-      ligneChoix,
-      el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
+      el('div', { classe: 'store-fiche-actions' }, [retour, scinde]),
       note,
     ]),
   );
@@ -305,13 +308,13 @@ export function etatBoutonTelechargement({ source, possible, possede, options, c
   }
   // Un modèle téléchargé avant le choix de résolution l'a été en 1k.
   if (possede && (possede.resolution || RESOLUTION_DEFAUT) === choisie) {
-    return { texte: '✓ ' + t.possede, actif: false, note: t.possedeFiche(possede.fichier), remplace: false };
+    return { texte: `✓ ${t.possede} · ${choisie}`, actif: false, note: t.possedeFiche(possede.fichier), remplace: false };
   }
   if (possede) {
-    return { texte: poids ? t.remplacer(choisie, poids) : t.remplacer(choisie, '…'), actif: true,
+    return { texte: t.remplacer(choisie, poids || '…'), actif: true,
       note: t.remplacerNote(possede.fichier, possede.resolution || RESOLUTION_DEFAUT), remplace: true };
   }
-  return { texte: poids ? t.telechargerPoids(poids) : t.telecharger, actif: true, note: t.noteTelechargement(source), remplace: false };
+  return { texte: poids ? t.telechargerPoids(poids, choisie) : t.telecharger, actif: true, note: t.noteTelechargement(source), remplace: false };
 }
 
 function brancherTelechargement(r, ui){
@@ -320,39 +323,69 @@ function brancherTelechargement(r, ui){
   const possible = !!(infos && infos.source.connexion && infos.source.connexion.telechargement === false
     && pont && pont.storeTelecharger);
   let options = [];
+  ui.choisie = resolutionPreferee();
+  const enCoursIci = () => !!(enTelechargement && enTelechargement.cle === cleDe(r));
   const appliquer = () => {
-    if (enTelechargement && enTelechargement.cle === cleDe(r)) {
+    if (enCoursIci()) {
       // On rouvre la fiche d'un modèle en cours de téléchargement : elle reprend la progression.
       enTelechargement.bouton = ui.bouton;
       enTelechargement.note = ui.note;
       ui.bouton.disabled = true;
-      ui.choix.disabled = true;
+      ui.fleche.disabled = true;
       return;
     }
     const e = etatBoutonTelechargement({
-      source: r.source, possible, possede: possedes.get(cleDe(r)) || null, options,
-      choisie: ui.choix.value || resolutionPreferee(), lang: langue(),
+      source: r.source, possible, possede: possedes.get(cleDe(r)) || null, options, choisie: ui.choisie, lang: langue(),
     });
     ui.bouton.textContent = e.texte;
     ui.bouton.disabled = !e.actif || !!enTelechargement;
+    ui.fleche.disabled = !!enTelechargement;
     ui.note.textContent = e.note;
     ui.note.classList.remove('erreur');
   };
+  /** Le menu des qualités : une ligne par résolution, la choisie cochée, celle déjà là signalée. */
+  const remplirMenu = () => {
+    const p = possedes.get(cleDe(r));
+    const deja = p ? (p.resolution || RESOLUTION_DEFAUT) : null;
+    ui.menu.replaceChildren(...options.map(o => {
+      const ligne = el('button', {
+        texte: (o.resolution === ui.choisie ? '✓ ' : '') + t.optionResolution(o.resolution, poidsLisible(o.octets, langue()))
+          + (o.resolution === deja ? ` · ${t.possede.toLowerCase()}` : ''),
+        classe: 'store-menu-resolution' + (o.resolution === ui.choisie ? ' actif' : ''),
+        attrs: { type: 'button', role: 'menuitemradio', 'aria-checked': String(o.resolution === ui.choisie) },
+      });
+      ligne.onclick = () => { ui.choisie = o.resolution; memoriserResolution(o.resolution); fermerMenu(); appliquer(); };
+      return ligne;
+    }));
+  };
+  // Le menu se ferme au choix, par Échap, ou d'un clic ailleurs : jamais laissé ouvert derrière soi.
+  const ailleurs = (e) => { if (!ui.menu.contains(e.target) && e.target !== ui.fleche) fermerMenu(); };
+  const echap = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fermerMenu(); } };
+  function fermerMenu(){
+    ui.menu.hidden = true;
+    ui.fleche.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', ailleurs, true);
+    document.removeEventListener('keydown', echap, true);
+  }
+  ui.fleche.onclick = () => {
+    if (!ui.menu.hidden) { fermerMenu(); return; }
+    remplirMenu();
+    ui.menu.hidden = false;
+    ui.fleche.setAttribute('aria-expanded', 'true');
+    document.addEventListener('mousedown', ailleurs, true);
+    document.addEventListener('keydown', echap, true);
+  };
   appliquer();
-  if (enTelechargement && enTelechargement.cle === cleDe(r)) ui.bouton.textContent = t.telechargement(0);
+  if (enCoursIci()) ui.bouton.textContent = t.telechargement(0);
   if (!possible) return;
-  ui.choix.onchange = () => { memoriserResolution(ui.choix.value); appliquer(); };
-  ui.bouton.onclick = () => telechargerModele(r, ui, ui.choix.value || resolutionPreferee());
+  ui.bouton.onclick = () => telechargerModele(r, ui, ui.choisie);
   if (!pont.storePoids) return;
   pont.storePoids(r.source, r.id).then(p => {
     if (!p || !Array.isArray(p.options) || !p.options.length) return;
     options = p.options;
-    ui.choix.replaceChildren(...options.map(o => el('option', {
-      texte: t.optionResolution(o.resolution, poidsLisible(o.octets, langue())), attrs: { value: o.resolution },
-    })));
-    const voulue = resolutionPreferee();
-    ui.choix.value = options.some(o => o.resolution === voulue) ? voulue : options[0].resolution;
-    ui.ligneChoix.hidden = false;
+    if (!options.some(o => o.resolution === ui.choisie)) ui.choisie = options[0].resolution;
+    ui.fleche.hidden = options.length < 2;
+    if (ui.fleche.parentElement) ui.fleche.parentElement.classList.toggle('avec-fleche', options.length >= 2);
     appliquer();
   }).catch(() => {});
 }
@@ -374,7 +407,7 @@ export async function telechargerModele(r, ui, resolution = RESOLUTION_DEFAUT){
     if (texteNote != null && e.note) { e.note.textContent = texteNote; e.note.classList.toggle('erreur', erreur); }
   };
   ui.bouton.disabled = true;
-  if (ui.choix) ui.choix.disabled = true;
+  if (ui.fleche) ui.fleche.disabled = true;
   dire(t.telechargement(0), '');
   let issue;
   try {
@@ -391,7 +424,7 @@ export async function telechargerModele(r, ui, resolution = RESOLUTION_DEFAUT){
   }
   const courant = enTelechargement;
   enTelechargement = null;
-  if (ui.choix) ui.choix.disabled = false;
+  if (ui.fleche) ui.fleche.disabled = false;
   if (issue.ok) {
     if (pont.storeAttribuer) await pont.storeAttribuer(r, issue.fichier, issue.resolution);
     await rafraichirPossedes();

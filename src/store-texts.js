@@ -57,11 +57,11 @@ const T = {
     noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.'
       : 'Le modèle et ses textures, réunis dans un seul fichier .glb.'),
-    texturesLibelle: 'Textures',
-    optionResolution: (res, p) => `${res} (${parseInt(res, 10) * 1024} px) · ${p}`,
-    remplacer: (res, p) => `Remplacer par ${res} (${p})`,
+    texturesLibelle: 'Qualité des textures',
+    optionResolution: (res, p) => `${res} · ${parseInt(res, 10) * 1024} px · ${p}`,
+    remplacer: (res, p) => `Remplacer (${p} · ${res})`,
     remplacerNote: (f, res) => `Déjà dans vos modèles${res ? ` en ${res}` : ''}, sous « ${f} ». Le remplacer met à jour toutes les Cases qui l'utilisent.`,
-    telechargerPoids: (p) => `Télécharger (${p})`,
+    telechargerPoids: (p, res) => (res ? `Télécharger (${p} · ${res})` : `Télécharger (${p})`),
     telechargement: (pct) => `Téléchargement… ${pct} %`,
     rangement: 'Rangement…',
     telechargeOk: (f) => `Ajouté à vos modèles sous le nom « ${f} ».`,
@@ -116,11 +116,11 @@ const T = {
     noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Downloading will require signing in to Sketchfab: it is coming in a future version.'
       : 'The model and its textures, packed into a single .glb file.'),
-    texturesLibelle: 'Textures',
-    optionResolution: (res, p) => `${res} (${parseInt(res, 10) * 1024} px) · ${p}`,
-    remplacer: (res, p) => `Replace with ${res} (${p})`,
+    texturesLibelle: 'Texture quality',
+    optionResolution: (res, p) => `${res} · ${parseInt(res, 10) * 1024} px · ${p}`,
+    remplacer: (res, p) => `Replace (${p} · ${res})`,
     remplacerNote: (f, res) => `Already in your models${res ? ` at ${res}` : ''}, as "${f}". Replacing it updates every panel that uses it.`,
-    telechargerPoids: (p) => `Download (${p})`,
+    telechargerPoids: (p, res) => (res ? `Download (${p} · ${res})` : `Download (${p})`),
     telechargement: (pct) => `Downloading… ${pct}%`,
     rangement: 'Saving…',
     telechargeOk: (f) => `Added to your models as "${f}".`,

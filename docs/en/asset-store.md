@@ -115,7 +115,7 @@ Done for Poly Haven (#445); Sketchfab will reuse the same path once signing in e
 
 1. `store:poids` gives the size of each offered resolution (`optionsTelechargement`) (`planTelechargement`, from `/files/{id}`).
 2. `store:telecharger` (main process) downloads the `.gltf` and each included file at the resolution
-   chosen in the details view (**1k** by default, 2k or 4k; never 8k, too heavy for a panel; the
+   chosen with the arrow of the "Download" button (**1k** by default, 2k or 4k; never 8k, too heavy for a panel; the
    choice is remembered), only
    from `dl.polyhaven.org`, checks every md5, refuses beyond 300 MB, then **packs** everything into a
    `.glb` (`gltf-glb.js`, no dependency). Progress comes back through `store:progression`.

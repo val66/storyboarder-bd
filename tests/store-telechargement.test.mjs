@@ -226,21 +226,21 @@ describe('Télécharger depuis la fiche', () => {
 describe('Le bouton dit ce qu\'il fera', () => {
   const options = [{ resolution: '1k', octets: 800000 }, { resolution: '2k', octets: 2900000 }];
   const etat = (p) => etatBoutonTelechargement({ source: 'polyhaven', possible: true, options, choisie: '1k', possede: null, ...p });
-  test('absent : télécharger, avec le poids de la résolution choisie', () => {
-    assert.equal(etat({}).texte, 'Télécharger (781 Ko)');
-    assert.equal(etat({ choisie: '2k' }).texte, 'Télécharger (2,8 Mo)');
+  test('absent : télécharger, avec le poids ET la qualité choisie entre parenthèses (demandé)', () => {
+    assert.equal(etat({}).texte, 'Télécharger (781 Ko · 1k)');
+    assert.equal(etat({ choisie: '2k' }).texte, 'Télécharger (2,8 Mo · 2k)');
     assert.equal(etat({}).actif, true);
   });
   test('déjà là dans cette résolution : rien à faire', () => {
     const e = etat({ possede: { fichier: 'a.glb', resolution: '1k' } });
     assert.equal(e.actif, false);
-    assert.match(e.texte, /Déjà téléchargé/);
+    assert.equal(e.texte, '✓ Déjà téléchargé · 1k');
   });
   test('déjà là dans une autre : remplacer, et la note dit que les Cases suivront', () => {
     const e = etat({ possede: { fichier: 'a.glb', resolution: '1k' }, choisie: '2k' });
     assert.equal(e.actif, true);
     assert.equal(e.remplace, true);
-    assert.equal(e.texte, 'Remplacer par 2k (2,8 Mo)');
+    assert.equal(e.texte, 'Remplacer (2,8 Mo · 2k)');
     assert.match(e.note, /en 1k.*a\.glb.*Cases/);
   });
   test('téléchargé avant le choix de résolution : compté comme 1k', () => {
