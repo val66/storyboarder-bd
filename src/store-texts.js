@@ -5,6 +5,9 @@
  * commun (store-sources.js, à la racine), quelle que soit la source.
  */
 
+/** Deux décimales, arrondies comme on l'attend : 1,065 → 1,07 (`toFixed` seul donne 1,06). */
+const deuxDecimales = (x) => (Math.round(x * 100 + Number.EPSILON * 100) / 100).toFixed(2);
+
 const T = {
   fr: {
     ouvrir: 'Bibliothèque en ligne',
@@ -42,8 +45,12 @@ const T = {
     poids: (p) => `Téléchargement : ${p}`,
     lourd: 'Modèle lourd : il peut ralentir les Cases qui l\'affichent.',
     anime: 'Animé',
+    // Largeur × profondeur × hauteur, en mètres, quand la source les donne (Poly Haven).
+    dimensions: (d) => `Taille : ${d.map(x => deuxDecimales(x).replace('.', ',')).join(' × ')} m`,
     telecharger: 'Télécharger',
-    bientot: 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.',
+    bientot: (source) => (source === 'sketchfab'
+      ? 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.'
+      : 'Le téléchargement arrive dans une prochaine version.'),
     fermerFiche: 'Retour aux résultats',
     possede: 'Déjà téléchargé',
     possedeFiche: (f) => `Ce modèle est déjà dans vos modèles, sous le nom « ${f} ».`,
@@ -84,8 +91,11 @@ const T = {
     poids: (p) => `Download: ${p}`,
     lourd: 'Heavy model: it may slow down the panels that show it.',
     anime: 'Animated',
+    dimensions: (d) => `Size: ${d.map(deuxDecimales).join(' × ')} m`,
     telecharger: 'Download',
-    bientot: 'Downloading will require signing in to Sketchfab: it is coming in a future version.',
+    bientot: (source) => (source === 'sketchfab'
+      ? 'Downloading will require signing in to Sketchfab: it is coming in a future version.'
+      : 'Downloading is coming in a future version.'),
     fermerFiche: 'Back to results',
     possede: 'Already downloaded',
     possedeFiche: (f) => `This model is already in your models, as "${f}".`,
@@ -144,5 +154,6 @@ export function lignesDetails(r, lang = 'fr'){
   if (Number.isFinite(d.textures) && d.textures > 0) lignes.push(t.textures(d.textures, d.textureMax));
   if (r.poids) lignes.push(t.poids(poidsLisible(r.poids, lang)));
   if (d.anime) lignes.push(t.anime);
+  if (Array.isArray(d.dimensions) && d.dimensions.length === 3) lignes.push(t.dimensions(d.dimensions));
   return lignes;
 }

@@ -2069,6 +2069,17 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 /* ⚠️ `hidden` ne l'emporte pas sur un `display` posé par une classe : sans ces règles, la grille
    restait affichée sous la fiche au lieu d'être remplacée. */
 .store-grille[hidden], .store-fiche[hidden], .store-plus[hidden], .store-filtres[hidden]{ display:none; }
+/* Un filtre sans objet pour la source affichée (licence, usage commercial chez Poly Haven). */
+.store-filtres [hidden]{ display:none; }
+/* Les onglets des sources (#445) : un soulignement, pas des boutons pleins, pour ne pas rivaliser
+   avec les filtres juste en dessous. */
+.store-onglets{ display:flex; gap:4px; border-bottom:1px solid var(--line); margin:0 0 12px; }
+.store-onglet{
+  padding:7px 14px; border:0; border-bottom:2px solid transparent; margin-bottom:-1px; background:none;
+  font-family:'Inter',sans-serif; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer;
+}
+.store-onglet:hover{ color:var(--ink); }
+.store-onglet.actif{ color:var(--accent); border-bottom-color:var(--accent); cursor:default; }
 .store-carte{
   display:flex; flex-direction:column; gap:4px; text-align:left; padding:0 0 8px; cursor:pointer;
   background:var(--white); border:1px solid var(--line); border-radius:8px; overflow:hidden; color:var(--ink);

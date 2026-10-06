@@ -1253,6 +1253,8 @@
 <div class="modal-overlay hidden" id="storeModal">
   <div class="modal-box store-box">
     <h3 id="storeTitre"></h3>
+    <!-- #445 : un onglet par source, écrit par le code (src/store-ui.js, SOURCES_STORE). -->
+    <div id="storeOnglets" class="store-onglets" role="tablist"></div>
     <p id="storeSimulation" class="maj-simulation" hidden></p>
     <form id="storeFormulaire" class="store-filtres">
       <input id="storeTexte" class="modal-input" type="search" autocomplete="off">
@@ -1260,7 +1262,7 @@
       <select id="storeLicence"></select>
       <select id="storeFaces"></select>
       <select id="storeTri"></select>
-      <label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label>
+      <span id="storeCommercialCase"><label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label></span>
     </form>
     <p id="storeMessage" class="maj-message"></p>
     <!-- Seule cette zone défile : les filtres restent en haut, la mention en bas. La fiche d'un

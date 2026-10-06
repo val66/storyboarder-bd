@@ -194,9 +194,9 @@ export const HELP_MANUAL_EN = [
     'Its selection box on the Page follows the span of the model\'s own skeleton: a slim figure gets a slim box, not a square one.',
   ]},
   { id: 'store', title: 'Online models', paragraphs: [
-    '"Online library", at the top of the Models section, opens a search window over the free models of Sketchfab: keywords, category, license, maximum size, sorting.',
+    '"Online library", at the top of the Models section, opens a search window over free models: keywords, category, license, maximum size, sorting. One tab per source: Sketchfab, and Poly Haven, all in CC0 (free for any use, no credit required).',
     'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around. Heavy models are flagged before downloading.',
-    'Downloading will require signing in to a Sketchfab account: it is coming in a future version.',
+    'Downloading is coming in a future version; from Sketchfab, it will require signing in to an account.',
     'A model you already downloaded carries a tick at the top right of its thumbnail, and its details give the file name instead of downloading it twice.',
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
@@ -396,9 +396,9 @@ export const HELP_MANUAL_FR = [
     'Sa boîte de sélection sur la Planche suit l\'envergure du squelette du modèle : une figure élancée reçoit une boîte élancée, pas un carré.',
   ]},
   { id: 'store', title: 'Modèles en ligne', paragraphs: [
-    "« Bibliothèque en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans les modèles gratuits de Sketchfab : mots-clés, catégorie, licence, taille maximale, tri.",
+    "« Bibliothèque en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans des modèles gratuits : mots-clés, catégorie, licence, taille maximale, tri. Un onglet par source : Sketchfab, et Poly Haven, tout en CC0 (libre pour tout usage, sans crédit obligatoire).",
     "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner. Les modèles lourds sont signalés avant le téléchargement.",
-    "Le téléchargement demandera de se connecter à un compte Sketchfab : il arrive dans une prochaine version.",
+    "Le téléchargement arrive dans une prochaine version ; depuis Sketchfab, il demandera de se connecter à un compte.",
     "Un modèle déjà téléchargé porte une coche en haut à droite de sa vignette, et sa fiche donne le nom du fichier au lieu de le télécharger une seconde fois.",
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [

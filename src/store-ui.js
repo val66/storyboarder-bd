@@ -17,11 +17,18 @@
 import { S } from './state.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
 
-const SOURCE = 'sketchfab';
+/**
+ * Les sources, dans l'ordre des onglets (demandé : un onglet par source). Chacune garde ses propres
+ * filtres (catégories, licences) : on les relit en changeant d'onglet.
+ */
+export const SOURCES_STORE = ['sketchfab', 'polyhaven'];
+let source = SOURCES_STORE[0];
+/** Ce que chaque source a dit d'elle-même (store:infos), lu une fois par source. */
+const infosPar = {};
 const $ = (id) => document.getElementById(id);
 const langue = () => (S.appLang === 'en' ? 'en' : 'fr');
 
-let infos = null;
+let infos = null;   // celles de la source affichée
 let derniereRecherche = null;
 let suivant = null;
 let enCours = false;
@@ -64,6 +71,7 @@ export function rafraichirTextesStore(){
   if (btn) btn.textContent = '🔎 ' + t.ouvrir;
   if (!infos) return;
   $('storeTitre').textContent = t.titre;
+  rendreOnglets();
   $('storeTexte').placeholder = t.placeholder;
   $('storeCommercialLibelle').textContent = t.commercial;
   $('storePlusBtn').textContent = t.plus;
@@ -72,9 +80,42 @@ export function rafraichirTextesStore(){
   garder('storeLicence', () => options($('storeLicence'), [['', t.toutesLicences], ...infos.licences.map(l => [l.code, l.libelle])]));
   garder('storeFaces', () => options($('storeFaces'), PLAFONDS_FACES.map(n => [n ? String(n) : '', n ? t.facesMax(nombreCourt(n, langue())) : t.facesToutes])));
   garder('storeTri', () => options($('storeTri'), infos.tris.map(c => [c, t.tris[c]])));
+  // Une seule licence (Poly Haven : tout en CC0) : ni filtre de licence, ni case « usage
+  // commercial ». Un choix qui ne change rien n'a pas sa place dans la barre.
+  $('storeLicence').hidden = infos.licences.length <= 1;
+  $('storeCommercialCase').hidden = infos.licences.every(l => l.commercial);
   $('storeCredit').replaceChildren(lien(infos.source.credit[langue()], infos.source.site));
   $('storeSimulation').hidden = !infos.simulation;
   $('storeSimulation').textContent = infos.simulation ? t.simulation : '';
+}
+
+/** Les onglets des sources. Celui de la source affichée est marqué, les autres la changent. */
+function rendreOnglets(){
+  const zone = $('storeOnglets');
+  if (!zone) return;
+  zone.replaceChildren(...SOURCES_STORE.map(id => {
+    const nom = (infosPar[id] && infosPar[id].source.nom) || id;
+    const b = el('button', { texte: nom, classe: 'store-onglet' + (id === source ? ' actif' : ''),
+      attrs: { type: 'button', role: 'tab', 'aria-selected': String(id === source) } });
+    b.onclick = () => choisirSource(id);
+    return b;
+  }));
+}
+
+/**
+ * Passer à une autre source. Le texte, le tri et la taille maximale sont gardés (ils ont le même sens
+ * partout) ; la catégorie et la licence repartent de « toutes », car chaque source a les siennes.
+ */
+export async function choisirSource(id){
+  if (!SOURCES_STORE.includes(id) || id === source) return;
+  const pont = window.storyboarderAPI;
+  if (!infosPar[id]) infosPar[id] = await pont.storeInfos(id);
+  source = id;
+  infos = infosPar[id];
+  $('storeCategorie').value = '';
+  $('storeLicence').value = '';
+  rafraichirTextesStore();
+  await chercher();
 }
 
 function parametres(curseur){
@@ -198,7 +239,7 @@ function ouvrirFiche(r){
     // Retour et Télécharger TOUJOURS visibles (demandé) : un pied collé au bas de la zone qui défile.
     el('div', { classe: 'store-fiche-pied' }, [
       el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
-      el('p', { texte: fichier ? t.possedeFiche(fichier) : t.bientot, classe: 'store-note' }),
+      el('p', { texte: fichier ? t.possedeFiche(fichier) : t.bientot(r.source), classe: 'store-note' }),
     ]),
   );
   // La fiche REMPLACE la liste (demandé) ; on garde la position dans la liste pour le retour.
@@ -222,14 +263,25 @@ function fermerFiche(){
   if (ouverte) $('storeDefilement').scrollTop = positionListe;   // on retrouve la liste où on l'avait laissée
 }
 
+/**
+ * Une recherche, ou la page suivante (`suite`).
+ *
+ * ⚠️ UNE NOUVELLE RECHERCHE PASSE TOUJOURS, même si une autre est en cours : changer d'onglet ou de
+ * filtre pendant un chargement doit montrer le NOUVEAU choix. La réponse de l'ancienne est alors
+ * ignorée à son arrivée (`generation`), sans quoi les modèles d'une source s'afficheraient sous
+ * l'onglet de l'autre. Seul « Charger plus » attend : deux suites ensemble doubleraient la page.
+ */
+let generation = 0;
 async function chercher(suite = false){
-  if (enCours) return;
+  if (suite && enCours) return;
   const t = textesStore(langue());
+  const moi = ++generation;
   enCours = true;
   if (!suite) { fermerFiche(); $('storeGrille').replaceChildren(); affiches = []; suivant = null; derniereRecherche = parametres(); }
   message(t.chargement);
   $('storePlusBtn').hidden = true;
-  const page = await window.storyboarderAPI.storeChercher(SOURCE, suite ? { ...derniereRecherche, curseur: suivant } : derniereRecherche);
+  const page = await window.storyboarderAPI.storeChercher(source, suite ? { ...derniereRecherche, curseur: suivant } : derniereRecherche);
+  if (moi !== generation) return;   // une recherche plus récente a pris la main
   enCours = false;
   if (!page || page.erreur) { message(t.erreurs[page && page.erreur] || t.erreurs.reponse, true); return; }
   page.resultats.forEach(r => { affiches.push(r); $('storeGrille').appendChild(carte(r)); });
@@ -242,7 +294,10 @@ export async function ouvrirStore(){
   const pont = window.storyboarderAPI;
   if (!pont || !pont.storeChercher) return;
   if (!infos) {
-    infos = await pont.storeInfos(SOURCE);
+    infosPar[source] = await pont.storeInfos(source);
+    // Les noms des autres onglets : sans eux, l'onglet afficherait l'identifiant technique.
+    await Promise.all(SOURCES_STORE.filter(id => !infosPar[id]).map(async id => { infosPar[id] = await pont.storeInfos(id); }));
+    infos = infosPar[source];
     rafraichirTextesStore();
   }
   // Relu à chaque ouverture : un modèle a pu être téléchargé, supprimé ou renommé entre-temps. Les

@@ -32,6 +32,23 @@ Checked by calling the API on 5 October 2026.
 - **Obligations** (Developer Terms 4.5 to 4.7): say the models come from Sketchfab, show the license
   and the author with a link, and carry that credit into whatever the user distributes.
 
+## What the Poly Haven API allows
+
+Checked by calling the API on 6 October 2026 (`api.polyhaven.com`, guide: `polyhaven.com/llms.txt`).
+
+- **No key, no account**, for searching as for downloading. Everything is **CC0**: commercial use
+  included, no attribution required. The terms ask for a **User-Agent** naming the application, and
+  for saying where the models shown come from (the credit under the grid).
+- **`/assets?type=models`** returns the whole catalogue at once (about 520 models): name, authors,
+  category (`Furniture/Seating/Chairs`), `polycount`, dimensions in millimetres, downloads, date,
+  thumbnail. No pages: filtering, sorting and paging happen **on our side** (`pageLocale`), and the
+  catalogue is kept in memory for an hour.
+- **`/search?q=…&type=models`** returns the matching identifiers, most relevant first, in any
+  language.
+- **`/files/{id}`**: every file, by format and resolution, with size and md5. glTF comes as
+  `.gltf` + `.bin` + textures, not as `.glb`.
+- **Early-access** models (publication date still to come) are left out.
+
 ## The source contract
 
 Two modules at the root, in CommonJS, tested under plain Node:
@@ -41,10 +58,16 @@ Two modules at the root, in CommonJS, tested under plain Node:
   **cleaned** before they reach a source, and the **credit line**.
 - `store-sketchfab.js`: the address of a search and of a download request, and the translation of
   responses into the common format. **No request** is made there.
+- `store-polyhaven.js`: the same for Poly Haven, plus the page built on our side.
+
+In the window, **one tab per source** (`SOURCES_STORE`, src/store-ui.js). Each source keeps its own
+categories and licenses; a filter that means nothing there (license and commercial use for Poly
+Haven) is hidden. A response that arrives after a tab change is ignored.
 
 A source writes a module of that kind; the interface, attribution and file storage do not change.
-`tests/fixtures/sketchfab-recherche.json` is a real API response: if Sketchfab changes its format,
-that is the file to record again.
+`tests/fixtures/sketchfab-recherche.json`, `polyhaven-catalogue.json` (an extract) and
+`polyhaven-recherche.json` are real responses: if a source changes its format, those are the files
+to record again.
 
 An **unknown license** is read as conservatively as possible: attribution required, neither
 commercial use nor modification. **Age-restricted** and non-downloadable models are left out.
@@ -83,12 +106,12 @@ present in the exported Pages (#444f). The store shows "Models provided by Sketc
 - **#444f** Credits in exports.
 - **#444g** Placing a model straight from its detail view.
 - **#444h** Finishing touches: remembered filters, manual, README, translations.
-- **#445** Poly Haven; **#446** the texture store.
+- **#445** Poly Haven: search and tabs (done), then downloading. **#446** the texture store.
 
 ## Seeing the store without network
 
-In development, `STORYBOARD_SIMULER_STORE` returns the recorded response instead of calling
-Sketchfab, flagged by a yellow banner:
+In development, `STORYBOARD_SIMULER_STORE` returns the recorded responses instead of calling
+Sketchfab or Poly Haven, flagged by a yellow banner:
 
 ```
 [Console]::OutputEncoding=[Text.Encoding]::UTF8; cd C:\WebProjects\Storyboarder; $env:STORYBOARD_SIMULER_STORE='1'; npm start

@@ -33,6 +33,23 @@ Relevé en appelant l'API le 5 octobre 2026.
   la licence et l'auteur avec un lien, et faire suivre ce crédit jusque dans ce que l'utilisateur
   diffuse.
 
+## Ce que l'API Poly Haven permet
+
+Relevé en appelant l'API le 6 octobre 2026 (`api.polyhaven.com`, guide : `polyhaven.com/llms.txt`).
+
+- **Ni clé ni compte**, pour chercher comme pour télécharger. Tout est en **CC0** : usage commercial
+  compris, sans attribution obligatoire. Les conditions demandent un **User-Agent** qui nomme
+  l'application, et de dire d'où viennent les modèles affichés (le crédit sous la grille).
+- **`/assets?type=models`** rend tout le catalogue d'un coup (environ 520 modèles) : nom, auteurs,
+  catégorie (`Furniture/Seating/Chairs`), `polycount`, dimensions en millimètres, téléchargements,
+  date, vignette. Pas de pages : on filtre, trie et découpe **chez nous** (`pageLocale`), et le
+  catalogue est gardé une heure en mémoire.
+- **`/search?q=…&type=models`** rend les identifiants trouvés, le plus pertinent d'abord, dans
+  toutes les langues.
+- **`/files/{id}`** : chaque fichier, par format et résolution, avec poids et md5. Le glTF arrive en
+  `.gltf` + `.bin` + textures, pas en `.glb`.
+- Les modèles en **accès anticipé** (date de publication à venir) sont écartés.
+
 ## Le contrat des sources
 
 Deux modules à la racine, en CommonJS, testés sous Node nu :
@@ -42,10 +59,16 @@ Deux modules à la racine, en CommonJS, testés sous Node nu :
   recherche **nettoyés** avant d'atteindre une source, et la **ligne de crédit**.
 - `store-sketchfab.js` : l'adresse d'une recherche et d'une demande de téléchargement, et la
   traduction des réponses dans le format commun. **Aucune requête** n'y est faite.
+- `store-polyhaven.js` : la même chose pour Poly Haven, plus la page faite chez nous.
+
+Dans la fenêtre, **un onglet par source** (`SOURCES_STORE`, src/store-ui.js). Chaque source garde
+ses catégories et ses licences ; un filtre sans objet (licence et usage commercial chez Poly Haven)
+est caché. Une réponse arrivée après un changement d'onglet est ignorée.
 
 Une source écrit un module de ce type ; l'interface, l'attribution et le rangement des fichiers ne
-changent pas. `tests/fixtures/sketchfab-recherche.json` est une vraie réponse de l'API : si
-Sketchfab change de format, c'est elle qu'il faut relever à nouveau.
+changent pas. `tests/fixtures/sketchfab-recherche.json`, `polyhaven-catalogue.json` (un extrait) et
+`polyhaven-recherche.json` sont de vraies réponses : si une source change de format, ce sont elles
+qu'il faut relever à nouveau.
 
 Une **licence inconnue** se lit au plus prudent : attribution exigée, ni usage commercial ni
 modification. Les modèles **réservés aux adultes** et les non téléchargeables sont écartés.
@@ -85,12 +108,13 @@ listent les ressources attribuables présentes dans les Planches exportées (#44
 - **#444f** Les crédits dans les exports.
 - **#444g** Placer directement un modèle depuis sa fiche.
 - **#444h** Finitions : filtres mémorisés, manuel, README, traductions.
-- **#445** Poly Haven ; **#446** le store de textures.
+- **#445** Poly Haven : recherche et onglets (fait), puis le téléchargement. **#446** le store de
+  textures.
 
 ## Voir le store sans réseau
 
-En développement, `STORYBOARD_SIMULER_STORE` rend la réponse enregistrée au lieu d'appeler
-Sketchfab, signalé par un bandeau jaune :
+En développement, `STORYBOARD_SIMULER_STORE` rend les réponses enregistrées au lieu d'appeler
+Sketchfab ou Poly Haven, signalé par un bandeau jaune :
 
 ```
 [Console]::OutputEncoding=[Text.Encoding]::UTF8; cd C:\WebProjects\Storyboarder; $env:STORYBOARD_SIMULER_STORE='1'; npm start

@@ -69,6 +69,8 @@ describe('les mises en forme', () => {
   test('les lignes de la fiche', () => {
     assert.deepEqual(lignesDetails(BANC), ['50 k faces', '1 texture(s), jusqu\'à 8192 px', 'Téléchargement : 23 Mo']);
     assert.deepEqual(lignesDetails({ ...BANC, details: { anime: true }, poids: null }, 'en'), ['Animated']);
+    // Poly Haven donne la taille réelle : largeur × profondeur × hauteur, en mètres.
+    assert.deepEqual(lignesDetails({ details: { dimensions: [0.848, 0.766, 1.065] } }), ['Taille : 0,85 × 0,77 × 1,07 m']);
   });
   test('les plafonds de faces commencent par « sans limite »', () => {
     assert.equal(PLAFONDS_FACES[0], null);
@@ -84,7 +86,7 @@ describe('le câblage', () => {
   });
   test('le téléchargement est désactivé tant que la connexion n\'existe pas, et la fiche dit pourquoi', () => {
     assert.match(UI, /texte: fichier \? '✓ ' \+ t\.possede : t\.telecharger, classe: 'full-btn', attrs: \{ type: 'button', disabled: '' \}/);
-    assert.match(UI, /texte: fichier \? t\.possedeFiche\(fichier\) : t\.bientot/);
+    assert.match(UI, /texte: fichier \? t\.possedeFiche\(fichier\) : t\.bientot\(r\.source\)/);
   });
   test('l\'aperçu 3D ne se charge qu\'à la demande, et seulement depuis l\'adresse validée par la source', () => {
     const f = UI.slice(UI.indexOf('function ouvrirFiche'));
@@ -167,6 +169,6 @@ describe('le câblage', () => {
   });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
-    for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js']) assert.ok(pkg.build.files.includes(f), f);
+    for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js']) assert.ok(pkg.build.files.includes(f), f);
   });
 });

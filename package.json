@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "engines": {
     "node": ">=22"
   },
@@ -43,6 +43,7 @@
       "projects-dir.js",
       "store.js",
       "store-sketchfab.js",
+      "store-polyhaven.js",
       "store-sources.js",
       "update-policy.js",
       "updater.js",

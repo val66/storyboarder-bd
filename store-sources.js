@@ -24,7 +24,8 @@
  *     vignettes: { petite, grande },   adresses d'images, petite pour la grille, grande pour la fiche
  *     licence: { code, libelle, url, attribution, commercial, modification },
  *     poids: 23795824 | null,      octets du fichier téléchargeable le plus proche de ce qu'on prendra
- *     details: { faces, textures, textureMax, anime } (modèles ; null si inconnu)
+ *     details: { faces, textures, textureMax, anime, dimensions? } (modèles ; null si inconnu ;
+ *              dimensions : [largeur, profondeur, hauteur] en mètres, quand la source les donne)
  *     apercu3D: 'https://…' | null,    une page intégrable qui fait tourner le modèle
  *   }
  */
@@ -66,6 +67,13 @@ const SOURCES = {
     id: 'sketchfab', nom: 'Sketchfab', types: ['modele'], site: 'https://sketchfab.com',
     connexion: { recherche: false, telechargement: true },
     credit: { fr: 'Modèles fournis par Sketchfab', en: 'Models provided by Sketchfab' },
+  },
+  // #445. Tout en CC0, sans compte ni clé. Les conditions de l'API demandent de dire d'où viennent
+  // les modèles affichés : c'est le crédit, sous la grille.
+  polyhaven: {
+    id: 'polyhaven', nom: 'Poly Haven', types: ['modele'], site: 'https://polyhaven.com',
+    connexion: { recherche: false, telechargement: false },
+    credit: { fr: 'Modèles fournis par Poly Haven', en: 'Models provided by Poly Haven' },
   },
 };
 

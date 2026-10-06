@@ -127,6 +127,13 @@ function makeFakeElement(tagName) {
       if (child && typeof child === 'object') { child.parentElement = el; child.parentNode = el; }
       return child;
     },
+    // `replaceChildren` vide puis remplit, comme dans un navigateur (le store construit tout ainsi).
+    replaceChildren(...nouveaux){
+      enfants.length = 0;
+      nouveaux.forEach(c => { enfants.push(c); if (c && typeof c === 'object') { c.parentElement = el; c.parentNode = el; } });
+    },
+    // Les <option> d'un <select> : ses enfants. Assez pour qu'un code qui les parcourt ne plante pas.
+    get options(){ return enfants; },
     removeChild(child){
       const i = enfants.indexOf(child);
       if (i >= 0) enfants.splice(i, 1);
