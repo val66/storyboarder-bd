@@ -2067,8 +2067,18 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-fiche a{ color:var(--accent); }
 .store-fiche-visuel{ width:100%; aspect-ratio:16/9; background:var(--creux); border-radius:8px; overflow:hidden; }
 /* Deux colonnes : aperçu à gauche, description à droite ; empilées si la fenêtre est étroite. */
-.store-fiche-corps{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:20px; align-items:start; }
-@media (max-width: 760px){ .store-fiche-corps{ grid-template-columns:minmax(0, 1fr); } }
+/* La fiche OCCUPE toute la hauteur de la zone qui défile (demandé : la fenêtre paraissait vide) :
+   l'aperçu, à gauche sur 60 % de la largeur, s'étire jusqu'au-dessus de ses boutons, et le pied
+   reste en bas. La fenêtre garde la même taille que la liste : elle ne saute pas d'un écran à l'autre. */
+.store-fiche:not([hidden]){ display:flex; flex-direction:column; min-height:100%; }
+.store-fiche-corps{ flex:1 1 auto; display:grid; grid-template-columns:minmax(0, 3fr) minmax(0, 2fr); gap:20px; align-items:stretch; }
+.store-fiche-gauche{ display:flex; flex-direction:column; gap:8px; min-height:0; }
+.store-fiche-gauche .store-fiche-visuel{ flex:1 1 auto; aspect-ratio:auto; min-height:260px; }
+.store-fiche-gauche .store-fiche-boutons{ margin-top:0; }
+@media (max-width: 760px){
+  .store-fiche-corps{ grid-template-columns:minmax(0, 1fr); }
+  .store-fiche-gauche .store-fiche-visuel{ flex:none; aspect-ratio:16/9; min-height:0; }
+}
 .store-fiche-droite > h4:first-child{ margin-top:0; }
 /* Le pied colle au bas de la zone qui défile : Retour et Télécharger restent visibles. */
 .store-fiche-pied{ position:sticky; bottom:0; background:var(--paper-dark); padding:10px 0 2px; margin-top:12px; }

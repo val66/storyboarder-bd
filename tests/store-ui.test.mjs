@@ -157,7 +157,9 @@ describe('le câblage', () => {
     assert.match(f, /el\('div', \{ classe: 'store-fiche-pied' \}, \[\n\s+el\('div', \{ classe: 'store-fiche-actions' \}, \[retour, telecharger\]\)/);
     const css = lire('style.css');
     assert.match(css, /\.store-fiche-pied\{ position:sticky; bottom:0;/);
-    assert.match(css, /\.store-fiche-corps\{ display:grid; grid-template-columns:minmax\(0, 1fr\) minmax\(0, 1fr\);/);
+    assert.match(css, /\.store-fiche-corps\{ flex:1 1 auto; display:grid; grid-template-columns:minmax\(0, 3fr\) minmax\(0, 2fr\);/);
+    assert.match(css, /\.store-fiche:not\(\[hidden\]\)\{ display:flex; flex-direction:column; min-height:100%; \}/);
+    assert.match(css, /\.store-fiche-gauche \.store-fiche-visuel\{ flex:1 1 auto; aspect-ratio:auto;/);
     assert.match(css, /\.store-box \.maj-message:empty\{ display:none; \}/);
   });
   test('les modules du store voyagent avec l\'application', () => {
