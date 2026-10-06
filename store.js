@@ -310,7 +310,21 @@ function apercu(sourceId, id, progression, simulation){
   return telecharger(sourceId, id, polyhaven.RESOLUTION, progression, simulation);
 }
 
+/**
+ * Les octets de la vignette d'un résultat (la grande si possible), pour en faire celle du modèle
+ * local. Seulement depuis les hôtes d'images des sources connues ; null sinon ou en cas d'échec.
+ */
+const HOTES_VIGNETTES = /^https:\/\/(cdn\.polyhaven\.com|media\.sketchfab\.com)\//;
+async function vignetteSource(resultat){
+  const v = resultat && resultat.vignettes;
+  const url = v && [v.grande, v.petite].find(u => typeof u === 'string' && HOTES_VIGNETTES.test(u));
+  if (!url) return null;
+  // Poly Haven sert du WebP sur demande ; on demande du PNG, que toute toile sait relire.
+  const r = await lireOctets(url.replace(/([?&])format=webp/, '$1format=png'));
+  return r.erreur ? null : r.octets;
+}
+
 module.exports = {
-  chercher, infos, telecharges, poids, telecharger, apercu, attribuer, renommerAttribution,
+  chercher, infos, telecharges, poids, telecharger, apercu, attribuer, renommerAttribution, vignetteSource,
   DELAI_MS, DUREE_CATALOGUE_MS, POIDS_MAX,
 };

@@ -79,6 +79,9 @@ interface StoryboarderAPI {
     simulation: boolean;
   }>;
   storeChercher(sourceId: string, params: object): Promise<{ resultats?: object[]; suivant?: string | null; ecartes?: number; erreur?: string }>;
+  vignettesEtat(): Promise<{ aFaire: { nom: string; signature: string }[]; pretes: string[] }>;
+  vignettesLire(nom: string): Promise<{ ok: boolean; data?: Uint8Array; type?: string }>;
+  vignettesEcrire(nom: string, data: Uint8Array): Promise<{ ok: boolean }>;
   storeTelecharges(): Promise<{ source: string; id: string; fichier: string; resolution: string | null }[]>;
   storePoids(sourceId: string, id: string): Promise<{ options?: { resolution: string; octets: number }[]; erreur?: string }>;
   storeTelecharger(sourceId: string, id: string, resolution?: string): Promise<{ data?: Uint8Array; nom?: string; resolution?: string; erreur?: string }>;

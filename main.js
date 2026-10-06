@@ -500,10 +500,74 @@ ipcMain.handle('models:read', async (event, name) => {
 // décompte de ce que ça casse (cf. model-library.js) : ici on exécute, on ne redemande pas. La garde
 // de nom s'applique comme pour l'écriture, un process principal ne fait pas confiance à son
 // renderer, et une suppression est la pire opération sur laquelle se tromper de chemin.
+// ─── Vignettes des modèles (bibliothèque « Mes modèles ») ───
+// Même exception de règle que `models:*` : de l'accès disque. Ce qui DÉCIDE (signature, à refaire,
+// suivi des renommages) est dans vignettes-modeles.js, testé sous Node.
+const vignettes = require('./vignettes-modeles');
+const getVignettesDir = () => path.join(getProjectsDir(), vignettes.DOSSIER);
+async function lireIndexVignettes(){
+  try { return JSON.parse(await fs.promises.readFile(path.join(getVignettesDir(), vignettes.INDEX), 'utf8')); }
+  catch (e) { return null; }
+}
+// Les écritures de l'index passent L'UNE APRÈS L'AUTRE : deux vignettes notées en même temps (un
+// rendu et un téléchargement) liraient le même index et la seconde effacerait la première.
+let _fileIndexVignettes = Promise.resolve();
+function modifierIndexVignettes(modifier){
+  _fileIndexVignettes = _fileIndexVignettes.then(async () => {
+    fs.mkdirSync(getVignettesDir(), { recursive: true });
+    const cible = path.join(getVignettesDir(), vignettes.INDEX);
+    await fs.promises.writeFile(cible + '.tmp', JSON.stringify(modifier(await lireIndexVignettes()), null, 2), 'utf8');
+    await fs.promises.rename(cible + '.tmp', cible);
+  }).catch(() => {});
+  return _fileIndexVignettes;
+}
+async function signatureModele(nom){
+  try { return vignettes.signatureFichier(await fs.promises.stat(path.join(getModelsDir(), nom))); } catch (e) { return null; }
+}
+/** Écrit la vignette d'un modèle (octets d'image) et la note avec la signature ACTUELLE du fichier. */
+async function ecrireVignette(nom, data, origine){
+  if (!nomDeModeleAcceptable(nom) || !data || !data.length || !vignettes.typeImage(data)) return { ok: false };
+  const signature = await signatureModele(nom);
+  if (!signature) return { ok: false };
+  fs.mkdirSync(getVignettesDir(), { recursive: true });
+  await fs.promises.writeFile(path.join(getVignettesDir(), vignettes.nomVignette(nom)), Buffer.from(data));
+  await modifierIndexVignettes(i => vignettes.noter(i, nom, signature, origine));
+  return { ok: true };
+}
+// Ce qui est à rendre, et ce qui est prêt.
+ipcMain.handle('vignettes:etat', async () => {
+  let noms = [];
+  try { noms = fs.readdirSync(getModelsDir()).filter(nomDeModeleAcceptable); } catch (e) { return { aFaire: [], pretes: [] }; }
+  const fichiers = await Promise.all(noms.map(async nom => ({ nom, signature: await signatureModele(nom) })));
+  const index = await lireIndexVignettes();
+  const aFaire = vignettes.aGenerer(index, fichiers.filter(f => f.signature));
+  const aFaireNoms = new Set(aFaire.map(f => f.nom));
+  return { aFaire, pretes: noms.filter(n => !aFaireNoms.has(n)) };
+});
+ipcMain.handle('vignettes:lire', async (event, nom) => {
+  if (!nomDeModeleAcceptable(nom)) return { ok: false };
+  try {
+    const data = await fs.promises.readFile(path.join(getVignettesDir(), vignettes.nomVignette(nom)));
+    const type = vignettes.typeImage(data);
+    return type ? { ok: true, data: new Uint8Array(data), type } : { ok: false };
+  } catch (e) { return { ok: false }; }
+});
+ipcMain.handle('vignettes:ecrire', async (event, nom, data) => ecrireVignette(nom, data, 'rendu'));
+/** Un modèle renommé ou supprimé : sa vignette suit, ou s'en va. Rien de grave si elle manque. */
+async function suivreVignette(ancien, nouveau){
+  const de = path.join(getVignettesDir(), vignettes.nomVignette(ancien));
+  try {
+    if (nouveau) await fs.promises.rename(de, path.join(getVignettesDir(), vignettes.nomVignette(nouveau)));
+    else await fs.promises.unlink(de);
+  } catch (e) { /* pas de vignette : rien à suivre */ }
+  await modifierIndexVignettes(i => (nouveau ? vignettes.renommer(i, ancien, nouveau) : vignettes.oublier(i, ancien)));
+}
+
 ipcMain.handle('models:delete', async (event, name) => {
   if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
   try {
     await fs.promises.unlink(path.join(getModelsDir(), name));
+    await suivreVignette(name, null);
     return { ok: true };
   } catch (err) {
     // Déjà supprimé à la main hors de l'application : le résultat voulu est atteint, ce n'est pas
@@ -536,8 +600,9 @@ ipcMain.handle('models:rename', async (event, ancien, nouveau) => {
   try {
     if (!memeFichier && fs.existsSync(dst)) return { ok: false, error: 'un modèle porte déjà ce nom' };
     await fs.promises.rename(src, dst);
-    // #444e : un modèle venu du store garde son attribution sous son nouveau nom.
+    // #444e : un modèle venu du store garde son attribution sous son nouveau nom, et sa vignette.
     await store.renommerAttribution(getProjectsDir(), ancien, nouveau);
+    await suivreVignette(ancien, nouveau);
     return { ok: true, name: nouveau };
   } catch (err) {
     return { ok: false, error: String(err) };
@@ -801,7 +866,15 @@ ipcMain.handle('store:apercu', async (event, sourceId, id) =>
   store.apercu(sourceId, id, (recus, total) => {
     if (!event.sender.isDestroyed()) event.sender.send('store:apercuProgression', sourceId, id, recus, total);
   }, SIMULATION_STORE ? __dirname : null));
-ipcMain.handle('store:attribuer', async (event, resultat, fichier, resolution) => store.attribuer(getProjectsDir(), resultat, fichier, resolution));
+ipcMain.handle('store:attribuer', async (event, resultat, fichier, resolution) => {
+  const r = await store.attribuer(getProjectsDir(), resultat, fichier, resolution);
+  // La vignette de la source devient celle du modèle local : déjà belle, et sans rien à rendre.
+  if (r.ok) {
+    const image = await store.vignetteSource(resultat);
+    if (image) await ecrireVignette(fichier, image, 'source');
+  }
+  return r;
+});
 
 // Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on
 // joue une progression factice et on s'arrête là : `npm start` n'a rien à remplacer.
