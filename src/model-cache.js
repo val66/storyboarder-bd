@@ -145,6 +145,47 @@ function applyAnisotropy(scene){
 }
 
 /**
+ * Les couleurs d'un modèle importé, ramenées à celles de l'application (#445, signalé à l'usage :
+ * le canard jaune de Poly Haven s'affichait ORANGE dans les Cases).
+ *
+ * POURQUOI. GLTFLoader suit le glTF à la lettre : il marque les textures de couleur en sRGB, pour
+ * que Three les DÉCODE en linéaire avant l'éclairage, et il lit les couleurs de matériau comme
+ * linéaires. Cela suppose un rendu qui RE-ENCODE en sRGB à la sortie (`outputEncoding`). Le nôtre ne
+ * le fait pas (cf. rig3d.js, personaRenderer3D) : tout le reste de l'application, Personnages,
+ * Murs, Sol, choisit ses couleurs telles qu'elles s'affichent. Une texture décodée sans être
+ * ré-encodée sort assombrie et saturée, et le jaune (1 ; 0,8 ; 0,2) devient (1 ; 0,6 ; 0,03), un
+ * orange. Tous les modèles texturés étaient touchés ; Poly Haven, avec sa vignette juste à côté,
+ * l'a rendu visible.
+ *
+ * LE CORRECTIF EST ICI, et pas dans le rendu : passer la sortie en sRGB éclaircirait d'un coup tout
+ * ce que l'application dessine. On traite donc les modèles comme le reste : textures de couleur
+ * lues telles quelles (LinearEncoding = pas de décodage), couleurs de matériau converties vers ce
+ * qu'elles valent à l'écran. Les cartes techniques (normales, rugosité, métal) sont des données, pas
+ * des couleurs : on n'y touche pas.
+ *
+ * Une fois par matériau : les clones posés dans les Cases le PARTAGENT (cf. applyAnisotropy), et
+ * convertir deux fois éclaircirait encore.
+ */
+function couleursPourAffichage3D(scene){
+  const T = globalThis.THREE;
+  if (!scene || !T) return;
+  scene.traverse(n => {
+    if (!n.isMesh || !n.material) return;
+    (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => {
+      if (!m || (m.userData && m.userData.couleursAffichage3D)) return;
+      m.userData = m.userData || {};
+      m.userData.couleursAffichage3D = true;
+      ['map', 'emissiveMap'].forEach(k => {
+        if (m[k] && m[k].encoding !== T.LinearEncoding) { m[k].encoding = T.LinearEncoding; m[k].needsUpdate = true; }
+      });
+      if (m.color && m.color.convertLinearToSRGB) m.color.convertLinearToSRGB();
+      if (m.emissive && m.emissive.convertLinearToSRGB) m.emissive.convertLinearToSRGB();
+      m.needsUpdate = true;
+    });
+  });
+}
+
+/**
  * Charge les modèles manquants. Idempotent : un nom déjà chargé ou en cours est ignoré.
  *
  * N'échoue jamais. Un fichier absent ou illisible passe à « introuvable » et la fonction continue,
@@ -176,6 +217,7 @@ export async function preloadModels(noms){
       // géométrie brute (position de bind) qui ne représente pas la pose réellement affichée, cf.
       // src/skinned-box-3d.js.
       applyAnisotropy(scene);
+      couleursPourAffichage3D(scene);
       const _tMesures = sondeDebut();
       const _entree = {
         scene,
@@ -466,3 +508,4 @@ export function _setModelCacheEntry(nom, valeur){ _cache.set(nom, valeur); }
 
 /** Pour les tests : appliquer l'anisotropie sans passer par un décodage GLTF complet. */
 export function _applyAnisotropyForTests(scene){ applyAnisotropy(scene); }
+export function _couleursPourAffichageForTests(scene){ couleursPourAffichage3D(scene); }

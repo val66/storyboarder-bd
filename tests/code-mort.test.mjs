@@ -42,7 +42,7 @@ const DEHORS = ['main.js', 'preload.js', 'index.html']
  * par Electron. Leur préfixe `_` ou leur nom en `set…Bridge` le dit déjà.
  */
 const SEAUX_DE_TEST = [
-  '_setModelCacheEntry', '_applyAnisotropyForTests', '_viderCacheCorrespondances',
+  '_setModelCacheEntry', '_applyAnisotropyForTests', '_couleursPourAffichageForTests', '_viderCacheCorrespondances',
   '_reinitialiserPile', 'setModelBridge', 'setSkeletonBridge', 'setImageBridge',
   '_setImageCacheEntry', 'fermeturesEnregistrees', '_poserSolPourTests3D', '_viderTexturesDuSol3D', '_poserWebGL2PourTests3D', '_uniformesEauPourTests3D', '_viderCiel3D', '_viderTexturesDesTraces3D', '_calculsDeBoite3D',
   // #431b2 — `bubble-grain.js` garde deux Map de module : les grains chargés et les motifs

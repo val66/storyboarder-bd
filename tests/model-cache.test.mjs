@@ -26,7 +26,7 @@ import { dirname, join } from 'node:path';
 import {
   collectModelFiles, modelState, getLoadedModel, modelCacheSignature,
   preloadModels, clearModelCache, setModelCacheCallbacks, _setModelCacheEntry,
-  _applyAnisotropyForTests,
+  _applyAnisotropyForTests, _couleursPourAffichageForTests,
 } from '../src/model-cache.js';
 import { setModelBridge } from '../src/model-store.js';
 
@@ -249,6 +249,44 @@ describe('applyAnisotropy : le scintillement des textures au dézoom', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Le câblage, ce que les tests unitaires ne peuvent pas voir
 // ─────────────────────────────────────────────────────────────────────────────
+
+describe('Les couleurs d\'un modèle importé, comme le reste de l\'application (#445)', () => {
+  // Signalé à l'usage : le canard jaune de Poly Haven sortait ORANGE. Le rendu n'encode pas en sRGB
+  // à la sortie ; une texture DÉCODÉE en linéaire (ce que GLTFLoader demande) sortait assombrie.
+  const T = globalThis.THREE;
+  const maille = () => {
+    const m = new T.MeshStandardMaterial({ color: 0x808080 });
+    m.color.setRGB(0.5, 0.5, 0.5);     // linéaire, comme GLTFLoader le pose
+    m.map = new T.Texture(); m.map.encoding = T.sRGBEncoding;
+    m.normalMap = new T.Texture(); m.normalMap.encoding = T.LinearEncoding;
+    return { isMesh: true, material: m };
+  };
+  const scene = (...mailles) => ({ traverse: (f) => mailles.forEach(f) });
+
+  test('la texture de couleur est lue telle quelle, et la couleur convertie vers l\'écran', () => {
+    const n = maille();
+    _couleursPourAffichageForTests(scene(n));
+    assert.equal(n.material.map.encoding, T.LinearEncoding);
+    assert.ok(Math.abs(n.material.color.r - 0.735) < 0.01, `0,5 linéaire doit valoir ~0,735 à l'écran, pas ${n.material.color.r}`);
+  });
+  test('les cartes techniques (normales…) ne sont pas touchées', () => {
+    const n = maille();
+    n.material.normalMap.encoding = 1234;
+    _couleursPourAffichageForTests(scene(n));
+    assert.equal(n.material.normalMap.encoding, 1234);
+  });
+  test('appliqué à CHAQUE modèle décodé, juste après l\'anisotropie', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'model-cache.js'), 'utf8');
+    assert.match(src, /applyAnisotropy\(scene\);\n\s+couleursPourAffichage3D\(scene\);/);
+  });
+  test('⚠️ un matériau PARTAGÉ par deux mailles n\'est converti qu\'une fois', () => {
+    const a = maille();
+    const b = { isMesh: true, material: a.material };
+    _couleursPourAffichageForTests(scene(a, b));
+    _couleursPourAffichageForTests(scene(a));     // un second décodage du même cache
+    assert.ok(Math.abs(a.material.color.r - 0.735) < 0.01, 'converti deux fois : il s\'éclaircit encore');
+  });
+});
 
 describe('Le câblage du décalage', () => {
   const SCENE3D = lire('src/scene3d.js');
