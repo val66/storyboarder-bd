@@ -69,6 +69,32 @@ export function groupModelsByUsage(fichiers, { tomes = [], scenes = [] } = {}){
   };
 }
 
+/** Un texte comparable : minuscules, sans accents, espaces resserrés. */
+export function texteComparable(s){
+  return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Le filtre de la barre de recherche de la section Modèles. Fonction PURE.
+ *
+ * Chaque mot tapé doit se trouver quelque part, dans le nom de fichier OU dans le nom d'une Scène
+ * qui l'utilise : « salon nuit » trouve `salon.glb` utilisé par la Scène « Nuit ». Sans accents ni
+ * majuscules, parce qu'on tape « scene » plus souvent que « Scène ». Vide, rien n'est filtré.
+ */
+export function filtrerModeles(g, texte){
+  const mots = texteComparable(texte).split(' ').filter(Boolean);
+  if (!mots.length) return g;
+  const garde = (...textes) => {
+    const tout = textes.map(texteComparable).join(' ');
+    return mots.every(m => tout.includes(m));
+  };
+  return {
+    parScenes: g.parScenes.filter(e => garde(e.nom, ...e.scenes)),
+    dansCases: g.dansCases.filter(e => garde(e.nom)),
+    nonUtilises: g.nonUtilises.filter(n => garde(n)),
+  };
+}
+
 /**
  * Combien d'Éléments du Projet ouvert utilisent ce fichier. Scènes ET Cases confondues.
  *

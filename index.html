@@ -156,6 +156,8 @@
         <div class="dropdown-panel open" id="modelPanel">
           <!-- #444b : le store de modèles. Texte écrit par le code (src/store-texts.js). -->
           <button class="full-btn" id="storeOuvrirBtn" type="button"></button>
+          <!-- Filtre de la liste (nom de fichier ou de Scène). Caché sans modèle ; cf. renderModelList. -->
+          <input id="modelFiltre" class="model-filtre" type="search" autocomplete="off" hidden>
           <div id="modelList"></div>
         </div>
       </div>

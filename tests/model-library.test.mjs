@@ -365,7 +365,9 @@ async function rendre(fichiers, projet){
   S.scenes = projet.scenes || [];
   await renderModelList();
   const list = document.getElementById('modelList');
-  return list.children.filter(n => String(n.className || '').includes('model-row'));
+  // Les lignes vivent dans les sous-sections repliables (`.model-group`), une par titre.
+  return list.children.flatMap(n => (String(n.className || '') === 'model-group' ? n.children : [n]))
+    .filter(n => String(n.className || '').includes('model-row'));
 }
 
 describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne', () => {
@@ -490,6 +492,84 @@ describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne'
  * faudrait un moteur de rendu. Ce qui est gardé ici, c'est que le JS produit des lignes séparées et
  * coupables ; que le navigateur les empile relève de l'essai à l'œil.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sous-sections repliables et filtre (demandé : la section se remplit vite)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { filtrerModeles, texteComparable } = await import('../src/model-library.js');
+
+describe('Le filtre de la section Modèles', () => {
+  const g = groupModelsByUsage(['salon.glb', 'chaise.glb', 'Écran.glb'], {
+    scenes: [volume('Nuit au salon', el('salon.glb'))],
+    tomes: [volume('Tome 1', el('chaise.glb'))],
+  });
+  test('vide, rien n\'est filtré', () => {
+    assert.equal(filtrerModeles(g, '   '), g);
+  });
+  test('sans accents ni majuscules', () => {
+    assert.equal(texteComparable('  Écran   Noir '), 'ecran noir');
+    assert.deepEqual(filtrerModeles(g, 'ecran').nonUtilises, ['Écran.glb']);
+  });
+  test('le nom d\'une Scène qui l\'utilise suffit à trouver un modèle', () => {
+    const r = filtrerModeles(g, 'nuit');
+    assert.deepEqual(r.parScenes.map(e => e.nom), ['salon.glb']);
+    assert.equal(r.dansCases.length + r.nonUtilises.length, 0);
+  });
+  test('chaque mot doit se trouver, dans le nom OU dans les Scènes', () => {
+    assert.equal(filtrerModeles(g, 'salon nuit').parScenes.length, 1);
+    assert.equal(filtrerModeles(g, 'salon jour').parScenes.length, 0);
+  });
+});
+
+describe('Les sous-sections de la section Modèles', () => {
+  const titres = () => document.getElementById('modelList').children.filter(n => String(n.className).includes('model-group-title'));
+  const groupes = () => document.getElementById('modelList').children.filter(n => n.className === 'model-group');
+  const projet = { tomes: [volume('Tome 1', el('chaise.glb'))] };
+
+  test('chaque titre porte le nombre de modèles de sa sous-section', async () => {
+    document.getElementById('modelFiltre').value = '';
+    await rendre(['chaise.glb', 'a.glb', 'b.glb'], projet);
+    assert.deepEqual(titres().map(t => t.children[2].textContent), ['1', '2']);
+  });
+  test('un clic replie, l\'état est mémorisé et retrouvé au rendu suivant', async () => {
+    globalThis.localStorage.removeItem('groupeReplie:modeles:nonUtilises');
+    document.getElementById('modelFiltre').value = '';
+    await rendre(['chaise.glb', 'a.glb'], projet);
+    assert.equal(groupes()[1].hidden, false);
+    titres()[1].onclick();
+    assert.equal(groupes()[1].hidden, true);
+    assert.equal(globalThis.localStorage.getItem('groupeReplie:modeles:nonUtilises'), '1');
+    await rendre(['chaise.glb', 'a.glb'], projet);
+    assert.equal(groupes()[1].hidden, true, 'l\'état replié n\'a pas survécu au rendu');
+    assert.equal(groupes()[0].hidden, false, 'replier un groupe en a replié un autre');
+  });
+  test('PENDANT UN FILTRAGE, un groupe replié le reste et se déplie toujours d\'un clic (demandé)', async () => {
+    globalThis.localStorage.setItem('groupeReplie:modeles:nonUtilises', '1');
+    document.getElementById('modelFiltre').value = 'a';
+    await rendre(['chaise.glb', 'a.glb'], projet);
+    const g = groupes()[groupes().length - 1];
+    assert.equal(g.hidden, true, 'le filtre a déplié un groupe replié');
+    assert.ok(g.children.some(l => l.children[0].textContent === 'a.glb'), 'le résultat n\'est pas dans son groupe');
+    titres()[titres().length - 1].onclick();
+    assert.equal(g.hidden, false, 'le titre ne déplie plus pendant un filtrage');
+    assert.equal(globalThis.localStorage.getItem('groupeReplie:modeles:nonUtilises'), '0');
+    document.getElementById('modelFiltre').value = '';
+  });
+  test('aucun résultat : un message plutôt qu\'une liste vide', async () => {
+    document.getElementById('modelFiltre').value = 'zzz';
+    const lignes = await rendre(['chaise.glb'], projet);
+    assert.equal(lignes.length, 0);
+    assert.match(document.getElementById('modelList').innerHTML, /Aucun modèle ne correspond|No model matches/);
+    document.getElementById('modelFiltre').value = '';
+  });
+  test('la barre de recherche se cache quand il n\'y a aucun modèle', async () => {
+    await rendre([], {});
+    assert.equal(document.getElementById('modelFiltre').hidden, true);
+    await rendre(['a.glb'], {});
+    assert.equal(document.getElementById('modelFiltre').hidden, false);
+  });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Le clic GAUCHE : mener aux usages, ou ne rien promettre

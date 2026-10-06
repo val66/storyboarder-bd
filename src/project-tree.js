@@ -15,14 +15,14 @@
 import { FORMATS } from './constants.js';
 import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
 import { listModels } from './model-store.js';
-import { groupModelsByUsage } from './model-library.js';
+import { groupModelsByUsage, filtrerModeles } from './model-library.js';
 import { resolveModelClick } from './model-usages.js';
 import { listImages } from './image-store.js';
 import { groupImagesByUsage, imageUsageLabel } from './image-library.js';
 import { getFormat, libelleTable3D } from './utils.js';
 import { alertAction, confirmAction, openRenameEntityModal, prechargerEnCascade3D } from './io.js';
 import { renderAll } from './draw.js';
-import { memoriserTome } from './section-memory.js';
+import { memoriserTome, groupeReplie, memoriserGroupe } from './section-memory.js';
 
 // Six upward dependencies, all of them things the left menu TRIGGERS rather than owns: what a
 // Scene is (createScene / openScene / disableSceneCameraMode), the context menus its rows open,
@@ -376,12 +376,31 @@ export async function renderModelList(){
   const list = document.getElementById('modelList');
   if (!list) return;
   const fichiers = await listModels();
-  const g = groupModelsByUsage(fichiers, { tomes: S.tomes, scenes: S.scenes });
+  const tous = groupModelsByUsage(fichiers, { tomes: S.tomes, scenes: S.scenes });
   list.innerHTML = '';
 
-  const total = g.parScenes.length + g.dansCases.length + g.nonUtilises.length;
+  // La barre de recherche : cachée tant qu'il n'y a rien à chercher. Le texte tapé n'est PAS
+  // mémorisé : une liste rouverte filtrée sans qu'on s'en souvienne ferait croire à des modèles
+  // perdus.
+  const filtre = document.getElementById('modelFiltre');
+  const total = tous.parScenes.length + tous.dansCases.length + tous.nonUtilises.length;
+  if (filtre) {
+    filtre.hidden = !total;
+    filtre.placeholder = tr('Filter models…', 'Filtrer les modèles…');
+    if (!filtre._cable) {
+      filtre._cable = true;
+      filtre.addEventListener('input', () => renderModelList());
+    }
+  }
   if (!total) {
-    list.innerHTML = '<div class="empty-hint">Aucun modèle importé.</div>';
+    list.innerHTML = `<div class="empty-hint">${tr('No model imported.', 'Aucun modèle importé.')}</div>`;
+    return;
+  }
+  const texte = filtre ? filtre.value : '';
+  const g = filtrerModeles(tous, texte);
+  const filtrage = !!String(texte || '').trim();
+  if (filtrage && !(g.parScenes.length + g.dansCases.length + g.nonUtilises.length)) {
+    list.innerHTML = `<div class="empty-hint">${tr('No model matches this filter.', 'Aucun modèle ne correspond à ce filtre.')}</div>`;
     return;
   }
 
@@ -443,23 +462,53 @@ export async function renderModelList(){
     return row;
   };
 
-  const groupe = (titre, lignes) => {
-    if (!lignes.length) return;
-    const t = document.createElement('div');
-    t.className = 'side-group-title';
-    t.textContent = titre;
-    list.appendChild(t);
-    lignes.forEach(l => list.appendChild(l));
-  };
-
   // Une Scène par ligne, jamais concaténées : c'est la seule forme où l'on peut lire le nom d'une
   // Scène jusqu'au bout. Joints par « , », la coupe tombait au milieu du premier nom et les
   // suivants disparaissaient sans qu'aucun signe ne dise qu'il y en avait.
-  groupe(tr('Used by Scenes', 'Utilisés par des Scènes'),
+  groupeRepliable(list, 'modeles:parScenes', tr('Used by Scenes', 'Utilisés par des Scènes'),
     g.parScenes.map(e => ligne(e.nom, e.scenes)));
-  groupe(tr('Used in Panels', 'Utilisés dans des Cases'),
+  groupeRepliable(list, 'modeles:dansCases', tr('Used in Panels', 'Utilisés dans des Cases'),
     g.dansCases.map(e => ligne(e.nom, [tr(`${e.count} Element(s)`, `${e.count} ${tr('Element(s)', 'Élément(s)')}`)])));
-  groupe(tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
+  groupeRepliable(list, 'modeles:nonUtilises', tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
+}
+
+/**
+ * Une sous-section repliable des sections Modèles et Images (demandé : elles se remplissent vite).
+ * Le titre porte le nombre de fichiers, pour savoir ce qu'on a replié. L'état est mémorisé comme les
+ * groupes Pièce et Bâtiment (section-memory.js), sous la clé donnée (`modeles:…`, `images:…`).
+ *
+ * PENDANT UN FILTRAGE, les sous-sections gardent leur état et restent repliables (demandé) : le
+ * nombre du titre dit combien de résultats un groupe replié contient.
+ */
+function groupeRepliable(list, cle, titre, lignes){
+  if (!lignes.length) return;
+  const replie = groupeReplie(globalThis.localStorage, cle);
+  const t = document.createElement('div');
+  t.className = 'side-group-title model-group-title';
+  const caret = document.createElement('span');
+  caret.className = 'model-group-caret';
+  caret.textContent = replie ? '▸' : '▾';
+  const nom = document.createElement('span');
+  nom.className = 'model-group-nom';
+  nom.textContent = titre;
+  const nombre = document.createElement('span');
+  nombre.className = 'model-group-nombre';
+  nombre.textContent = String(lignes.length);
+  t.appendChild(caret);
+  t.appendChild(nom);
+  t.appendChild(nombre);
+  const contenu = document.createElement('div');
+  contenu.className = 'model-group';
+  contenu.hidden = replie;
+  lignes.forEach(l => contenu.appendChild(l));
+  t.onclick = () => {
+    const r = !groupeReplie(globalThis.localStorage, cle);
+    memoriserGroupe(globalThis.localStorage, cle, r);
+    contenu.hidden = r;
+    caret.textContent = r ? '▸' : '▾';
+  };
+  list.appendChild(t);
+  list.appendChild(contenu);
 }
 
 /**
@@ -528,16 +577,8 @@ export async function renderImageList(){
     return row;
   };
 
-  const groupe = (titre, lignes) => {
-    if (!lignes.length) return;
-    const t = document.createElement('div');
-    t.className = 'side-group-title';
-    t.textContent = titre;
-    list.appendChild(t);
-    lignes.forEach(l => list.appendChild(l));
-  };
-
-  groupe(tr('Used in Panels', 'Utilisées dans des Cases'),
+  // Repliables comme celles des Modèles (demandé), avec leur propre mémoire (`images:…`).
+  groupeRepliable(list, 'images:dansCases', tr('Used in Panels', 'Utilisées dans des Cases'),
     g.dansCases.map(e => ligne(e.nom, e.endroits)));
-  groupe(tr('Unused', 'Non utilisées'), g.nonUtilisees.map(n => ligne(n, [])));
+  groupeRepliable(list, 'images:nonUtilisees', tr('Unused', 'Non utilisées'), g.nonUtilisees.map(n => ligne(n, [])));
 }

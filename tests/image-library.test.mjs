@@ -489,7 +489,9 @@ async function rendre(fichiers, projet){
   S.tomes = projet.tomes || [];
   S.editingSceneId = null;
   await renderImageList();
+  // Les lignes vivent dans les sous-sections repliables (`.model-group`), une par titre.
   return document.getElementById('imageList').children
+    .flatMap(n => (String(n.className || '') === 'model-group' ? n.children : [n]))
     .filter(n => String(n.className || '').includes('model-row'));
 }
 

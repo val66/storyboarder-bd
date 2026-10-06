@@ -1985,6 +1985,26 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
    tests/model-library.test.mjs), car trois valeurs dans trois règles se désaccordent en silence. */
 .side-group-title:first-child { margin-top: 6px; }
 
+/* Section Modèles : sous-sections repliables et filtre (demandé, la liste se remplit vite).
+   Le titre garde l'allure de `.side-group-title` ; il devient cliquable, avec le nombre à droite. */
+.model-group-title { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+.model-group-title:hover { opacity: .8; }
+.model-group-caret { width: 10px; flex: none; }
+.model-group-nom { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-group-nombre { flex: none; }
+.model-group[hidden] { display: none; }
+/* Le dernier groupe termine le panneau : sa dernière ligne ne doit pas ajouter de marge (cf. la
+   règle `.dropdown-panel > *:last-child > *:last-child`, qui s'arrête un niveau plus haut). */
+#modelList > .model-group:last-child > :last-child { margin-bottom: 0; }
+.model-filtre {
+  /* 14px : le même écart qu'entre le titre « Modèles » et le bouton (8px de panneau + 6px de bouton). */
+  width: 100%; margin-top: 14px; padding: 6px 8px; font-family: 'Inter', sans-serif; font-size: 12.5px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--white); color: var(--ink);
+}
+.model-filtre[hidden] { display: none; }
+/* Sans règle, le message héritait de la taille du panneau : trop gros, et collé au champ. */
+#modelList .empty-hint, #imageList .empty-hint { font-size: 12px; line-height: 1.5; color: var(--ink-soft); margin-top: 10px; }
+
 /* ── Mises à jour (#442) ─────────────────────────────────────────────────────────────────────
    Le bouton du bandeau, à côté du numéro de version : visible seulement quand une version plus
    récente existe, donc il doit se voir sans crier. La modale et l'écran bloquant (blocage.html)

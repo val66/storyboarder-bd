@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "engines": {
     "node": ">=22"
   },

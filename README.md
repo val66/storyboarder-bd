@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.10.10**
+**Version 1.10.11**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -68,8 +68,8 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 
 ### Imported 3D models
 - 📦 **glTF import** (`.glb` / `.gltf`) at real size, into a panel or into a Scene
-- 🗂️ **Models section**: your files grouped by how the open project uses them, one click to where a
-  model is used
+- 🗂️ **Models section**: your files grouped by how the open project uses them, foldable groups, a filter
+  field, one click to where a model is used
 - ✏️ **Rename or delete** an imported file, projects that use it kept in step
 - 🦴 **Articulated models** are posed in the [Model editor](#model-editor), like characters
 - 🐉 **Morphology** proposed on import (humanoid, quadruped, winged biped, centaur, arachnid, radial

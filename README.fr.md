@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.10.10**
+**Version 1.10.11**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -71,8 +71,8 @@ Versions précédentes et notes de version : [toutes les releases](https://githu
 
 ### Modèles 3D importés
 - 📦 **Import glTF** (`.glb` / `.gltf`) à leur taille réelle, dans une Case ou dans une Scène
-- 🗂️ **Section Modèles** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, un clic
-  mène là où un modèle sert
+- 🗂️ **Section Modèles** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, des groupes
+  repliables, un champ de filtre, un clic mène là où un modèle sert
 - ✏️ **Renommer ou supprimer** un fichier importé, les Projets qui s'en servent suivent
 - 🦴 **Les modèles articulés se posent dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme les
   Personnages
