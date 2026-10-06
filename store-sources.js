@@ -128,7 +128,32 @@ function ligneDeCredit(r, lang = 'fr'){
   return `${titre} ${r.auteur.nom}, ${r.licence.libelle}, ${src} (${r.url})`;
 }
 
+/**
+ * Le fichier des attributions (#444e), à CÔTÉ du dossier Modeles, comme les correspondances de
+ * squelette : ce dossier ne contient que des `.glb`.
+ *
+ * Forme : `{ version: 1, ressources: [{ source, id, fichier, nom, auteur, licence, url, date }] }`.
+ * Le téléchargement (#444d) y ajoutera une entrée ; un renommage suivra `fichier`.
+ */
+const FICHIER_ATTRIBUTIONS = 'attributions-modeles.json';
+
+/**
+ * Les ressources déjà téléchargées ET encore présentes sur le disque. Rend `[{ source, id, fichier }]`.
+ *
+ * La présence compte : un modèle téléchargé puis supprimé n'est plus « déjà là », et le store doit
+ * permettre de le reprendre. Une entrée mal formée est ignorée plutôt que d'empêcher la lecture des
+ * autres. Les noms de fichiers se comparent sans la casse, comme sous Windows.
+ */
+function telechargesPresents(attributions, fichiersPresents){
+  const presents = new Set((fichiersPresents || []).map(f => String(f).toLowerCase()));
+  const liste = attributions && Array.isArray(attributions.ressources) ? attributions.ressources : [];
+  return liste
+    .filter(e => e && typeof e.source === 'string' && e.id != null && typeof e.fichier === 'string')
+    .filter(e => presents.has(e.fichier.toLowerCase()))
+    .map(e => ({ source: e.source, id: String(e.id), fichier: e.fichier }));
+}
+
 module.exports = {
-  LICENCES, SOURCES, TRIS, PAR_PAGE,
-  licence, rechercheNormalisee, resultatValide, pageAffichable, ligneDeCredit,
+  LICENCES, SOURCES, TRIS, PAR_PAGE, FICHIER_ATTRIBUTIONS,
+  licence, rechercheNormalisee, resultatValide, pageAffichable, ligneDeCredit, telechargesPresents,
 };

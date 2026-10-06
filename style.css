@@ -2059,6 +2059,16 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-badge{ min-width:0; flex:0 1 auto; padding:1px 6px; border-radius:999px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .store-carte-infos > :not(.store-badge){ flex:none; white-space:nowrap; }
 .store-badge.store-badge-nc{ background:var(--line); color:var(--ink-soft); }
+/* Un modèle déjà téléchargé : une pastille posée sur la vignette, et une carte un peu effacée. Elle
+   reste cliquable : la fiche dit sous quel nom le fichier est rangé. */
+.store-carte{ position:relative; }
+.store-possede{
+  position:absolute; top:6px; right:6px; width:24px; height:24px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent); color:var(--sur-accent); box-shadow:0 1px 3px rgba(0,0,0,.35);
+}
+.store-possede svg{ width:14px; height:14px; display:block; }
+.store-carte-possedee img, .store-carte-possedee .store-sans-vignette{ opacity:.7; }
 .store-plus{ display:block; margin:12px auto 0; }
 .store-fiche{ font-size:13px; line-height:1.45; }
 .store-fiche h4{ margin:14px 0 4px; font-size:20px; line-height:1.25; }

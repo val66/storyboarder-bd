@@ -61,7 +61,13 @@ commercial use nor modification. **Age-restricted** and non-downloadable models 
 ## Attribution
 
 Each downloaded resource keeps its source, identifier, author and link, license and date (#444e),
-and keeps them through renames and deletions. PNG and PDF exports list the attributable resources
+and keeps them through renames and deletions. They live in `attributions-modeles.json`, next to the
+Modeles folder (which only holds `.glb` files).
+
+**Duplicates.** Each time the store opens, it reads that file again (`store:telecharges`) and keeps
+only the entries whose file is still on disk (`telechargesPresents`, store-sources.js). A model
+already there carries a tick on its thumbnail and its details disable "Download", giving the
+file name. In simulation, the first two results count as already downloaded. PNG and PDF exports list the attributable resources
 present in the exported Pages (#444f). The store shows "Models provided by Sketchfab".
 
 ## Breakdown

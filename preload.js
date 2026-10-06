@@ -51,4 +51,6 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   // principal fait la requête et rend une page déjà normalisée (store-sources.js).
   storeInfos: (sourceId) => ipcRenderer.invoke('store:infos', sourceId),
   storeChercher: (sourceId, params) => ipcRenderer.invoke('store:chercher', sourceId, params),
+  // Les modèles déjà téléchargés depuis le store, pour ne pas les proposer deux fois.
+  storeTelecharges: () => ipcRenderer.invoke('store:telecharges'),
 });

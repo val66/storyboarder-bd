@@ -62,7 +62,13 @@ modification. Les modèles **réservés aux adultes** et les non téléchargeabl
 ## L'attribution
 
 Chaque ressource téléchargée garde avec elle sa source, son identifiant, son auteur et son lien, sa
-licence et sa date (#444e), et la suit dans les renommages et suppressions. Les exports PNG et PDF
+licence et sa date (#444e), et la suit dans les renommages et suppressions. Le tout vit dans
+`attributions-modeles.json`, à côté du dossier Modeles (qui ne contient que des `.glb`).
+
+**Doublons.** À chaque ouverture, le store relit ce fichier (`store:telecharges`) et ne retient que
+les entrées dont le fichier est encore sur le disque (`telechargesPresents`, store-sources.js). Un
+modèle déjà là porte une coche sur sa vignette et sa fiche désactive « Télécharger » en donnant
+le nom du fichier. En simulation, les deux premiers résultats passent pour déjà téléchargés. Les exports PNG et PDF
 listent les ressources attribuables présentes dans les Planches exportées (#444f). La mention
 « Modèles fournis par Sketchfab » figure dans le store.
 

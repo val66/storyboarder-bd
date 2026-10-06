@@ -178,6 +178,7 @@ globalThis.document = {
     return _elementsParId.get(id);
   },
   createElement(tag){ return makeFakeElement(tag); },
+  createElementNS(ns, tag){ return makeFakeElement(tag); },
   // Nœud texte factice minimal (nodeType 3, comme un vrai Text), nécessaire pour i18n.js
   // (setLeadingText/setTrailingText appellent document.createTextNode au chargement/à l'usage).
   createTextNode(text){ return { nodeType: 3, textContent: text }; },

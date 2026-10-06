@@ -77,4 +77,23 @@ function infos(sourceId){
   };
 }
 
-module.exports = { chercher, infos, DELAI_MS };
+/**
+ * Les modèles déjà téléchargés depuis le store et encore présents (cf. telechargesPresents).
+ * `dossierProjets` : le dossier de Projets, qui contient Modeles et le fichier des attributions.
+ * En SIMULATION, les deux premiers résultats enregistrés passent pour déjà téléchargés : de quoi voir
+ * le badge et le bouton désactivé sans rien télécharger.
+ */
+async function telecharges(dossierProjets, simulation){
+  if (simulation) {
+    const json = pageSimulee(simulation);
+    const premiers = json ? sketchfab.pageNormalisee(json).resultats.slice(0, 2) : [];
+    return premiers.map((r, i) => ({ source: r.source, id: r.id, fichier: `simulation-${i + 1}.glb` }));
+  }
+  let attributions = null;
+  let fichiers = [];
+  try { attributions = JSON.parse(await fs.promises.readFile(path.join(dossierProjets, sources.FICHIER_ATTRIBUTIONS), 'utf8')); } catch (e) { return []; }
+  try { fichiers = await fs.promises.readdir(path.join(dossierProjets, 'Modeles')); } catch (e) { return []; }
+  return sources.telechargesPresents(attributions, fichiers);
+}
+
+module.exports = { chercher, infos, telecharges, DELAI_MS };

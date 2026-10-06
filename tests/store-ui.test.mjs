@@ -83,8 +83,8 @@ describe('le câblage', () => {
     assert.ok(!/innerHTML/.test(UI));
   });
   test('le téléchargement est désactivé tant que la connexion n\'existe pas, et la fiche dit pourquoi', () => {
-    assert.match(UI, /texte: t\.telecharger, classe: 'full-btn', attrs: \{ type: 'button', disabled: '' \}/);
-    assert.match(UI, /texte: t\.bientot/);
+    assert.match(UI, /texte: fichier \? '✓ ' \+ t\.possede : t\.telecharger, classe: 'full-btn', attrs: \{ type: 'button', disabled: '' \}/);
+    assert.match(UI, /texte: fichier \? t\.possedeFiche\(fichier\) : t\.bientot/);
   });
   test('l\'aperçu 3D ne se charge qu\'à la demande, et seulement depuis l\'adresse validée par la source', () => {
     const f = UI.slice(UI.indexOf('function ouvrirFiche'));
@@ -98,8 +98,11 @@ describe('le câblage', () => {
     assert.match(MAIN, /const SIMULATION_STORE = !app\.isPackaged && !!process\.env\.STORYBOARD_SIMULER_STORE;/);
     assert.match(MAIN, /store\.chercher\(sourceId, params, SIMULATION_STORE \? __dirname : null\)/);
   });
-  test('le pont n\'expose que les deux appels du store', () => {
+  test('le pont n\'expose que les trois appels du store', () => {
     const pre = lire('preload.js');
+    assert.equal((pre.match(/ipcRenderer\.invoke\('store:/g) || []).length, 3);
+    assert.match(pre, /storeTelecharges: \(\) => ipcRenderer\.invoke\('store:telecharges'\)/);
+    assert.match(MAIN, /store\.telecharges\(getProjectsDir\(\), SIMULATION_STORE \? __dirname : null\)/);
     assert.match(pre, /storeInfos: \(sourceId\) => ipcRenderer\.invoke\('store:infos', sourceId\)/);
     assert.match(pre, /storeChercher: \(sourceId, params\) => ipcRenderer\.invoke\('store:chercher', sourceId, params\)/);
   });

@@ -748,6 +748,7 @@ const SIMULATION_STORE = !app.isPackaged && !!process.env.STORYBOARD_SIMULER_STO
 ipcMain.handle('store:infos', async (event, sourceId) => ({ ...store.infos(sourceId), simulation: SIMULATION_STORE }));
 ipcMain.handle('store:chercher', async (event, sourceId, params) =>
   store.chercher(sourceId, params, SIMULATION_STORE ? __dirname : null));
+ipcMain.handle('store:telecharges', async () => store.telecharges(getProjectsDir(), SIMULATION_STORE ? __dirname : null));
 
 // Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on
 // joue une progression factice et on s'arrête là : `npm start` n'a rien à remplacer.

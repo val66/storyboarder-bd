@@ -197,6 +197,7 @@ export const HELP_MANUAL_EN = [
     '"Online library", at the top of the Models section, opens a search window over the free models of Sketchfab: keywords, category, license, maximum size, sorting.',
     'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around. Heavy models are flagged before downloading.',
     'Downloading will require signing in to a Sketchfab account: it is coming in a future version.',
+    'A model you already downloaded carries a tick at the top right of its thumbnail, and its details give the file name instead of downloading it twice.',
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton IS POSED IN THE EDITOR, opened with the pencil on its card: three sliders per drivable bone, with the mapping table below them. The card only applies a pose: it describes ONE Element, while the rest holds for the whole file.',
@@ -398,6 +399,7 @@ export const HELP_MANUAL_FR = [
     "« Bibliothèque en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans les modèles gratuits de Sketchfab : mots-clés, catégorie, licence, taille maximale, tri.",
     "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner. Les modèles lourds sont signalés avant le téléchargement.",
     "Le téléchargement demandera de se connecter à un compte Sketchfab : il arrive dans une prochaine version.",
+    "Un modèle déjà téléchargé porte une coche en haut à droite de sa vignette, et sa fiche donne le nom du fichier au lieu de le télécharger une seconde fois.",
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette SE POSE DANS L\'ÉDITEUR, ouvert par le crayon de sa fiche : trois curseurs par os pilotable, et le tableau de correspondance en dessous. La fiche ne fait qu\'appliquer une pose : elle décrit UN Élément, le reste vaut pour le fichier entier.',

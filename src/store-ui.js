@@ -9,6 +9,10 @@
  *
  * Le téléchargement n'est pas encore là (#444c, #444d) : le bouton existe, désactivé, et dit
  * pourquoi.
+ *
+ * Un modèle DÉJÀ TÉLÉCHARGÉ (et encore présent) porte un badge sur sa carte, et sa fiche désactive
+ * « Télécharger » en donnant le nom du fichier : pas de doublon par inadvertance. La liste vient du
+ * fichier des attributions (store.js, telecharges), relue à chaque ouverture du store.
  */
 import { S } from './state.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
@@ -22,6 +26,10 @@ let derniereRecherche = null;
 let suivant = null;
 let enCours = false;
 let positionListe = 0;
+/** Les modèles déjà téléchargés : `source:id` → nom du fichier. */
+let possedes = new Map();
+/** Les résultats affichés, pour refaire les cartes sans nouvelle requête. */
+let affiches = [];
 /** La pause de saisie avant de lancer la recherche. */
 export const PAUSE_SAISIE_MS = 450;
 
@@ -81,13 +89,51 @@ function parametres(curseur){
   };
 }
 
+/** Le fichier local d'un résultat déjà téléchargé, ou null. */
+export function fichierPossede(r){
+  return possedes.get(`${r.source}:${r.id}`) || null;
+}
+
+/** Recharge la liste des modèles déjà téléchargés. Exportée pour les tests. */
+export async function rafraichirPossedes(){
+  const pont = window.storyboarderAPI;
+  const liste = pont && pont.storeTelecharges ? await pont.storeTelecharges() : [];
+  possedes = new Map((Array.isArray(liste) ? liste : []).map(e => [`${e.source}:${e.id}`, e.fichier]));
+}
+
+/**
+ * La pastille « déjà téléchargé » : une coche dans un rond, en haut à droite de la vignette (demandé :
+ * une icône plutôt qu'un libellé ; la fiche dit le reste). Construite en SVG par le DOM, pas en
+ * innerHTML. Le libellé reste en infobulle et pour les lecteurs d'écran.
+ */
+function pastillePossede(t, fichier){
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  const trait = document.createElementNS(NS, 'path');
+  trait.setAttribute('d', 'M3.5 8.5l3 3 6-7');
+  trait.setAttribute('fill', 'none');
+  trait.setAttribute('stroke', 'currentColor');
+  trait.setAttribute('stroke-width', '2.2');
+  trait.setAttribute('stroke-linecap', 'round');
+  trait.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(trait);
+  return el('span', { classe: 'store-possede', attrs: { title: `${t.possede} : ${fichier}`, role: 'img', 'aria-label': t.possede } }, [svg]);
+}
+
 function carte(r){
   const t = textesStore(langue());
+  const fichier = fichierPossede(r);
   const img = r.vignettes.petite
     ? el('img', { attrs: { src: r.vignettes.petite, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' } })
     : el('div', { classe: 'store-sans-vignette' });
-  const c = el('button', { classe: 'store-carte', attrs: { type: 'button', title: r.nom } }, [
+  // Une vignette qui ne charge pas montrait l'icône d'image cassée du navigateur : on la remplace
+  // par le fond neutre des modèles sans vignette.
+  if (r.vignettes.petite) img.addEventListener('error', () => img.replaceWith(el('div', { classe: 'store-sans-vignette' })), { once: true });
+  const c = el('button', { classe: 'store-carte' + (fichier ? ' store-carte-possedee' : ''), attrs: { type: 'button', title: r.nom } }, [
     img,
+    fichier ? pastillePossede(t, fichier) : null,
     el('span', { texte: r.nom, classe: 'store-carte-nom' }),
     el('span', { texte: `${t.par} ${r.auteur.nom}`, classe: 'store-carte-auteur' }),
     el('span', { classe: 'store-carte-infos' }, [
@@ -127,7 +173,9 @@ function ouvrirFiche(r){
 
   const retour = el('button', { texte: t.fermerFiche, classe: 'nav-btn', attrs: { type: 'button' } });
   retour.onclick = fermerFiche;
-  const telecharger = el('button', { texte: t.telecharger, classe: 'full-btn', attrs: { type: 'button', disabled: '' } });
+  // Désactivé tant que le téléchargement n'existe pas (#444d), et pour de bon si le modèle est déjà là.
+  const fichier = fichierPossede(r);
+  const telecharger = el('button', { texte: fichier ? '✓ ' + t.possede : t.telecharger, classe: 'full-btn', attrs: { type: 'button', disabled: '' } });
   const section = (titre, lignes, avant = []) => el('section', { classe: 'store-fiche-section' }, [
     el('h5', { texte: titre }), ...avant, el('ul', {}, lignes.map(p => el('li', { texte: p }))),
   ]);
@@ -150,7 +198,7 @@ function ouvrirFiche(r){
     // Retour et Télécharger TOUJOURS visibles (demandé) : un pied collé au bas de la zone qui défile.
     el('div', { classe: 'store-fiche-pied' }, [
       el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
-      el('p', { texte: t.bientot, classe: 'store-note' }),
+      el('p', { texte: fichier ? t.possedeFiche(fichier) : t.bientot, classe: 'store-note' }),
     ]),
   );
   // La fiche REMPLACE la liste (demandé) ; on garde la position dans la liste pour le retour.
@@ -178,13 +226,13 @@ async function chercher(suite = false){
   if (enCours) return;
   const t = textesStore(langue());
   enCours = true;
-  if (!suite) { fermerFiche(); $('storeGrille').replaceChildren(); suivant = null; derniereRecherche = parametres(); }
+  if (!suite) { fermerFiche(); $('storeGrille').replaceChildren(); affiches = []; suivant = null; derniereRecherche = parametres(); }
   message(t.chargement);
   $('storePlusBtn').hidden = true;
   const page = await window.storyboarderAPI.storeChercher(SOURCE, suite ? { ...derniereRecherche, curseur: suivant } : derniereRecherche);
   enCours = false;
   if (!page || page.erreur) { message(t.erreurs[page && page.erreur] || t.erreurs.reponse, true); return; }
-  page.resultats.forEach(r => $('storeGrille').appendChild(carte(r)));
+  page.resultats.forEach(r => { affiches.push(r); $('storeGrille').appendChild(carte(r)); });
   suivant = page.suivant;
   $('storePlusBtn').hidden = !suivant;
   message($('storeGrille').children.length ? '' : t.aucun);
@@ -197,10 +245,14 @@ export async function ouvrirStore(){
     infos = await pont.storeInfos(SOURCE);
     rafraichirTextesStore();
   }
+  // Relu à chaque ouverture : un modèle a pu être téléchargé, supprimé ou renommé entre-temps. Les
+  // cartes déjà affichées sont refaites, sans nouvelle requête, pour que leur badge suive.
+  await rafraichirPossedes();
   $('storeModal').classList.remove('hidden');
   $('storeTexte').focus();
   // Une première page dès l'ouverture : une fenêtre vide n'apprend rien sur ce qu'on peut y trouver.
   if (!$('storeGrille').children.length) chercher();
+  else $('storeGrille').replaceChildren(...affiches.map(carte));
 }
 
 export function fermerStore(){

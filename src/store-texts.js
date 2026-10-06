@@ -45,6 +45,8 @@ const T = {
     telecharger: 'Télécharger',
     bientot: 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.',
     fermerFiche: 'Retour aux résultats',
+    possede: 'Déjà téléchargé',
+    possedeFiche: (f) => `Ce modèle est déjà dans vos modèles, sous le nom « ${f} ».`,
   },
   en: {
     ouvrir: 'Online library',
@@ -85,6 +87,8 @@ const T = {
     telecharger: 'Download',
     bientot: 'Downloading will require signing in to Sketchfab: it is coming in a future version.',
     fermerFiche: 'Back to results',
+    possede: 'Already downloaded',
+    possedeFiche: (f) => `This model is already in your models, as "${f}".`,
   },
 };
 
