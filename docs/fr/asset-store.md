@@ -71,7 +71,8 @@ listent les ressources attribuables présentes dans les Planches exportées (#44
 - **#444-0** Enregistrement de l'application auprès de Sketchfab (à faire par Valentin).
 - **#444a** Le contrat des sources et ce document. Fait.
 - **#444b** Recherche et parcours, sans connexion : la fenêtre du store, la grille, les filtres, la
-  fiche avec l'aperçu 3D, la mention Sketchfab, et une simulation hors ligne.
+  fiche avec l'aperçu 3D, la mention Sketchfab, et une simulation hors ligne. Fait : `store.js`
+  (requêtes, processus principal), `src/store-ui.js` et `src/store-texts.js` (interface).
 - **#444c** La connexion Sketchfab.
 - **#444d** Le téléchargement : GLB direct, ou zip glTF converti en GLB, progression, poids.
 - **#444e** Les attributions.
@@ -79,6 +80,17 @@ listent les ressources attribuables présentes dans les Planches exportées (#44
 - **#444g** Placer directement un modèle depuis sa fiche.
 - **#444h** Finitions : filtres mémorisés, manuel, README, traductions.
 - **#445** Poly Haven ; **#446** le store de textures.
+
+## Voir le store sans réseau
+
+En développement, `STORYBOARD_SIMULER_STORE` rend la réponse enregistrée au lieu d'appeler
+Sketchfab, signalé par un bandeau jaune :
+
+```
+[Console]::OutputEncoding=[Text.Encoding]::UTF8; cd C:\WebProjects\Storyboarder; $env:STORYBOARD_SIMULER_STORE='1'; npm start
+```
+
+Pour revenir à la normale, fermer le terminal, ou `Remove-Item Env:STORYBOARD_SIMULER_STORE`.
 
 ## Questions ouvertes
 

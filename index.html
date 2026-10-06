@@ -154,6 +154,8 @@
       <div class="dropdown">
         <button class="dropdown-trigger" id="modelTrigger">Modèles <span class="caret">▾</span></button>
         <div class="dropdown-panel open" id="modelPanel">
+          <!-- #444b : le store de modèles. Texte écrit par le code (src/store-texts.js). -->
+          <button class="full-btn" id="storeOuvrirBtn" type="button"></button>
           <div id="modelList"></div>
         </div>
       </div>
@@ -698,6 +700,9 @@
         <button type="button" class="help-group" data-help="modeles">
           <span class="help-group-title">Modèles 3D importés</span>
         </button>
+        <button type="button" class="help-group" data-help="store">
+          <span class="help-group-title">Modèles en ligne</span>
+        </button>
         <button type="button" class="help-group" data-help="modeles_articules">
           <span class="help-group-title">Modèles articulés</span>
         </button>
@@ -1238,6 +1243,29 @@
     <div id="ressourcesCorps" class="ressources-corps"></div>
     <button class="full-btn" id="ressourcesConfiguration" type="button"></button>
     <button class="nav-btn" id="ressourcesFermer" type="button" style="margin-top:6px;"></button>
+  </div>
+</div>
+
+<!-- Store de ressources (#444b) : recherche, grille, fiche. Tout le texte est écrit par le code
+     (src/store-texts.js) ; les résultats viennent du processus principal, déjà normalisés. -->
+<div class="modal-overlay hidden" id="storeModal">
+  <div class="modal-box store-box">
+    <h3 id="storeTitre"></h3>
+    <p id="storeSimulation" class="maj-simulation" hidden></p>
+    <form id="storeFormulaire" class="store-filtres">
+      <input id="storeTexte" class="modal-input" type="search" autocomplete="off">
+      <button type="submit" id="storeChercherBtn" class="full-btn"></button>
+      <select id="storeCategorie"></select>
+      <select id="storeLicence"></select>
+      <select id="storeFaces"></select>
+      <select id="storeTri"></select>
+      <label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label>
+    </form>
+    <p id="storeMessage" class="maj-message"></p>
+    <div id="storeGrille" class="store-grille"></div>
+    <div id="storeFiche" class="store-fiche" hidden></div>
+    <button id="storePlusBtn" class="nav-btn store-plus" type="button" hidden></button>
+    <p id="storeCredit" class="store-credit"></p>
   </div>
 </div>
 

@@ -47,4 +47,8 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   majEtat: () => ipcRenderer.invoke('maj:etat'),
   majInstaller: () => ipcRenderer.invoke('maj:installer'),
   onMajProgression: (callback) => ipcRenderer.on('maj:progression', (e, recus, total) => callback(recus, total)),
+  // Store de ressources (#444) : ce qu'il faut pour les filtres, et une recherche. Le processus
+  // principal fait la requête et rend une page déjà normalisée (store-sources.js).
+  storeInfos: (sourceId) => ipcRenderer.invoke('store:infos', sourceId),
+  storeChercher: (sourceId, params) => ipcRenderer.invoke('store:chercher', sourceId, params),
 });

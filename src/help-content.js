@@ -193,6 +193,11 @@ export const HELP_MANUAL_EN = [
     'The first 3D Element placed in an EMPTY Panel sets its camera distance from its own height, so a small model fills the frame like a Character would. A Panel that already holds something is never re-framed.',
     'Its selection box on the Page follows the span of the model\'s own skeleton: a slim figure gets a slim box, not a square one.',
   ]},
+  { id: 'store', title: 'Online models', paragraphs: [
+    '"Find models online", at the top of the Models section, opens a search window over the free models of Sketchfab: keywords, category, license, maximum size, sorting.',
+    'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around. Heavy models are flagged before downloading.',
+    'Downloading will require signing in to a Sketchfab account: it is coming in a future version.',
+  ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton IS POSED IN THE EDITOR, opened with the pencil on its card: three sliders per drivable bone, with the mapping table below them. The card only applies a pose: it describes ONE Element, while the rest holds for the whole file.',
     'A humanoid shows its eighteen slots, THEN its other chains: fingers, twists, ponytail. Other morphologies show the CHAINS ticked in the mapping table, under the names you gave them.',
@@ -388,6 +393,11 @@ export const HELP_MANUAL_FR = [
     'Au-delà de 10 m de haut, l\'application propose de redimensionner le modèle à l\'import.',
     'Le premier Élément 3D posé dans une Case VIDE règle sa distance de caméra sur sa propre hauteur : un petit modèle occupe l\'image comme le ferait un Personnage. Une Case qui contient déjà quelque chose n\'est jamais recadrée.',
     'Sa boîte de sélection sur la Planche suit l\'envergure du squelette du modèle : une figure élancée reçoit une boîte élancée, pas un carré.',
+  ]},
+  { id: 'store', title: 'Modèles en ligne', paragraphs: [
+    "« Chercher des modèles en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans les modèles gratuits de Sketchfab : mots-clés, catégorie, licence, taille maximale, tri.",
+    "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner. Les modèles lourds sont signalés avant le téléchargement.",
+    "Le téléchargement demandera de se connecter à un compte Sketchfab : il arrive dans une prochaine version.",
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette SE POSE DANS L\'ÉDITEUR, ouvert par le crayon de sa fiche : trois curseurs par os pilotable, et le tableau de correspondance en dessous. La fiche ne fait qu\'appliquer une pose : elle décrit UN Élément, le reste vaut pour le fichier entier.',

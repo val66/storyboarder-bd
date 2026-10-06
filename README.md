@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.10.1**
+**Version 1.10.2**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -78,6 +78,7 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 - 📋 **Reuse a mapping** already made for the same skeleton
 - 🧩 **Change figure**: an articulated Element can wear another imported file and keep its pose
 - 👻 **Detached parts** of a file are hidden, and brought back with a checkbox
+- 🔎 **Find models online**: search Sketchfab's free models by keyword, category, license and size, with author, license and a 3D preview (downloading is coming in a future version)
 
 > **Not covered yet:** a file holding several objects is imported as a single Element.
 

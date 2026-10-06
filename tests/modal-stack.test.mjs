@@ -42,7 +42,7 @@ import {
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
 // update-button.js (#442) et missing-resources.js (#443) : leurs modales s'y câblent elles-mêmes.
-const SRC = ['io.js', 'events.js', 'modals.js', 'update-button.js', 'missing-resources.js']
+const SRC = ['io.js', 'events.js', 'modals.js', 'update-button.js', 'missing-resources.js', 'store-ui.js']
   .map(f => readFileSync(join(RACINE, 'src', f), 'utf8')).join('\n');
 
 /** Les identifiants de TOUTES les modales déclarées dans index.html, la source de vérité. */

@@ -63,7 +63,9 @@ development, an environment variable shows them with fake data, flagged by a yel
 - `STORYBOARD_SIMULER_MAJ`: the update screens, see
   [`docs/en/updates.md`](docs/en/updates.md#seeing-the-screens-without-publishing);
 - `STORYBOARD_SIMULER_RESSOURCES`: the missing-resources dialog, see
-  [`docs/en/missing-resources.md`](docs/en/missing-resources.md).
+  [`docs/en/missing-resources.md`](docs/en/missing-resources.md);
+- `STORYBOARD_SIMULER_STORE`: the model store, on a recorded Sketchfab response, see
+  [`docs/en/asset-store.md`](docs/en/asset-store.md).
 
 In PowerShell, the variable stays set in the terminal while it is open: `Remove-Item Env:NAME`
 removes it.

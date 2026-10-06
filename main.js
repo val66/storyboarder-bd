@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, screen } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -223,6 +223,13 @@ function createWindow(mode = 'app') {
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.loadFile(path.join(__dirname, 'blocage.html'));
   } else {
+    // #444b : un lien qui s'ouvre dans une nouvelle fenêtre (la page d'un auteur, d'un modèle, d'une
+    // licence) part dans le NAVIGATEUR de l'utilisateur, jamais dans une fenêtre Electron : celle-ci
+    // hériterait d'un contexte qui n'est pas fait pour la navigation libre. Seul https est accepté.
+    win.webContents.setWindowOpenHandler(({ url }) => {
+      if (/^https:\/\//.test(url)) shell.openExternal(url);
+      return { action: 'deny' };
+    });
     // #443 : en développement, STORYBOARD_SIMULER_RESSOURCES montre la modale des ressources
     // introuvables avec des données factices (cf. src/missing-resources.js, simulationRessources).
     const simulerRessources = !app.isPackaged && process.env.STORYBOARD_SIMULER_RESSOURCES;
@@ -729,6 +736,18 @@ function etatPourAffichage() {
 }
 
 ipcMain.handle('maj:etat', async () => etatPourAffichage());
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// STORE DE RESSOURCES (#444)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Même exception documentée que les mises à jour (architecture.md, règle n°1) : le réseau, et bientôt
+// le jeton de connexion, vivent ici. store-sources.js et le module de chaque site DÉCIDENT ;
+// store.js fait les requêtes. En développement, STORYBOARD_SIMULER_STORE rend une réponse enregistrée.
+const store = require('./store');
+const SIMULATION_STORE = !app.isPackaged && !!process.env.STORYBOARD_SIMULER_STORE;
+ipcMain.handle('store:infos', async (event, sourceId) => ({ ...store.infos(sourceId), simulation: SIMULATION_STORE }));
+ipcMain.handle('store:chercher', async (event, sourceId, params) =>
+  store.chercher(sourceId, params, SIMULATION_STORE ? __dirname : null));
 
 // Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on
 // joue une progression factice et on s'arrête là : `npm start` n'a rien à remplacer.

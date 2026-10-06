@@ -43,6 +43,7 @@ import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { initialiserMiseAJour, rafraichirTextesMaj, fermerModaleMaj } from './update-button.js';
 import { verifierRessources, rafraichirApresChangementDeDossier, simulationRessources } from './missing-resources.js';
+import { cablerStore, rafraichirTextesStore, fermerStore } from './store-ui.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
@@ -8309,6 +8310,7 @@ languageSelect.addEventListener('change', () => {
   rafraichirManuelOuvert(S.appLang);
   rafraichirValeurCacheMo();   // l'unité change avec la langue, et la modale est ouverte
   rafraichirTextesMaj();       // #442 : le bouton et la modale de mise à jour sont écrits par le code
+  rafraichirTextesStore();     // #444b : idem pour le store
   if (hasElectronAPI()) window.storyboarderAPI.setSetting('lang', S.appLang);
 });
 // "Export" section : per user request: these two settings are read by exportPage() at export
@@ -8421,6 +8423,7 @@ async function loadAppSettings(){
   // #442 : après la langue, pour que le bouton « Mise à jour » naisse dans la bonne. Sans attendre :
   // l'état est déjà décidé côté processus principal, la demande ne retarde pas le démarrage.
   initialiserMiseAJour();
+  rafraichirTextesStore();   // #444b : le bouton du store, dans la langue qui vient d'être lue
   // #447 et #448 : le processus principal a déménagé un ancien dossier des Projets (à côté du
   // programme, effacé par chaque mise à jour ; ou Documents sous l'ancien nom de l'application).
   // On le dit une fois, puis on l'oublie.
@@ -8641,6 +8644,8 @@ if (helpModalOverlay) {
 }
 enregistrerFermeture('helpModal', () => closeHelpModal());
 enregistrerFermeture('majModal', fermerModaleMaj);
+enregistrerFermeture('storeModal', fermerStore);
+cablerStore();
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));

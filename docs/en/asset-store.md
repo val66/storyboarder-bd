@@ -69,7 +69,8 @@ present in the exported Pages (#444f). The store shows "Models provided by Sketc
 - **#444-0** Registering the application with Sketchfab (Valentin's task).
 - **#444a** The source contract and this document. Done.
 - **#444b** Search and browsing, no login: the store window, grid, filters, detail view with the 3D
-  preview, the Sketchfab credit, and an offline simulation.
+  preview, the Sketchfab credit, and an offline simulation. Done: `store.js` (requests, main
+  process), `src/store-ui.js` and `src/store-texts.js` (interface).
 - **#444c** Sketchfab login.
 - **#444d** Downloading: direct GLB, or glTF zip converted to GLB, progress, size.
 - **#444e** Attributions.
@@ -77,6 +78,17 @@ present in the exported Pages (#444f). The store shows "Models provided by Sketc
 - **#444g** Placing a model straight from its detail view.
 - **#444h** Finishing touches: remembered filters, manual, README, translations.
 - **#445** Poly Haven; **#446** the texture store.
+
+## Seeing the store without network
+
+In development, `STORYBOARD_SIMULER_STORE` returns the recorded response instead of calling
+Sketchfab, flagged by a yellow banner:
+
+```
+[Console]::OutputEncoding=[Text.Encoding]::UTF8; cd C:\WebProjects\Storyboarder; $env:STORYBOARD_SIMULER_STORE='1'; npm start
+```
+
+To go back to normal, close the terminal, or `Remove-Item Env:STORYBOARD_SIMULER_STORE`.
 
 ## Open questions
 

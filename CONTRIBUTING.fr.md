@@ -68,7 +68,9 @@ par un bandeau jaune :
 - `STORYBOARD_SIMULER_MAJ` : les écrans de mise à jour, voir
   [`docs/fr/updates.md`](docs/fr/updates.md#voir-les-écrans-sans-publier) ;
 - `STORYBOARD_SIMULER_RESSOURCES` : la modale des ressources introuvables, voir
-  [`docs/fr/missing-resources.md`](docs/fr/missing-resources.md).
+  [`docs/fr/missing-resources.md`](docs/fr/missing-resources.md) ;
+- `STORYBOARD_SIMULER_STORE` : le store de modèles, sur une réponse enregistrée de Sketchfab, voir
+  [`docs/fr/asset-store.md`](docs/fr/asset-store.md).
 
 Sous PowerShell, la variable reste posée dans le terminal tant qu'il est ouvert :
 `Remove-Item Env:NOM` la retire.
