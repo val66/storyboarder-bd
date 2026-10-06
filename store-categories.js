@@ -7,8 +7,9 @@
  * aucune catégorie ne fait doublon, et aucune ne renvoie vide sur une source par construction :
  * celles qu'une source n'a pas (Poly Haven n'a pas d'animaux) y renvoient simplement zéro modèle.
  *
- * Écartée : « News & Politics » de Sketchfab, sans équivalent ni sens pour un décor de BD. Ses modèles
- * restent trouvables par mots-clés.
+ * RÈGLE (Valentin) : rassembler quand c'est possible, sinon AJOUTER la catégorie plutôt que de
+ * l'écarter. « News & Politics » de Sketchfab n'a d'équivalent nulle part : elle a donc la sienne,
+ * « Actualité & politique », vide chez Poly Haven.
  *
  * Racine et CommonJS, comme les autres modules du store : utilisé par le processus principal (les
  * sources) ET par l'interface (le filtre local), via store:infos.
@@ -34,6 +35,7 @@ const CATEGORIES = [
   ['techniques', 'Industrie, outils & techniques', 'Industry, tools & technology', 'science-technology', ['industrial-infrastructure', 'tools-equipment']],
   ['loisirs', 'Sport & loisirs', 'Sports & leisure', 'sports-fitness', ['leisure']],
   ['armes', 'Armes & militaire', 'Weapons & military', 'weapons-military', ['weapons']],
+  ['actualite', 'Actualité & politique', 'News & politics', 'news-politics', []],
 ].map(([slug, fr, en, sketchfab, polyhaven]) => ({ slug, fr, en, sketchfab, polyhaven }));
 
 const parSlug = new Map(CATEGORIES.map(c => [c.slug, c]));
@@ -55,7 +57,7 @@ function versPolyhaven(slug){
   return c ? c.polyhaven.slice() : [];
 }
 
-/** La catégorie commune d'une catégorie Sketchfab, ou null (News & Politics). */
+/** La catégorie commune d'une catégorie Sketchfab, ou null si elle est inconnue. */
 function depuisSketchfab(nom){
   const c = CATEGORIES.find(x => x.sketchfab === nom);
   return c ? c.slug : null;

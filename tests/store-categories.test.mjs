@@ -14,9 +14,11 @@ const ph = require('../store-polyhaven.js');
 const sources = require('../store-sources.js');
 
 describe('La liste commune', () => {
-  test('chaque catégorie Sketchfab relevée a SA catégorie commune, une seule ; sauf News & Politics, écartée', () => {
+  test('chaque catégorie Sketchfab relevée a SA catégorie commune, une seule ; aucune n\'est écartée', () => {
+    // Règle de Valentin : rassembler quand c'est possible, sinon ajouter. News & Politics a la sienne.
     const sansEquivalent = sketchfab.CATEGORIES.filter(c => !cats.depuisSketchfab(c.slug)).map(c => c.slug);
-    assert.deepEqual(sansEquivalent, ['news-politics']);
+    assert.deepEqual(sansEquivalent, []);
+    assert.equal(cats.depuisSketchfab('news-politics'), 'actualite');
     const cibles = cats.CATEGORIES.map(c => c.sketchfab);
     assert.equal(new Set(cibles).size, cibles.length, 'deux catégories communes visent la même catégorie Sketchfab : doublon');
   });

@@ -51,11 +51,12 @@ Checked by calling the API on 6 October 2026 (`api.polyhaven.com`, guide: `polyh
 
 ## Common categories
 
-One list of 17 categories for every source and for local models (`store-categories.js`). Each one
+One list of 18 categories for every source and for local models (`store-categories.js`). Each one
 targets **one** Sketchfab category (its API takes only one) and zero, one or several Poly Haven
 ones: "Furniture & home" groups `furniture-home` on one side, `furniture`, `containers-storage`,
 `lighting` and `office-stationery` on the other. A test requires every category found at a source
-to fall into exactly one common category; only Sketchfab's "News & Politics" is left out. Each
+to fall into exactly one common category. Rule: group when possible, otherwise add ("News &
+Politics" has its own, "News & politics"). Each
 result carries its common category, recorded in the attribution on download. Switching tabs keeps
 the chosen category.
 

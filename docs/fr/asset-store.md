@@ -52,12 +52,12 @@ Relevé en appelant l'API le 6 octobre 2026 (`api.polyhaven.com`, guide : `polyh
 
 ## Les catégories communes
 
-Une seule liste de 17 catégories pour toutes les sources et pour les modèles locaux
+Une seule liste de 18 catégories pour toutes les sources et pour les modèles locaux
 (`store-categories.js`). Chacune vise **une** catégorie Sketchfab (son API n'en accepte qu'une) et
 zéro, une ou plusieurs de Poly Haven : « Mobilier & maison » regroupe `furniture-home` d'un côté,
 `furniture`, `containers-storage`, `lighting` et `office-stationery` de l'autre. Un test exige que
-chaque catégorie relevée chez une source tombe dans exactement une commune ; seule « News &
-Politics » de Sketchfab est écartée. Chaque résultat porte sa catégorie commune, notée dans
+chaque catégorie relevée chez une source tombe dans exactement une commune. Règle : rassembler
+quand c'est possible, sinon ajouter (« News & Politics » a la sienne, « Actualité & politique »). Chaque résultat porte sa catégorie commune, notée dans
 l'attribution au téléchargement. Changer d'onglet garde la catégorie choisie.
 
 ## « Mes modèles », la bibliothèque locale
