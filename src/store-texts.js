@@ -10,7 +10,7 @@ const deuxDecimales = (x) => (Math.round(x * 100 + Number.EPSILON * 100) / 100).
 
 const T = {
   fr: {
-    ouvrir: 'Bibliothèque en ligne',
+    ouvrir: 'Bibliothèque de modèles',
     titre: 'Modèles en ligne',
     placeholder: 'Banc, voiture, chat…',
     toutesCategories: 'Toutes les catégories',
@@ -94,7 +94,7 @@ const T = {
     possedeFiche: (f) => `Ce modèle est déjà dans vos modèles, sous le nom « ${f} ».`,
   },
   en: {
-    ouvrir: 'Online library',
+    ouvrir: 'Model library',
     titre: 'Online models',
     placeholder: 'Bench, car, cat…',
     toutesCategories: 'All categories',

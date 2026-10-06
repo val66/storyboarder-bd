@@ -733,9 +733,14 @@ function ficheLocale(e){
   $('storeDefilement').scrollTop = 0;
 }
 
-export async function ouvrirStore(){
+export async function ouvrirStore({ onglet } = {}){
   const pont = window.storyboarderAPI;
   if (!pont || !pont.storeChercher) return;
+  if (onglet && SOURCES_STORE.includes(onglet) && onglet !== source) {
+    source = onglet;
+    infos = infosPar[onglet] || null;   // relu plus bas s'il n'a jamais été lu
+    if (infos) rafraichirTextesStore();
+  }
   if (!infos) {
     // Les sources en ligne d'abord : la bibliothèque locale reprend leurs catégories communes.
     await Promise.all(SOURCES_STORE.filter(id => id !== LOCAL && !infosPar[id]).map(async id => { infosPar[id] = await pont.storeInfos(id); }));
@@ -770,7 +775,9 @@ export function cablerStore(rappels = {}){
   const pont = window.storyboarderAPI;
   if (pont && pont.onStoreProgression) pont.onStoreProgression(progression);
   if (pont && pont.onStoreApercuProgression) pont.onStoreApercuProgression(progressionApercu);
-  $('storeOuvrirBtn').onclick = ouvrirStore;
+  // Le bouton du menu de gauche ouvre TOUJOURS sur « Mes modèles » : c'est là qu'on cherche d'abord
+  // ce qu'on a ; les sources en ligne sont à un onglet.
+  $('storeOuvrirBtn').onclick = () => ouvrirStore({ onglet: LOCAL });
   // Pas de bouton « Rechercher » (demandé) : la saisie relance la recherche après une courte pause,
   // pour ne pas lancer une requête par lettre tapée ; Entrée la lance tout de suite.
   let minuterie = null;

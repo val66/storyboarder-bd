@@ -146,19 +146,15 @@
         </div>
       </div>
     </div>
-    <!-- Bibliothèque de modèles 3D importés (.glb du dossier Modeles). Elle montre le DISQUE, pas
-         le Projet : les Scènes et les Éléments ont déjà leurs propres listes. Groupée par usage
-         DÉDUIT du Projet ouvert (cf. src/model-library.js) — « Non utilisés » est la réponse à la
-         seule question qu'on se pose en venant ici : puis-je supprimer sans rien casser ? -->
+    <!-- Modèles 3D : un seul bouton (demandé). La longue liste qui vivait ici est devenue l'onglet
+         « Mes modèles » de la bibliothèque (src/store-ui.js, src/local-library.js), avec ses usages,
+         sa recherche et ses filtres. -->
     <div class="side-section">
       <div class="dropdown">
         <button class="dropdown-trigger" id="modelTrigger">Modèles <span class="caret">▾</span></button>
         <div class="dropdown-panel open" id="modelPanel">
-          <!-- #444b : le store de modèles. Texte écrit par le code (src/store-texts.js). -->
+          <!-- Ouvre la bibliothèque sur « Mes modèles ». Texte écrit par le code (src/store-texts.js). -->
           <button class="full-btn" id="storeOuvrirBtn" type="button"></button>
-          <!-- Filtre de la liste (nom de fichier ou de Scène). Caché sans modèle ; cf. renderModelList. -->
-          <input id="modelFiltre" class="model-filtre" type="search" autocomplete="off" hidden>
-          <div id="modelList"></div>
         </div>
       </div>
     </div>

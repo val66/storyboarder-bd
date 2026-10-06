@@ -69,7 +69,7 @@ import {
 } from './model-import.js';
 import { isImportedModel, listModels, renameModel, sanitizeModelName } from './model-store.js';
 import {
-  setProjectTreeCallbacks, renderTree, renderSceneList, renderModelList, renderImageList, deleteVolume, deletePage, duplicatePage,
+  setProjectTreeCallbacks, renderTree, renderSceneList, renderImageList, deleteVolume, deletePage, duplicatePage,
   renameVolume, applyRenameVolume, renameScene, applyRenameScene, deleteScene,
 
   allerALaPlanche,
@@ -4603,7 +4603,6 @@ async function _renommerModele(ancien, nomVoulu){
   clearModelCache();
   oublierVignette(ancien);
   renderAll();
-  renderModelList();
   rafraichirBibliothequeLocale();
 }
 setRenameModelCallback(_renommerModele);
@@ -4636,7 +4635,6 @@ async function supprimerModeleAvecConfirmation(fichier){
   await oublierCorrespondance(fichier);
   oublierVignette(fichier);
   renderAll();
-  renderModelList();
   rafraichirBibliothequeLocale();
 }
 
@@ -8263,7 +8261,7 @@ setIOCallbacks(renderAll, applyRenameVolume, applyRenameScene, closeSettingsModa
 // updateSidePanel and renderTree are defined well before this point.
 setI18nCallbacks(updateSidePanel, renderTree);
 // Wire up draw.js callbacks (canvas, ctx, render helpers, avoids circular imports draw→app)
-setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderModelList, renderImageList, updateContextualControls, fitZoomToWrap });
+setDrawCallbacks({ canvas, ctx, applyZoom, updateSidePanel, renderTree, renderSceneList, renderImageList, updateContextualControls, fitZoomToWrap });
 // Wire up sidebar.js callbacks (snapshot + modal openers, avoids circular imports
 // sidebar→app; these modals will themselves be extracted into src/modals.js at Step B.13).
 setSidebarCallbacks({ snapshot, openPersonaModal, openObjectModal, openRoomModal, openBuildingModal, openTerrainModal, openTracéModal, restoreSectionCollapseStates });

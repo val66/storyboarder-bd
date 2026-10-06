@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.10.25**
+**Version 1.10.26**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -71,8 +71,8 @@ Versions précédentes et notes de version : [toutes les releases](https://githu
 
 ### Modèles 3D importés
 - 📦 **Import glTF** (`.glb` / `.gltf`) à leur taille réelle, dans une Case ou dans une Scène
-- 🗂️ **Section Modèles** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, des groupes
-  repliables, un champ de filtre, un clic mène là où un modèle sert
+- 🗂️ **Mes modèles** : vos fichiers en vignettes dans la bibliothèque de modèles, avec recherche,
+  catégorie et usage dans le Projet ouvert, un clic mène là où un modèle sert
 - ✏️ **Renommer ou supprimer** un fichier importé, les Projets qui s'en servent suivent
 - 🦴 **Les modèles articulés se posent dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme les
   Personnages
@@ -82,7 +82,7 @@ Versions précédentes et notes de version : [toutes les releases](https://githu
 - 📋 **Reprendre une correspondance** déjà faite pour le même squelette
 - 🧩 **Changer de figure** : un Élément articulé peut porter un autre fichier en gardant sa pose
 - 👻 **Morceaux détachés** d'un fichier masqués, réaffichables d'une case à cocher
-- 🔎 **Bibliothèque en ligne** : les modèles gratuits de Sketchfab et de Poly Haven, par mots-clés, catégorie, licence et taille, avec auteur, licence et aperçu 3D ; aperçu 3D et téléchargement en un clic depuis Poly Haven (textures 1k, 2k ou 4k), les modèles déjà téléchargés sont signalés (Sketchfab arrive)
+- 🔎 **Modèles en ligne** : les modèles gratuits de Sketchfab et de Poly Haven, par mots-clés, catégorie (commune aux deux), licence et taille, avec auteur, licence et aperçu 3D ; téléchargement en un clic depuis Poly Haven (textures 1k, 2k ou 4k), les modèles déjà téléchargés sont signalés (Sketchfab arrive)
 
 > **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément.
 

@@ -7,6 +7,7 @@
 import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const { ouvrirStore, choisirSource, SOURCES_STORE } = await import('../src/store-ui.js');
 const { S } = await import('../src/state.js');
@@ -88,6 +89,15 @@ describe('Les onglets des sources', () => {
     reponseSketchfab();                               // … puis Sketchfab, trop tard
     await versSketchfab;
     assert.deepEqual(grille().map(c => c.title), ['polyhaven-1']);
+  });
+
+  test('le bouton du menu de gauche rouvre TOUJOURS sur « Mes modèles », même après un autre onglet', async () => {
+    const ui = await import('../src/store-ui.js');
+    assert.notEqual(onglets().findIndex(o => o.className.includes('actif')), 0, 'le montage doit partir d\'un autre onglet');
+    await ui.ouvrirStore({ onglet: 'local' });
+    assert.ok(onglets()[0].className.includes('actif'));
+    const src = readFileSync(new URL('../src/store-ui.js', import.meta.url), 'utf8');
+    assert.match(src, /\$\('storeOuvrirBtn'\)\.onclick = \(\) => ouvrirStore\(\{ onglet: LOCAL \}\);/);
   });
 
   test('les sources annoncées sont celles que store.js connaît', () => {

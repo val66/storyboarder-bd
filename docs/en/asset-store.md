@@ -59,6 +59,22 @@ to fall into exactly one common category; only Sketchfab's "News & Politics" is 
 result carries its common category, recorded in the attribution on download. Switching tabs keeps
 the chosen category.
 
+## "My models", the local library
+
+First tab of the same window, opened by the "Model library" button of the left menu (which lost its
+long list). The entries (`src/local-library.js`, pure): the file, a title (the source's one if it
+came from the store), the common category ("Uncategorised" for a hand import), the full attribution,
+and the uses in the open project (`modelUsageLocations`). A file that is referred to but missing
+shows up, flagged. Filters: text (title, file, author, Scenes), category, use; sorted by name or date.
+
+Thumbnails (`src/model-thumbnails.js`): decoded apart from the panels' cache, prepared like a panel,
+photographed at three quarters, released; kept in `Vignettes-modeles/` with the file's signature
+(`vignettes-modeles.js`). A model from the store gets its source's thumbnail.
+
+The details reuse the gestures of the rest of the application, injected by events.js: go to a place
+(closes the window), Skeleton…, Rename…, Delete, and right-click on a card. The window sits BEFORE the
+other modals in the document: the ones it opens come in front of it.
+
 ## The source contract
 
 Two modules at the root, in CommonJS, tested under plain Node:

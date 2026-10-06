@@ -60,6 +60,23 @@ chaque catégorie relevée chez une source tombe dans exactement une commune ; s
 Politics » de Sketchfab est écartée. Chaque résultat porte sa catégorie commune, notée dans
 l'attribution au téléchargement. Changer d'onglet garde la catégorie choisie.
 
+## « Mes modèles », la bibliothèque locale
+
+Premier onglet de la même fenêtre, ouvert par le bouton « Bibliothèque de modèles » du menu de gauche
+(qui a perdu sa longue liste). Les entrées (`src/local-library.js`, pur) : le fichier, un titre (celui
+de la source s'il vient du store), la catégorie commune (« Non classé » pour un import à la main),
+l'attribution complète, et les usages dans le Projet ouvert (`modelUsageLocations`). Un fichier cité
+mais absent apparaît, marqué. Filtres : texte (titre, fichier, auteur, Scènes), catégorie, usage ; tri
+par nom ou par date.
+
+Les vignettes (`src/model-thumbnails.js`) : décodées à part du cache des Cases, préparées comme une
+Case, photographiées de trois quarts, libérées ; gardées dans `Vignettes-modeles/` avec la signature
+du fichier (`vignettes-modeles.js`). Un modèle du store reçoit la vignette de sa source.
+
+La fiche reprend les gestes du reste de l'application, injectés par events.js : aller à un endroit
+(ferme la fenêtre), Squelette…, Renommer…, Supprimer, et le clic droit sur une carte. La fenêtre est
+placée AVANT les autres modales dans le document : celles qu'elle ouvre passent devant elle.
+
 ## Le contrat des sources
 
 Deux modules à la racine, en CommonJS, testés sous Node nu :

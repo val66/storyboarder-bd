@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.10.25**
+**Version 1.10.26**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -68,8 +68,8 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 
 ### Imported 3D models
 - 📦 **glTF import** (`.glb` / `.gltf`) at real size, into a panel or into a Scene
-- 🗂️ **Models section**: your files grouped by how the open project uses them, foldable groups, a filter
-  field, one click to where a model is used
+- 🗂️ **My models**: your files as thumbnails in the model library, searchable, by category and by use
+  in the open project, one click to where a model is used
 - ✏️ **Rename or delete** an imported file, projects that use it kept in step
 - 🦴 **Articulated models** are posed in the [Model editor](#model-editor), like characters
 - 🐉 **Morphology** proposed on import (humanoid, quadruped, winged biped, centaur, arachnid, radial
@@ -78,7 +78,7 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 - 📋 **Reuse a mapping** already made for the same skeleton
 - 🧩 **Change figure**: an articulated Element can wear another imported file and keep its pose
 - 👻 **Detached parts** of a file are hidden, and brought back with a checkbox
-- 🔎 **Online library**: search the free models of Sketchfab and Poly Haven by keyword, category, license and size, with author, license and a 3D preview; 3D preview and one-click download from Poly Haven (1k, 2k or 4k textures), models you already have are marked (Sketchfab downloads are coming)
+- 🔎 **Online models**: search the free models of Sketchfab and Poly Haven by keyword, category (shared by both), license and size, with author, license and a 3D preview; one-click download from Poly Haven (1k, 2k or 4k textures), models you already have are marked (Sketchfab downloads are coming)
 
 > **Not covered yet:** a file holding several objects is imported as a single Element.
 

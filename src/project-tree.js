@@ -14,9 +14,6 @@
 
 import { FORMATS } from './constants.js';
 import { S, addPageToVolume, createVolume, newId, tr } from './state.js';
-import { listModels } from './model-store.js';
-import { groupModelsByUsage, filtrerModeles } from './model-library.js';
-import { modelUsageLocations, usageLabel } from './model-usages.js';
 import { listImages } from './image-store.js';
 import { groupImagesByUsage, imageUsageLabel } from './image-library.js';
 import { getFormat, libelleTable3D } from './utils.js';
@@ -362,118 +359,6 @@ export async function deleteScene(id){
   if (S.editingSceneId === id) S.editingSceneId = null;
   renderAll();
 }
-/**
- * La bibliothèque de modèles 3D importés, dans le menu de gauche.
- *
- * Elle montre le DISQUE, pas le Projet, les Scènes et les Éléments ont déjà leurs propres listes.
- * Le groupement par usage est DÉDUIT à chaque affichage (cf. model-library.js) : rien n'est
- * mémorisé, donc rien ne peut diverger de la réalité.
- *
- * Asynchrone parce que la liste des fichiers vient du disque. L'appelant n'attend pas : la liste se
- * remplit quand elle arrive, comme le reste de ce qui touche aux modèles.
- */
-export async function renderModelList(){
-  const list = document.getElementById('modelList');
-  if (!list) return;
-  const fichiers = await listModels();
-  const tous = groupModelsByUsage(fichiers, { tomes: S.tomes, scenes: S.scenes });
-  list.innerHTML = '';
-
-  // La barre de recherche : cachée tant qu'il n'y a rien à chercher. Le texte tapé n'est PAS
-  // mémorisé : une liste rouverte filtrée sans qu'on s'en souvienne ferait croire à des modèles
-  // perdus.
-  const filtre = document.getElementById('modelFiltre');
-  const total = tous.parScenes.length + tous.dansCases.length + tous.nonUtilises.length;
-  if (filtre) {
-    filtre.hidden = !total;
-    filtre.placeholder = tr('Filter models…', 'Filtrer les modèles…');
-    if (!filtre._cable) {
-      filtre._cable = true;
-      filtre.addEventListener('input', () => renderModelList());
-    }
-  }
-  if (!total) {
-    list.innerHTML = `<div class="empty-hint">${tr('No model imported.', 'Aucun modèle importé.')}</div>`;
-    return;
-  }
-  const texte = filtre ? filtre.value : '';
-  const g = filtrerModeles(tous, texte);
-  const filtrage = !!String(texte || '').trim();
-  if (filtrage && !(g.parScenes.length + g.dansCases.length + g.nonUtilises.length)) {
-    list.innerHTML = `<div class="empty-hint">${tr('No model matches this filter.', 'Aucun modèle ne correspond à ce filtre.')}</div>`;
-    return;
-  }
-
-  /**
-   * Une ligne de la bibliothèque : le nom de fichier, puis UN endroit PAR LIGNE.
-   *
-   * La disposition est verticale, et ce n'est pas cosmétique. En flex horizontal (le défaut de
-   * `.tome-row`), le nom et les endroits se partagent la largeur : deux noms longs se coupaient
-   * tous les deux au milieu, et le panneau étant étroit, on ne pouvait plus lire ni l'un ni
-   * l'autre. Empilés, chaque texte dispose de toute la largeur ; ce qui dépasse est coupé par
-   * `.model-row-*` (une seule ligne, points de suspension) plutôt que de déborder du panneau.
-   *
-   * Le texte complet reste accessible en `title`, c'est ce qui rend la coupe acceptable : on perd
-   * l'affichage, pas l'information.
-   *
-   * MÊME FORME QUE LA SECTION IMAGES (demandé) : chaque endroit, Scène ou Case, est un bouton qui y
-   * mène, et le nom du fichier n'est qu'un titre. Un endroit qui porte plusieurs Éléments du fichier
-   * le dit (« ×2 ») et demande lequel au clic (cf. `resolvePlaceClick`). Au-delà de
-   * `ENDROITS_VISIBLES`, un bouton « + N autres » déplie le reste : un décor utilisé dans trente Cases
-   * ne doit pas noyer la liste.
-   *
-   * @param {string} nom        le nom de fichier
-   * @param {object[]} endroits  les groupes de `modelUsageLocations`, une Scène ou une Case chacun
-   */
-  const ligne = (nom, endroits = [], groupe = '') => {
-    const row = document.createElement('div');
-    row.className = 'tome-row model-row' + (endroits.length ? '' : ' model-row-inert');
-    const n = document.createElement('div');
-    n.className = 'model-row-name';
-    n.textContent = nom;
-    n.title = nom;
-    row.appendChild(n);
-    const bouton = (endroit) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'image-row-where';
-      const combien = endroit.elements.length;
-      b.textContent = usageLabel(endroit, tr) + (combien > 1 ? ` ×${combien}` : '');
-      b.title = b.textContent;
-      b.onclick = (e) => {
-        if (e) e.stopPropagation();
-        _cb.openModelPlace(nom, endroit);
-      };
-      return b;
-    };
-    ajouterEndroits(row, `modeles:${groupe}:${nom}`, endroits, bouton, renderModelList);
-    // Un modèle introuvable se signale ICI aussi : c'est la liste où l'on vient chercher pourquoi
-    // une boîte orangée est apparue dans une Case.
-    if (!fichiers.includes(nom)) {
-      const d = document.createElement('div');
-      d.className = 'perso-name-sub perso-name-sub-warn model-row-where';
-      d.textContent = tr('⚠ file not found', '⚠ fichier introuvable');
-      row.appendChild(d);
-    }
-    row.oncontextmenu = (e) => {
-      e.preventDefault(); e.stopPropagation();
-      _cb.openModelContextMenu(e, nom);
-    };
-    return row;
-  };
-
-  // Un endroit par ligne, jamais concaténés : c'est la seule forme où l'on peut lire le nom d'une
-  // Scène jusqu'au bout. Chaque groupe ne montre que les endroits de SA nature : un fichier utilisé
-  // des deux façons apparaît dans les deux, avec ses Scènes dans l'un et ses Cases dans l'autre.
-  const projet = { tomes: S.tomes, scenes: S.scenes };
-  const endroits = (nom, kind) => modelUsageLocations(nom, projet).filter(e => e.kind === kind);
-  groupeRepliable(list, 'modeles:parScenes', tr('Used by Scenes', 'Utilisés par des Scènes'),
-    g.parScenes.map(e => ligne(e.nom, endroits(e.nom, 'scene'), 'parScenes')));
-  groupeRepliable(list, 'modeles:dansCases', tr('Used in Panels', 'Utilisés dans des Cases'),
-    g.dansCases.map(e => ligne(e.nom, endroits(e.nom, 'panel'), 'dansCases')));
-  groupeRepliable(list, 'modeles:nonUtilises', tr('Unused', 'Non utilisés'), g.nonUtilises.map(n => ligne(n, [])));
-}
-
 /** Au-delà, les endroits d'un fichier se replient derrière « + N autre(s) ». */
 const ENDROITS_VISIBLES = 3;
 
@@ -512,7 +397,7 @@ function ajouterEndroits(row, cle, endroits, bouton, refaire){
 /**
  * Une sous-section repliable des sections Modèles et Images (demandé : elles se remplissent vite).
  * Le titre porte le nombre de fichiers, pour savoir ce qu'on a replié. L'état est mémorisé comme les
- * groupes Pièce et Bâtiment (section-memory.js), sous la clé donnée (`modeles:…`, `images:…`).
+ * groupes Pièce et Bâtiment (section-memory.js), sous la clé donnée (`images:…`).
  *
  * PENDANT UN FILTRAGE, les sous-sections gardent leur état et restent repliables (demandé) : le
  * nombre du titre dit combien de résultats un groupe replié contient.
@@ -549,7 +434,8 @@ function groupeRepliable(list, cle, titre, lignes){
 }
 
 /**
- * La bibliothèque d'images de Case, dans le menu de gauche. Jumelle de `renderModelList`.
+ * La bibliothèque d'images de Case, dans le menu de gauche. (Sa jumelle des modèles est devenue
+ * la bibliothèque « Mes modèles », cf. local-library.js.)
  *
  * DEUX DIFFÉRENCES AVEC SA JUMELLE, et toutes deux viennent de la même propriété : une Case porte
  * AU PLUS UNE image.
@@ -589,7 +475,7 @@ export async function renderImageList(){
       b.className = 'image-row-where';
       b.textContent = imageUsageLabel(endroit, tr);
       b.title = b.textContent;
-      // Le DÉPLACEMENT lui-même est injecté, comme `openModelPlace` chez la jumelle : ce module
+      // Le DÉPLACEMENT lui-même est injecté (`openImageUsage`) : ce module
       // rend des listes, il ne décide pas de ce que devient l'écran. Ce qui se garde ici, et qui a
       // déjà mordu ailleurs, c'est que chaque bouton emporte SON endroit et pas celui d'un voisin.
       b.onclick = (e) => {

@@ -24,75 +24,9 @@ import { tr } from './state.js';
 
 import { isImportedModel } from './model-store.js';
 
-/**
- * Recense l'usage de chaque fichier dans un Projet. Fonction PURE.
- *
- * @param {string[]} fichiers  les .glb présents sur le disque
- * @param {object} projet      { tomes, scenes }, les deux racines d'un Projet
- * @returns {{parScenes: Array, dansCases: Array, nonUtilises: string[]}}
- *
- * Un fichier utilisé des deux façons apparaît dans les DEUX groupes. C'est la vérité, et la cacher
- * ferait croire qu'il n'a qu'un usage, donc qu'on peut le supprimer après avoir traité l'autre.
- */
-export function groupModelsByUsage(fichiers, { tomes = [], scenes = [] } = {}){
-  const parScene = new Map();      // fichier → noms de Scènes
-  const parCase = new Map();       // fichier → nombre d'Éléments
-
-  const recenser = (volumes, ajouter) => {
-    (volumes || []).forEach(vol => {
-      (vol.pages || []).forEach(page => {
-        (page.objects || []).forEach(o => {
-          if (isImportedModel(o) && o.modelFile) ajouter(o.modelFile, vol);
-        });
-      });
-    });
-  };
-
-  recenser(scenes, (f, sc) => {
-    if (!parScene.has(f)) parScene.set(f, []);
-    const noms = parScene.get(f);
-    const nom = sc.name || tr('(unnamed)', '(sans nom)');
-    if (!noms.includes(nom)) noms.push(nom);
-  });
-  recenser(tomes, (f) => parCase.set(f, (parCase.get(f) || 0) + 1));
-
-  const connus = new Set(fichiers || []);
-  // Un fichier référencé par le Projet mais ABSENT du disque doit quand même apparaître : c'est
-  // précisément celui dont l'utilisateur cherche la trace quand il voit une boîte orangée.
-  [...parScene.keys(), ...parCase.keys()].forEach(f => connus.add(f));
-
-  const tous = [...connus].sort((a, b) => a.localeCompare(b, 'fr'));
-  return {
-    parScenes: tous.filter(f => parScene.has(f)).map(f => ({ nom: f, scenes: parScene.get(f) })),
-    dansCases: tous.filter(f => parCase.has(f)).map(f => ({ nom: f, count: parCase.get(f) })),
-    nonUtilises: tous.filter(f => !parScene.has(f) && !parCase.has(f)),
-  };
-}
-
 /** Un texte comparable : minuscules, sans accents, espaces resserrés. */
 export function texteComparable(s){
   return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-/**
- * Le filtre de la barre de recherche de la section Modèles. Fonction PURE.
- *
- * Chaque mot tapé doit se trouver quelque part, dans le nom de fichier OU dans le nom d'une Scène
- * qui l'utilise : « salon nuit » trouve `salon.glb` utilisé par la Scène « Nuit ». Sans accents ni
- * majuscules, parce qu'on tape « scene » plus souvent que « Scène ». Vide, rien n'est filtré.
- */
-export function filtrerModeles(g, texte){
-  const mots = texteComparable(texte).split(' ').filter(Boolean);
-  if (!mots.length) return g;
-  const garde = (...textes) => {
-    const tout = textes.map(texteComparable).join(' ');
-    return mots.every(m => tout.includes(m));
-  };
-  return {
-    parScenes: g.parScenes.filter(e => garde(e.nom, ...e.scenes)),
-    dansCases: g.dansCases.filter(e => garde(e.nom)),
-    nonUtilises: g.nonUtilises.filter(n => garde(n)),
-  };
 }
 
 /**

@@ -20,7 +20,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  groupModelsByUsage, countModelUsages, messageSuppressionModele, messageRenommageModele,
+  countModelUsages, messageSuppressionModele, messageRenommageModele,
   repointerModele3D, repointerPileAnnulation3D,
   resoudreRenommage3D, ajouterRenommage3D, modelesARepointer3D, messageRepointageModeles,
   MAX_RENOMMAGES_3D,
@@ -29,73 +29,6 @@ import { renameModel } from '../src/model-store.js';
 
 const el = (modelFile) => ({ id: 'e' + Math.random(), type: 'objet3d', objType: 'modele', modelFile });
 const volume = (nom, ...objets) => ({ name: nom, pages: [{ objects: objets }] });
-
-describe('groupModelsByUsage : le groupement ne peut pas mentir', () => {
-  test('chaque fichier tombe dans le groupe de son usage', () => {
-    const projet = {
-      scenes: [volume('Salon', el('salon.glb'))],
-      tomes: [volume('Tome 1', el('chaise.glb'), el('chaise.glb'))],
-    };
-    const g = groupModelsByUsage(['salon.glb', 'chaise.glb', 'orphelin.glb'], projet);
-    assert.deepEqual(g.parScenes, [{ nom: 'salon.glb', scenes: ['Salon'] }]);
-    assert.deepEqual(g.dansCases, [{ nom: 'chaise.glb', count: 2 }]);
-    assert.deepEqual(g.nonUtilises, ['orphelin.glb']);
-  });
-
-  test('RÉGRESSION : un fichier utilisé des DEUX façons apparaît deux fois', () => {
-    // Le cas qui a fait écarter les sous-dossiers. Le montrer dans un seul groupe ferait croire
-    // qu'il n'a qu'un usage, donc qu'on peut le supprimer une fois cet usage traité.
-    const projet = {
-      scenes: [volume('Salon', el('salon.glb'))],
-      tomes: [volume('Tome 1', el('salon.glb'))],
-    };
-    const g = groupModelsByUsage(['salon.glb'], projet);
-    assert.equal(g.parScenes.length, 1, 'absent du groupe Scènes');
-    assert.equal(g.dansCases.length, 1, 'absent du groupe Cases');
-    assert.deepEqual(g.nonUtilises, [], 'un fichier utilisé ne peut pas être « non utilisé »');
-  });
-
-  test('RÉGRESSION : un fichier référencé mais ABSENT du disque apparaît quand même', () => {
-    // C'est le fichier que l'utilisateur cherche quand il voit une boîte orangée. L'omettre de la
-    // liste, au motif qu'il n'est pas sur le disque, le rendrait introuvable au moment précis où
-    // on le cherche.
-    const projet = { scenes: [], tomes: [volume('Tome 1', el('disparu.glb'))] };
-    const g = groupModelsByUsage([], projet);
-    assert.deepEqual(g.dansCases, [{ nom: 'disparu.glb', count: 1 }]);
-  });
-
-  test('une Scène qui utilise deux fois le même fichier n\'est nommée qu\'une fois', () => {
-    const projet = { scenes: [volume('Salon', el('mur.glb'), el('mur.glb'))], tomes: [] };
-    assert.deepEqual(groupModelsByUsage(['mur.glb'], projet).parScenes,
-      [{ nom: 'mur.glb', scenes: ['Salon'] }]);
-  });
-
-  test('un fichier partagé par deux Scènes les nomme toutes les deux', () => {
-    const projet = {
-      scenes: [volume('Salon', el('lampe.glb')), volume('Cuisine', el('lampe.glb'))], tomes: [],
-    };
-    assert.deepEqual(groupModelsByUsage(['lampe.glb'], projet).parScenes[0].scenes,
-      ['Salon', 'Cuisine']);
-  });
-
-  test('seuls les modèles importés comptent, pas les autres Éléments', () => {
-    const projet = { scenes: [], tomes: [volume('T', { type: 'objet3d', objType: 'chaise' },
-      { type: 'perso' }, { type: 'objet3d', objType: 'modele' })] };
-    assert.deepEqual(groupModelsByUsage(['x.glb'], projet).nonUtilises, ['x.glb']);
-  });
-
-  test('un Projet vide laisse tous les fichiers non utilisés', () => {
-    const g = groupModelsByUsage(['a.glb', 'b.glb'], {});
-    assert.deepEqual(g.nonUtilises, ['a.glb', 'b.glb']);
-    assert.deepEqual(g.parScenes, []);
-    assert.deepEqual(g.dansCases, []);
-  });
-
-  test('entrées absurdes : on ne lève pas', () => {
-    [undefined, null, []].forEach(f =>
-      assert.doesNotThrow(() => groupModelsByUsage(f, { tomes: null, scenes: undefined })));
-  });
-});
 
 describe('countModelUsages : le chiffre annoncé avant une suppression', () => {
   test('compte les Éléments, Scènes et Cases confondues', () => {
@@ -153,9 +86,8 @@ describe('messageSuppressionModele : dire les trois choses', () => {
 /**
  * JOURNAL DE MUTATION : six fautes, toutes rouges.
  *
- *   X1 « non utilisé » calculé sans tenir compte de l'usage en Scène        ROUGE
- *   X2 un fichier référencé mais absent du disque, oublié de la liste       ROUGE
- *   X3 une Scène nommée deux fois pour deux Éléments du même fichier        ROUGE
+ *   X1-X3 portaient sur groupModelsByUsage, parti avec la liste du menu de gauche : ses garanties
+ *         (fichier absent listé, usages par Scènes) sont tenues par local-library.test.mjs.
  *   X4 le décompte cesse de filtrer sur le type d'Élément                   ROUGE (après ajout)
  *   X5 « cette suppression est définitive » retiré du message               ROUGE
  *   X6 l'aveu sur les autres Projets retiré du message                      ROUGE
@@ -182,8 +114,6 @@ import { dirname, join } from 'node:path';
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML = readFileSync(join(RACINE, 'index.html'), 'utf8');
 const EVENTS = readFileSync(join(RACINE, 'src/events.js'), 'utf8');
-const TREE = readFileSync(join(RACINE, 'src/project-tree.js'), 'utf8');
-const DRAW = readFileSync(join(RACINE, 'src/draw.js'), 'utf8');
 const MAIN = readFileSync(join(RACINE, 'main.js'), 'utf8');
 const IO = readFileSync(join(RACINE, 'src/io.js'), 'utf8');
 
@@ -200,7 +130,7 @@ function corpsDuRenommage(){
 
 describe('Section Modèles : le câblage', () => {
   test('la section et son menu contextuel existent', () => {
-    ['modelTrigger', 'modelPanel', 'modelList', 'modelContextMenu', 'ctxDeleteModel', 'ctxRenameModel']
+    ['modelTrigger', 'modelPanel', 'modelContextMenu', 'ctxDeleteModel', 'ctxRenameModel']
       .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
   });
 
@@ -307,11 +237,13 @@ describe('Section Modèles : le câblage', () => {
     assert.match(bloc.slice(0, bloc.indexOf('\n}\n')), /alertAction/);
   });
 
-  test('la liste se recalcule à chaque rendu, comme celle des Scènes', () => {
-    // Le groupement est DÉDUIT du Projet : il doit suivre les changements du Projet, pas seulement
-    // l'ouverture.
-    assert.match(DRAW, /_renderModelList\(\);/, 'renderAll ne rafraîchit pas la bibliothèque');
-    assert.match(TREE, /export async function renderModelList/);
+  test('la bibliothèque « Mes modèles » se recharge après un renommage ou une suppression', () => {
+    // Elle remplace la liste du menu de gauche : c'est elle qui doit suivre, sinon elle montrerait
+    // un fichier qui n'existe plus sous ce nom.
+    const ev = sourceSansCommentaires(EVENTS);
+    assert.match(corpsDuRenommage(), /rafraichirBibliothequeLocale\(\)/);
+    const sup = ev.slice(ev.indexOf('async function supprimerModeleAvecConfirmation('));
+    assert.match(sup.slice(0, sup.indexOf('\n}\n')), /rafraichirBibliothequeLocale\(\)/);
   });
 
   test('main.js garde la suppression comme il garde l\'écriture', () => {
@@ -346,78 +278,17 @@ describe('Section Modèles : le câblage', () => {
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
-// La FORME des lignes affichées
-//
-// Signalé à l'usage : dans un panneau étroit, le nom de fichier et les endroits se partageaient une
-// ligne (flex, `justify-content: space-between`) et se coupaient tous les deux au milieu, on ne
-// pouvait lire ni le nom du fichier, ni celui de la Scène, et le texte débordait de la section.
-//
-// Ce qui suit observe le DOM réellement construit. Les assertions par lecture du source ne valent
-// rien ici : elles seraient satisfaites par le commentaire qui les explique (c'est arrivé trois
-// fois dans ce dépôt). Le stub DOM conserve désormais les enfants pour rendre cela possible.
+// La LISTE DES MODÈLES du menu de gauche a laissé place à la bibliothèque « Mes modèles »
+// (demandé) : ses tests d'affichage sont partis avec elle (cf. local-library.test.mjs pour les
+// usages, store-onglets.test.mjs pour l'onglet). Restent ces règles de mise en page de la carte, que
+// la section Images partage toujours.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { renderModelList } = await import('../src/project-tree.js');
+const CSS = readFileSync(join(RACINE, 'style.css'), 'utf8');
 const { setModelBridge } = await import('../src/model-store.js');
 const { S } = await import('../src/state.js');
 
-const CSS = readFileSync(join(RACINE, 'style.css'), 'utf8');
-
-/** Rend la liste pour un disque et un Projet donnés, et rend les lignes construites. */
-async function rendre(fichiers, projet){
-  setModelBridge({ listModelFiles: async () => fichiers });
-  S.tomes = projet.tomes || [];
-  S.scenes = projet.scenes || [];
-  await renderModelList();
-  const list = document.getElementById('modelList');
-  // Les lignes vivent dans les sous-sections repliables (`.model-group`), une par titre.
-  return list.children.flatMap(n => (String(n.className || '') === 'model-group' ? n.children : [n]))
-    .filter(n => String(n.className || '').includes('model-row'));
-}
-
-describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne', () => {
-  test('RÉGRESSION : deux Scènes font DEUX lignes, pas une liste concaténée', async () => {
-    // Joints par « , », la coupe tombait au milieu du premier nom et les suivants disparaissaient
-    // sans qu'aucun signe ne dise qu'il y en avait, l'utilisateur croyait à un seul usage.
-    const [ligne] = await rendre(['salon.glb'], {
-      scenes: [volume('Salon principal', el('salon.glb')), volume('Cuisine', el('salon.glb'))],
-    });
-    const textes = ligne.children.map(c => c.textContent);
-    assert.equal(textes[0], 'salon.glb', 'le nom de fichier n\'est pas la première ligne');
-    assert.deepEqual(textes.slice(1), ['Salon principal', 'Cuisine'],
-      'les Scènes ne sont pas sur des lignes distinctes');
-  });
-
-  test('chaque ligne de texte est coupable, et porte son texte entier en `title`', async () => {
-    // La coupe n'est acceptable QUE parce que le texte complet reste atteignable au survol. Une
-    // ligne coupée sans `title` perdrait l'information, pas seulement son affichage.
-    const [ligne] = await rendre(['un_nom_de_fichier_vraiment_tres_long.glb'], {
-      scenes: [volume('Une Scène au nom lui aussi interminable',
-        el('un_nom_de_fichier_vraiment_tres_long.glb'))],
-    });
-    assert.ok(ligne.children.length >= 2);
-    ligne.children.forEach(c => {
-      assert.match(String(c.className), /model-row-name|model-row-where|image-row-where/,
-        `texte sans classe coupante : « ${c.textContent} »`);
-      assert.equal(c.title, c.textContent, 'le texte entier n\'est pas accessible au survol');
-    });
-  });
-
-  test('RÉGRESSION : les classes annoncées par le rendu existent VRAIMENT dans style.css', async () => {
-    // Deux fois déjà, un élément déclaré n'avait rien en face (le panneau sans setupDropdown, le
-    // panneau sans `open`). Une classe posée par le JS et absente du CSS est le même défaut : la
-    // ligne s'affiche, ne coupe rien, et déborde.
-    ['model-row', 'model-row-name', 'model-row-where', 'image-row-where', 'model-row-plus'].forEach(c =>
-      assert.match(CSS, new RegExp(`\\.${c}[\\s,{]`), `classe absente de style.css : .${c}`));
-    const bloc = CSS.slice(CSS.indexOf('.model-row-name'));
-    assert.match(bloc.slice(0, 300), /text-overflow:\s*ellipsis/,
-      'les lignes ne sont pas coupées aux points de suspension');
-    assert.match(bloc.slice(0, 300), /white-space:\s*nowrap/,
-      'sans `nowrap`, le texte passe à la ligne au lieu d\'être coupé');
-    assert.match(CSS.slice(CSS.indexOf('.model-row {'), CSS.indexOf('.model-row {') + 400),
-      /overflow:\s*hidden/, 'la ligne ne contient pas son propre débordement');
-  });
-
+describe('La carte d\'une section du menu de gauche : ses marges', () => {
   test('RÉGRESSION : le premier titre de groupe est à la MÊME distance du bouton que le bouton du haut de la carte', () => {
     // Signalé à l'œil : la liste commençait plus bas que le bouton ne commence lui-même, et la
     // section paraissait décentrée. L'égalité tient à TROIS valeurs dans TROIS règles distinctes,
@@ -467,232 +338,7 @@ describe('Affichage de la bibliothèque : le nom d\'abord, un endroit par ligne'
     assert.ok(haut > bas, `le titre est aussi loin de ses lignes (${bas}px) que du groupe précédent (${haut}px)`);
   });
 
-  test('un modèle sans usage n\'affiche que son nom', async () => {
-    const [ligne] = await rendre(['orphelin.glb'], {});
-    assert.deepEqual(ligne.children.map(c => c.textContent), ['orphelin.glb']);
-  });
-
-  test('un modèle introuvable garde son avertissement, sur sa propre ligne', async () => {
-    // Il vient APRÈS les endroits : d'abord ce que le fichier sert, ensuite pourquoi c'est cassé.
-    const [ligne] = await rendre([], { tomes: [volume('Tome 1', el('disparu.glb'))] });
-    const dernier = ligne.children[ligne.children.length - 1];
-    assert.match(dernier.textContent, /introuvable|not found/);
-    assert.match(String(dernier.className), /perso-name-sub-warn/, 'l\'avertissement n\'est pas coloré');
-    assert.match(String(dernier.className), /model-row-where/, 'l\'avertissement n\'est pas coupé');
-  });
 });
-
-/**
- * JOURNAL DE MUTATION : la forme des lignes.
- *
- *   Z1 les Scènes rejointes par « , » sur une seule ligne                        ROUGE
- *   Z2 `title` retiré des lignes                                                 ROUGE
- *   Z3 `text-overflow: ellipsis` retiré du CSS                                   ROUGE
- *   Z4 l'avertissement « introuvable » placé avant les endroits                  ROUGE
- *   Z5 la classe `model-row-where` retirée des endroits                          ROUGE
- *   Z6 `.model-row { display: block }` retiré                                    ÉCHAPPÉE, assumé
- *
- * Z6 EST ASSUMÉE, et mérite d'être dite plutôt que maquillée : on peut vérifier que les classes
- * existent et qu'elles coupent, pas que la disposition obtenue à l'écran est bien verticale, il
- * faudrait un moteur de rendu. Ce qui est gardé ici, c'est que le JS produit des lignes séparées et
- * coupables ; que le navigateur les empile relève de l'essai à l'œil.
- */
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sous-sections repliables et filtre (demandé : la section se remplit vite)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const { filtrerModeles, texteComparable } = await import('../src/model-library.js');
-
-describe('Le filtre de la section Modèles', () => {
-  const g = groupModelsByUsage(['salon.glb', 'chaise.glb', 'Écran.glb'], {
-    scenes: [volume('Nuit au salon', el('salon.glb'))],
-    tomes: [volume('Tome 1', el('chaise.glb'))],
-  });
-  test('vide, rien n\'est filtré', () => {
-    assert.equal(filtrerModeles(g, '   '), g);
-  });
-  test('sans accents ni majuscules', () => {
-    assert.equal(texteComparable('  Écran   Noir '), 'ecran noir');
-    assert.deepEqual(filtrerModeles(g, 'ecran').nonUtilises, ['Écran.glb']);
-  });
-  test('le nom d\'une Scène qui l\'utilise suffit à trouver un modèle', () => {
-    const r = filtrerModeles(g, 'nuit');
-    assert.deepEqual(r.parScenes.map(e => e.nom), ['salon.glb']);
-    assert.equal(r.dansCases.length + r.nonUtilises.length, 0);
-  });
-  test('chaque mot doit se trouver, dans le nom OU dans les Scènes', () => {
-    assert.equal(filtrerModeles(g, 'salon nuit').parScenes.length, 1);
-    assert.equal(filtrerModeles(g, 'salon jour').parScenes.length, 0);
-  });
-});
-
-describe('Les sous-sections de la section Modèles', () => {
-  const titres = () => document.getElementById('modelList').children.filter(n => String(n.className).includes('model-group-title'));
-  const groupes = () => document.getElementById('modelList').children.filter(n => n.className === 'model-group');
-  const projet = { tomes: [volume('Tome 1', el('chaise.glb'))] };
-
-  test('chaque titre porte le nombre de modèles de sa sous-section', async () => {
-    document.getElementById('modelFiltre').value = '';
-    await rendre(['chaise.glb', 'a.glb', 'b.glb'], projet);
-    assert.deepEqual(titres().map(t => t.children[2].textContent), ['1', '2']);
-  });
-  test('un clic replie, l\'état est mémorisé et retrouvé au rendu suivant', async () => {
-    globalThis.localStorage.removeItem('groupeReplie:modeles:nonUtilises');
-    document.getElementById('modelFiltre').value = '';
-    await rendre(['chaise.glb', 'a.glb'], projet);
-    assert.equal(groupes()[1].hidden, false);
-    titres()[1].onclick();
-    assert.equal(groupes()[1].hidden, true);
-    assert.equal(globalThis.localStorage.getItem('groupeReplie:modeles:nonUtilises'), '1');
-    await rendre(['chaise.glb', 'a.glb'], projet);
-    assert.equal(groupes()[1].hidden, true, 'l\'état replié n\'a pas survécu au rendu');
-    assert.equal(groupes()[0].hidden, false, 'replier un groupe en a replié un autre');
-  });
-  test('PENDANT UN FILTRAGE, un groupe replié le reste et se déplie toujours d\'un clic (demandé)', async () => {
-    globalThis.localStorage.setItem('groupeReplie:modeles:nonUtilises', '1');
-    document.getElementById('modelFiltre').value = 'a';
-    await rendre(['chaise.glb', 'a.glb'], projet);
-    const g = groupes()[groupes().length - 1];
-    assert.equal(g.hidden, true, 'le filtre a déplié un groupe replié');
-    assert.ok(g.children.some(l => l.children[0].textContent === 'a.glb'), 'le résultat n\'est pas dans son groupe');
-    titres()[titres().length - 1].onclick();
-    assert.equal(g.hidden, false, 'le titre ne déplie plus pendant un filtrage');
-    assert.equal(globalThis.localStorage.getItem('groupeReplie:modeles:nonUtilises'), '0');
-    document.getElementById('modelFiltre').value = '';
-  });
-  test('aucun résultat : un message plutôt qu\'une liste vide', async () => {
-    document.getElementById('modelFiltre').value = 'zzz';
-    const lignes = await rendre(['chaise.glb'], projet);
-    assert.equal(lignes.length, 0);
-    assert.match(document.getElementById('modelList').innerHTML, /Aucun modèle ne correspond|No model matches/);
-    document.getElementById('modelFiltre').value = '';
-  });
-  test('la barre de recherche se cache quand il n\'y a aucun modèle', async () => {
-    await rendre([], {});
-    assert.equal(document.getElementById('modelFiltre').hidden, true);
-    await rendre(['a.glb'], {});
-    assert.equal(document.getElementById('modelFiltre').hidden, false);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Le clic GAUCHE : mener aux usages, ou ne rien promettre
-//
-// La décision elle-même est testée dans model-usages.test.mjs (resolveModelClick). Ce qui se garde
-// ICI, c'est que la LIGNE affichée soit d'accord avec elle : une ligne qui invite au clic doit
-// mener quelque part, et une ligne qui ne mène nulle part ne doit pas y inviter.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const { setProjectTreeCallbacks: _setTreeCb } = await import('../src/project-tree.js');
-
-describe('Bibliothèque : chaque ENDROIT mène à lui-même (même forme que la section Images)', () => {
-  let demandes;
-  const boutons = (ligne) => ligne.children.filter(c => String(c.className) === 'image-row-where');
-  const rendreAvecClic = async (fichiers, projet) => {
-    demandes = [];
-    _setTreeCb({ openModelPlace: (nom, endroit) => demandes.push([nom, endroit]), openModelContextMenu: () => {} });
-    return rendre(fichiers, projet);
-  };
-
-  test('RÉGRESSION : chaque bouton emporte SON fichier et SON endroit', async () => {
-    // Trois fichiers, deux Scènes chacun, et on clique le DEUXIÈME endroit du DEUXIÈME fichier : les
-    // lignes et les boutons sont construits en boucle, l'endroit classique où tout finit par
-    // désigner la même chose.
-    const lignes = await rendreAvecClic(['a.glb', 'b.glb', 'c.glb'], {
-      scenes: [volume('Salon', el('a.glb'), el('b.glb'), el('c.glb')), volume('Cuisine', el('a.glb'), el('b.glb'), el('c.glb'))],
-    });
-    assert.equal(lignes.length, 3);
-    assert.equal(lignes[1].onclick, undefined, 'le nom du fichier n\'est plus qu\'un titre');
-    boutons(lignes[1])[1].onclick({ stopPropagation(){} });
-    assert.equal(demandes.length, 1);
-    assert.equal(demandes[0][0], 'b.glb', 'le clic a désigné un autre fichier');
-    assert.equal(demandes[0][1].sceneName, 'Cuisine', 'le clic a désigné un autre endroit');
-  });
-
-  test('une Case porte son chemin, et « ×2 » si elle contient deux Éléments du fichier', async () => {
-    const page = { objects: [{ id: 'c1', type: 'panel', caseNumber: 4 }, { ...el('a.glb'), homePanelId: 'c1' }, { ...el('a.glb'), homePanelId: 'c1' }] };
-    const [ligne] = await rendreAvecClic(['a.glb'], { tomes: [{ name: 'Tome 1', pages: [{ objects: [] }, page] }] });
-    assert.deepEqual(boutons(ligne).map(b => b.textContent), ['Tome 1 › Planche 2 › Case 4 ×2']);
-  });
-
-  test('un fichier des deux usages : ses Scènes dans un groupe, ses Cases dans l\'autre', async () => {
-    const page = { objects: [{ id: 'c1', type: 'panel', caseNumber: 1 }, { ...el('a.glb'), homePanelId: 'c1' }] };
-    const lignes = await rendreAvecClic(['a.glb'], { scenes: [volume('Salon', el('a.glb'))], tomes: [{ name: 'T', pages: [page] }] });
-    assert.deepEqual(lignes.map(l => boutons(l).map(b => b.textContent)), [['Salon'], ['T › Planche 1 › Case 1']]);
-  });
-
-  test('au-delà de trois endroits, « + N autre(s) » déplie le reste, dans l\'ordre, et « Réduire » replie', async () => {
-    const scenes = ['S1', 'S2', 'S3', 'S4', 'S5'].map(n => volume(n, el('a.glb')));
-    let [ligne] = await rendreAvecClic(['a.glb'], { scenes });
-    assert.deepEqual(boutons(ligne).map(b => b.textContent), ['S1', 'S2', 'S3']);
-    const plus = ligne.children.find(c => c.className === 'model-row-plus');
-    assert.match(plus.textContent, /\+ 2/);
-    await plus.onclick({ stopPropagation(){} });
-    [ligne] = await rendre(['a.glb'], { scenes });
-    assert.deepEqual(boutons(ligne).map(b => b.textContent), ['S1', 'S2', 'S3', 'S4', 'S5']);
-    const moins = ligne.children.find(c => c.className === 'model-row-plus');
-    assert.match(moins.textContent, /Réduire|Show less/);
-    await moins.onclick({ stopPropagation(){} });
-    [ligne] = await rendre(['a.glb'], { scenes });
-    assert.equal(boutons(ligne).length, 3);
-  });
-
-  test('RÉGRESSION : le dépliage SURVIT au clic sur un endroit, qui refait la liste (signalé à l\'usage)', async () => {
-    // Cliquer un endroit déplace l'écran, et renderAll refait la liste. Le dépliage vivait dans la
-    // ligne elle-même et se perdait, alors que l'utilisateur n'avait rien replié.
-    const scenes = ['S1', 'S2', 'S3', 'S4'].map(n => volume(n, el('b.glb')));
-    let [ligne] = await rendreAvecClic(['b.glb'], { scenes });
-    await ligne.children.find(c => c.className === 'model-row-plus').onclick({ stopPropagation(){} });
-    [ligne] = await rendre(['b.glb'], { scenes });
-    boutons(ligne)[3].onclick({ stopPropagation(){} });
-    [ligne] = await rendre(['b.glb'], { scenes });   // ce que fait renderAll après le déplacement
-    assert.equal(boutons(ligne).length, 4, 'la liste s\'est repliée toute seule');
-    // Et un AUTRE fichier n'hérite pas du dépliage.
-    const [autre] = await rendre(['c.glb'], { scenes: ['S1', 'S2', 'S3', 'S4'].map(n => volume(n, el('c.glb'))) });
-    assert.equal(boutons(autre).length, 3, 'le dépliage d\'un fichier a déplié un autre');
-  });
-
-  test('RÉGRESSION : un modèle inutilisé ne réagit pas, ET le montre avant le clic', async () => {
-    const [ligne] = await rendreAvecClic(['orphelin.glb'], {});
-    assert.equal(boutons(ligne).length, 0);
-    assert.match(String(ligne.className), /model-row-inert/,
-      'rien ne distingue une ligne inerte d\'une ligne cliquable');
-  });
-
-  test('RÉGRESSION : la classe inerte existe VRAIMENT dans style.css, et retire le curseur', () => {
-    // Même piège que pour les classes coupantes : une classe posée par le JS et absente du CSS
-    // laisse la ligne cliquable en apparence. `.tome-row` pose `cursor:pointer` pour tout le monde.
-    const i = CSS.indexOf('.model-row-inert');
-    assert.ok(i > 0, 'classe absente de style.css : .model-row-inert');
-    assert.match(CSS.slice(i, i + 120), /cursor:\s*default/,
-      'la ligne inerte garde le curseur main : elle promet un clic qui ne fera rien');
-  });
-
-  test('la modale des usages existe et n\'a qu\'une sortie neutre', () => {
-    ['modelUsagesModal', 'modelUsagesList', 'modelUsagesClose']
-      .forEach(id => assert.match(HTML, new RegExp(`id="${id}"`), `absent : ${id}`));
-    // Aucun bouton de validation : chaque ligne EST l'action. Un « Confirmer » laisserait croire
-    // qu'il faut sélectionner puis valider, alors qu'un seul clic suffit.
-    const bloc = HTML.slice(HTML.indexOf('id="modelUsagesModal"'));
-    const modale = bloc.slice(0, bloc.indexOf('id="confirmActionModal"'));
-    assert.doesNotMatch(modale, /full-btn/, 'un bouton de validation brouille le geste');
-  });
-});
-
-/**
- * JOURNAL DE MUTATION : les endroits cliquables (refaits quand la liste a pris la forme de la
- * section Images).
- *
- *   T1 chaque bouton reçoit l'endroit d'un autre (fermeture mal fermée)          ROUGE
- *   T2 les Scènes et les Cases mélangées dans les deux groupes                     ROUGE
- *   T3 tous les endroits affichés d'emblée, sans « + N autres »                    ROUGE
- *   T4 la classe .model-row-inert n'est plus posée                                 ROUGE
- *
- * Même leçon que la version précédente de ce test : trois fichiers et deux endroits chacun, et l'on
- * clique ceux du MILIEU. Avec un seul de chaque, toutes les fautes de boucle passaient.
- */
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Renommer un modèle
