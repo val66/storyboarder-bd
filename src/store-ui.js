@@ -151,6 +151,9 @@ function ouvrirFiche(r){
   positionListe = $('storeDefilement').scrollTop;
   $('storeGrille').hidden = true;
   $('storePlusBtn').hidden = true;
+  // Ni recherche ni filtres sur une fiche (demandé) : ils ne s'appliquent pas à un seul modèle.
+  $('storeFormulaire').hidden = true;
+  message('');
   fiche.hidden = false;
   $('storeDefilement').scrollTop = 0;
 }
@@ -161,6 +164,7 @@ function fermerFiche(){
   $('storeFiche').replaceChildren();   // arrête un aperçu 3D en cours
   $('storeGrille').hidden = false;
   $('storePlusBtn').hidden = !suivant;
+  $('storeFormulaire').hidden = false;
   if (ouverte) $('storeDefilement').scrollTop = positionListe;   // on retrouve la liste où on l'avait laissée
 }
 

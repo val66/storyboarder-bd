@@ -112,7 +112,7 @@ describe('le câblage', () => {
   test('retours de Valentin (6 octobre 2026) : une seule zone défile, la fiche remplace la liste, une ligne par licence', () => {
     const css = lire('style.css');
     const html = lire('index.html');
-    assert.match(css, /\.store-grille\[hidden\], \.store-fiche\[hidden\], \.store-plus\[hidden\]\{ display:none; \}/);
+    assert.match(css, /\.store-grille\[hidden\], \.store-fiche\[hidden\], \.store-plus\[hidden\]/);
     assert.match(css, /display:flex; flex-direction:column; overflow:hidden;/);
     assert.match(css, /\.store-box > \.store-defilement\{ flex:1 1 auto; min-height:0; overflow-y:auto;/);
     const zone = html.slice(html.indexOf('id="storeDefilement"'), html.indexOf('id="storeCredit"'));
@@ -142,9 +142,16 @@ describe('le câblage', () => {
     const css = lire('style.css');
     // `.nav-btn` porte width:100% : sans width:auto, « Retour » prenait toute la ligne et poussait
     // « Télécharger » hors de la fiche (barre de défilement horizontale sur la capture).
-    assert.match(css, /\.store-fiche-actions \.nav-btn\{ flex:none; width:auto;/);
+    assert.match(css, /\.store-fiche-actions > \*\{ flex:1 1 0; width:auto; margin:0; \}/);
     assert.match(css, /\.store-lien-bouton\{[^}]*justify-content:center;/);
     assert.ok(!UI.includes("'← ' + t.fermerFiche"));
+  });
+  test('retours de Valentin (4e passe) : la fiche cache la recherche et les filtres, et les rend au retour', () => {
+    const f = UI.slice(UI.indexOf('function ouvrirFiche'), UI.indexOf('function fermerFiche'));
+    const r = UI.slice(UI.indexOf('function fermerFiche'));
+    assert.match(f, /\$\('storeFormulaire'\)\.hidden = true;/);
+    assert.match(r, /\$\('storeFormulaire'\)\.hidden = false;/);
+    assert.match(lire('style.css'), /\.store-filtres\[hidden\]\{ display:none; \}/);
   });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));

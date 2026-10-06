@@ -2042,7 +2042,7 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px; }
 /* ⚠️ `hidden` ne l'emporte pas sur un `display` posé par une classe : sans ces règles, la grille
    restait affichée sous la fiche au lieu d'être remplacée. */
-.store-grille[hidden], .store-fiche[hidden], .store-plus[hidden]{ display:none; }
+.store-grille[hidden], .store-fiche[hidden], .store-plus[hidden], .store-filtres[hidden]{ display:none; }
 .store-carte{
   display:flex; flex-direction:column; gap:4px; text-align:left; padding:0 0 8px; cursor:pointer;
   background:var(--white); border:1px solid var(--line); border-radius:8px; overflow:hidden; color:var(--ink);
@@ -2071,8 +2071,7 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-fiche-section{ margin:10px 0 0; }
 .store-fiche-section h5{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
 .store-fiche-actions{ display:flex; gap:8px; align-items:stretch; margin-top:12px; }
-.store-fiche-actions .nav-btn{ flex:none; width:auto; margin:0; padding-left:18px; padding-right:18px; }
-.store-fiche-actions .full-btn{ flex:1 1 auto; margin:0; }
+.store-fiche-actions > *{ flex:1 1 0; width:auto; margin:0; }   /* parts égales (demandé) */
 .store-lien-bouton{ text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
 .store-fiche-boutons > *{ flex:1 1 0; margin:0; }
 .store-avertissement{ color:var(--warn); }
