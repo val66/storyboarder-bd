@@ -7,14 +7,16 @@
  * les résultats. Le processus principal fait les requêtes (store.js) ; ici on construit le DOM.
  * Tout texte venu du réseau (noms, auteurs) passe par textContent, jamais par innerHTML.
  *
- * Le téléchargement n'est pas encore là (#444c, #444d) : le bouton existe, désactivé, et dit
- * pourquoi.
+ * Le téléchargement (#445) : Poly Haven, sans compte. Sketchfab attend la connexion (#444c) : son
+ * bouton reste désactivé, et la fiche dit pourquoi. Un modèle téléchargé est rangé par le chemin de
+ * l'import (model-store.js, rangerModele), puis son attribution est notée.
  *
  * Un modèle DÉJÀ TÉLÉCHARGÉ (et encore présent) porte un badge sur sa carte, et sa fiche désactive
  * « Télécharger » en donnant le nom du fichier : pas de doublon par inadvertance. La liste vient du
  * fichier des attributions (store.js, telecharges), relue à chaque ouverture du store.
  */
 import { S } from './state.js';
+import { rangerModele } from './model-store.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
 
 /**
@@ -214,9 +216,10 @@ function ouvrirFiche(r){
 
   const retour = el('button', { texte: t.fermerFiche, classe: 'nav-btn', attrs: { type: 'button' } });
   retour.onclick = fermerFiche;
-  // Désactivé tant que le téléchargement n'existe pas (#444d), et pour de bon si le modèle est déjà là.
   const fichier = fichierPossede(r);
-  const telecharger = el('button', { texte: fichier ? '✓ ' + t.possede : t.telecharger, classe: 'full-btn', attrs: { type: 'button', disabled: '' } });
+  const telecharger = el('button', { texte: fichier ? '✓ ' + t.possede : t.telecharger, classe: 'full-btn', attrs: { type: 'button' } });
+  const note = el('p', { texte: fichier ? t.possedeFiche(fichier) : t.noteTelechargement(r.source), classe: 'store-note' });
+  brancherTelechargement(r, telecharger, note, fichier);
   const section = (titre, lignes, avant = []) => el('section', { classe: 'store-fiche-section' }, [
     el('h5', { texte: titre }), ...avant, el('ul', {}, lignes.map(p => el('li', { texte: p }))),
   ]);
@@ -239,7 +242,7 @@ function ouvrirFiche(r){
     // Retour et Télécharger TOUJOURS visibles (demandé) : un pied collé au bas de la zone qui défile.
     el('div', { classe: 'store-fiche-pied' }, [
       el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
-      el('p', { texte: fichier ? t.possedeFiche(fichier) : t.bientot(r.source), classe: 'store-note' }),
+      note,
     ]),
   );
   // La fiche REMPLACE la liste (demandé) ; on garde la position dans la liste pour le retour.
@@ -251,6 +254,91 @@ function ouvrirFiche(r){
   message('');
   fiche.hidden = false;
   $('storeDefilement').scrollTop = 0;
+}
+
+/**
+ * Le bouton « Télécharger » d'une fiche (#445). Trois états, que le bouton dit lui-même :
+ *   - indisponible : modèle déjà là (« ✓ Déjà téléchargé »), ou source qui demande une connexion
+ *     qu'on n'a pas encore (Sketchfab) ;
+ *   - prêt : « Télécharger (1,2 Mo) », le poids arrivant un instant après l'ouverture de la fiche ;
+ *   - en cours : « Téléchargement… 45 % », puis « ✓ Déjà téléchargé » et le nom du fichier rangé.
+ *
+ * Le téléchargement continue si l'on ferme la fiche ou le store : il se termine, se range, et la
+ * coche apparaît sur la carte. Un seul à la fois : la barre de progression n'a qu'un sens.
+ */
+let enTelechargement = null;   // { cle, bouton, note } du téléchargement en cours
+const cleDe = (r) => `${r.source}:${r.id}`;
+
+function brancherTelechargement(r, bouton, note, fichier){
+  const t = textesStore(langue());
+  const pont = window.storyboarderAPI;
+  const possible = !fichier && infos && infos.source.connexion && infos.source.connexion.telechargement === false
+    && pont && pont.storeTelecharger;
+  if (enTelechargement && enTelechargement.cle === cleDe(r)) {
+    // On rouvre la fiche d'un modèle en cours de téléchargement : elle reprend la progression.
+    enTelechargement.bouton = bouton;
+    enTelechargement.note = note;
+    bouton.disabled = true;
+    bouton.textContent = t.telechargement(0);
+    return;
+  }
+  bouton.disabled = !possible || !!enTelechargement;
+  if (!possible) return;
+  if (pont.storePoids) {
+    pont.storePoids(r.source, r.id).then(p => {
+      if (p && p.octets && !bouton.disabled) bouton.textContent = t.telechargerPoids(poidsLisible(p.octets, langue()));
+    }).catch(() => {});
+  }
+  bouton.onclick = () => telechargerModele(r, bouton, note);
+}
+
+/** Télécharge, range par le chemin de l'import, puis note l'attribution. Exportée pour les tests. */
+export async function telechargerModele(r, bouton, note){
+  if (enTelechargement) return { ok: false };
+  const t = textesStore(langue());
+  const pont = window.storyboarderAPI;
+  enTelechargement = { cle: cleDe(r), bouton, note };
+  const dire = (texteBouton, texteNote, erreur = false) => {
+    const e = enTelechargement || { bouton, note };
+    if (texteBouton != null && e.bouton) e.bouton.textContent = texteBouton;
+    if (texteNote != null && e.note) { e.note.textContent = texteNote; e.note.classList.toggle('erreur', erreur); }
+  };
+  bouton.disabled = true;
+  dire(t.telechargement(0), '');
+  let issue;
+  try {
+    const rep = await pont.storeTelecharger(r.source, r.id);
+    if (!rep || rep.erreur || !rep.data) {
+      issue = { ok: false, erreur: (rep && rep.erreur) || 'reponse' };
+    } else {
+      dire(t.rangement, null);
+      const range = await rangerModele(r.nom + '.glb', rep.data);
+      issue = range.ok ? { ok: true, fichier: range.name } : { ok: false, erreur: 'ecriture' };
+    }
+  } catch (e) {
+    issue = { ok: false, erreur: 'reseau' };
+  }
+  if (issue.ok) {
+    if (pont.storeAttribuer) await pont.storeAttribuer(r, issue.fichier);
+    await rafraichirPossedes();
+    dire('✓ ' + t.possede, t.telechargeOk(issue.fichier));
+    enTelechargement = null;
+    // La coche sur la carte, et la section Modèles du menu de gauche.
+    $('storeGrille').replaceChildren(...affiches.map(carte));
+    if (_rappels.apresTelechargement) _rappels.apresTelechargement(issue.fichier);
+  } else {
+    dire(t.telecharger, t.erreurs[issue.erreur] || t.erreurs.reponse, true);
+    const e = enTelechargement;
+    enTelechargement = null;
+    if (e && e.bouton) e.bouton.disabled = false;
+  }
+  return issue;
+}
+
+/** La progression envoyée par le processus principal (store:progression). */
+function progression(recus, total){
+  if (!enTelechargement || !enTelechargement.bouton || !(total > 0)) return;
+  enTelechargement.bouton.textContent = textesStore(langue()).telechargement(Math.floor((recus / total) * 100));
 }
 
 function fermerFiche(){
@@ -315,10 +403,16 @@ export function fermerStore(){
   $('storeModal').classList.add('hidden');
 }
 
-/** Le câblage, une fois. */
-export function cablerStore(){
+/** Ce que le reste de l'application veut savoir (injecté par events.js, cf. architecture). */
+let _rappels = {};
+
+/** Le câblage, une fois. `rappels.apresTelechargement(fichier)` : un modèle vient d'être rangé. */
+export function cablerStore(rappels = {}){
+  _rappels = rappels || {};
   const storeModal = document.getElementById('storeModal');
   if (!storeModal) return;
+  const pont = window.storyboarderAPI;
+  if (pont && pont.onStoreProgression) pont.onStoreProgression(progression);
   $('storeOuvrirBtn').onclick = ouvrirStore;
   // Pas de bouton « Rechercher » (demandé) : la saisie relance la recherche après une courte pause,
   // pour ne pas lancer une requête par lettre tapée ; Entrée la lance tout de suite.

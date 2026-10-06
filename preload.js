@@ -53,4 +53,9 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   storeChercher: (sourceId, params) => ipcRenderer.invoke('store:chercher', sourceId, params),
   // Les modèles déjà téléchargés depuis le store, pour ne pas les proposer deux fois.
   storeTelecharges: () => ipcRenderer.invoke('store:telecharges'),
+  // #445 : poids annoncé, téléchargement (le .glb revient ici pour être rangé), attribution.
+  storePoids: (sourceId, id) => ipcRenderer.invoke('store:poids', sourceId, id),
+  storeTelecharger: (sourceId, id) => ipcRenderer.invoke('store:telecharger', sourceId, id),
+  storeAttribuer: (resultat, fichier) => ipcRenderer.invoke('store:attribuer', resultat, fichier),
+  onStoreProgression: (callback) => ipcRenderer.on('store:progression', (e, recus, total) => callback(recus, total)),
 });

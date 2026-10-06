@@ -108,8 +108,26 @@ listent les ressources attribuables présentes dans les Planches exportées (#44
 - **#444f** Les crédits dans les exports.
 - **#444g** Placer directement un modèle depuis sa fiche.
 - **#444h** Finitions : filtres mémorisés, manuel, README, traductions.
-- **#445** Poly Haven : recherche et onglets (fait), puis le téléchargement. **#446** le store de
-  textures.
+- **#445** Poly Haven : recherche et onglets, puis téléchargement. Fait.
+- **#446** le store de textures.
+
+## Le téléchargement
+
+Fait pour Poly Haven (#445) ; Sketchfab réutilisera le même chemin une fois la connexion faite.
+
+1. `store:poids` annonce le poids sur le bouton (`planTelechargement`, d'après `/files/{id}`).
+2. `store:telecharger` (processus principal) télécharge le `.gltf` et chacun de ses fichiers inclus
+   en **1k**, seulement depuis `dl.polyhaven.org`, vérifie chaque md5, refuse au-delà de 300 Mo, puis
+   **empaquette** le tout en un `.glb` (`gltf-glb.js`, sans dépendance). La progression remonte par
+   `store:progression`.
+3. Le renderer **range** le `.glb` par le chemin de l'import (`rangerModele`, src/model-store.js) :
+   même assainissement, mêmes collisions (« (2) »), même détection du doublon à l'identique.
+4. `store:attribuer` note l'entrée dans `attributions-modeles.json` (revalidée côté principal) ; un
+   renommage du modèle la fait suivre (`models:rename`). La coche apparaît, la section Modèles se
+   rafraîchit.
+
+Un seul téléchargement à la fois ; il continue si l'on ferme la fiche. En simulation, rien n'est
+téléchargé (aucune réponse enregistrée ne contient de fichiers).
 
 ## Voir le store sans réseau
 

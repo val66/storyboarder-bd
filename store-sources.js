@@ -161,7 +161,43 @@ function telechargesPresents(attributions, fichiersPresents){
     .map(e => ({ source: e.source, id: String(e.id), fichier: e.fichier }));
 }
 
+/**
+ * L'entrée d'attribution d'une ressource téléchargée (#444e), à partir de son résultat (format
+ * commun) et du fichier où elle a été rangée. Tout ce qu'il faut pour la créditer plus tard, même
+ * si la source disparaît : nom, auteur, licence, adresse, date.
+ */
+function entreeAttribution(r, fichier, date = new Date()){
+  return {
+    source: r.source, id: String(r.id), fichier,
+    nom: r.nom,
+    auteur: { nom: r.auteur.nom, url: r.auteur.url || null },
+    licence: { code: r.licence.code, libelle: r.licence.libelle, url: r.licence.url || null, attribution: !!r.licence.attribution },
+    url: r.url,
+    date: date.toISOString(),
+  };
+}
+
+const vide = () => ({ version: 1, ressources: [] });
+const liste = (a) => (a && Array.isArray(a.ressources) ? a.ressources.filter(Boolean) : []);
+
+/**
+ * Ajoute (ou remplace) l'entrée d'une ressource. Rend un NOUVEL objet. Une même ressource
+ * retéléchargée (après suppression du fichier) remplace l'ancienne entrée plutôt que d'en empiler
+ * une seconde.
+ */
+function ajouterAttribution(attributions, entree){
+  const autres = liste(attributions).filter(e => !(e.source === entree.source && String(e.id) === String(entree.id)));
+  return { ...vide(), ressources: [...autres, entree] };
+}
+
+/** Le fichier d'une ressource a été renommé : son entrée suit. Rend un NOUVEL objet. */
+function renommerDansAttributions(attributions, ancien, nouveau){
+  const a = String(ancien).toLowerCase();
+  return { ...vide(), ressources: liste(attributions).map(e => (String(e.fichier).toLowerCase() === a ? { ...e, fichier: nouveau } : e)) };
+}
+
 module.exports = {
   LICENCES, SOURCES, TRIS, PAR_PAGE, FICHIER_ATTRIBUTIONS,
   licence, rechercheNormalisee, resultatValide, pageAffichable, ligneDeCredit, telechargesPresents,
+  entreeAttribution, ajouterAttribution, renommerDansAttributions,
 };

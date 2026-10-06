@@ -166,8 +166,56 @@ function pageLocale(catalogue, recherche, ids){
   return { resultats: liste.slice(debut, fin).map(e => e.r), suivant: fin < liste.length ? String(fin) : null };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Le téléchargement
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * La résolution des textures prise au téléchargement. 1k (1024 px) : une Case de storyboard montre
+ * rarement un objet plus grand qu'un quart d'écran, et 4k pèserait dix fois plus pour rien de
+ * visible. C'est aussi ce qui garde le modèle léger dans les Cases qui l'affichent.
+ */
+const RESOLUTION = '1k';
+
+/** Seuls les fichiers servis par Poly Haven sont téléchargés, quoi que dise la réponse. */
+const HOTE_FICHIERS = /^https:\/\/dl\.polyhaven\.org\//;
+
+function urlFichiers(id){
+  return idValide(id) ? `${API}/files/${id}` : null;
+}
+
+/** Un chemin relatif sans remontée ni racine : il servira de clé, jamais de chemin sur le disque. */
+const cheminSur = (c) => typeof c === 'string' && c.length > 0 && !c.includes('..') && !/^[\/]/.test(c) && !/^[a-z]+:/i.test(c);
+
+function fichierValide(f){
+  return !!f && typeof f.url === 'string' && HOTE_FICHIERS.test(f.url) && Number.isFinite(f.size) && f.size >= 0
+    && (f.md5 === undefined || /^[0-9a-f]{32}$/.test(f.md5));
+}
+
+/**
+ * Ce qu'il faut télécharger pour un modèle, d'après /files/{id} : le .gltf et chacun de ses fichiers
+ * inclus (géométrie, textures), avec le poids total. Prend la résolution demandée, sinon la plus
+ * petite disponible. null si la réponse ne permet pas un téléchargement sûr.
+ */
+function planTelechargement(fichiers, resolution = RESOLUTION){
+  const parRes = fichiers && fichiers.gltf;
+  if (!parRes || typeof parRes !== 'object') return null;
+  const dispo = Object.keys(parRes).filter(k => /^\d+k$/.test(k)).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  const res = dispo.includes(resolution) ? resolution : dispo[0];
+  const g = res && parRes[res] && parRes[res].gltf;
+  if (!fichierValide(g)) return null;
+  const inclus = [];
+  for (const [chemin, f] of Object.entries(g.include || {})) {
+    if (!cheminSur(chemin) || !fichierValide(f)) return null;
+    inclus.push({ chemin, url: f.url, taille: f.size, md5: f.md5 || null });
+  }
+  const total = g.size + inclus.reduce((n, f) => n + f.taille, 0);
+  return { resolution: res, gltf: { url: g.url, taille: g.size, md5: g.md5 || null }, inclus, total };
+}
+
 module.exports = {
-  API, SITE, CATEGORIES,
+  API, SITE, CATEGORIES, RESOLUTION,
   slugCategorie, urlCatalogue, urlRecherche, idValide, vignetteDeTaille,
   modeleNormalise, catalogueNormalise, idsRecherche, pageLocale,
+  urlFichiers, planTelechargement,
 };

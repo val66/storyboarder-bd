@@ -106,7 +106,25 @@ present in the exported Pages (#444f). The store shows "Models provided by Sketc
 - **#444f** Credits in exports.
 - **#444g** Placing a model straight from its detail view.
 - **#444h** Finishing touches: remembered filters, manual, README, translations.
-- **#445** Poly Haven: search and tabs (done), then downloading. **#446** the texture store.
+- **#445** Poly Haven: search and tabs, then downloading. Done.
+- **#446** the texture store.
+
+## Downloading
+
+Done for Poly Haven (#445); Sketchfab will reuse the same path once signing in exists.
+
+1. `store:poids` shows the size on the button (`planTelechargement`, from `/files/{id}`).
+2. `store:telecharger` (main process) downloads the `.gltf` and each included file at **1k**, only
+   from `dl.polyhaven.org`, checks every md5, refuses beyond 300 MB, then **packs** everything into a
+   `.glb` (`gltf-glb.js`, no dependency). Progress comes back through `store:progression`.
+3. The renderer **saves** the `.glb` through the import path (`rangerModele`, src/model-store.js):
+   same sanitising, same collisions ("(2)"), same detection of an identical duplicate.
+4. `store:attribuer` records the entry in `attributions-modeles.json` (validated again in the main
+   process); renaming the model carries it along (`models:rename`). The tick appears and the Models
+   section refreshes.
+
+One download at a time; it carries on if the details view is closed. In simulation nothing is
+downloaded (no recorded response contains files).
 
 ## Seeing the store without network
 

@@ -499,6 +499,8 @@ ipcMain.handle('models:rename', async (event, ancien, nouveau) => {
   try {
     if (!memeFichier && fs.existsSync(dst)) return { ok: false, error: 'un modèle porte déjà ce nom' };
     await fs.promises.rename(src, dst);
+    // #444e : un modèle venu du store garde son attribution sous son nouveau nom.
+    await store.renommerAttribution(getProjectsDir(), ancien, nouveau);
     return { ok: true, name: nouveau };
   } catch (err) {
     return { ok: false, error: String(err) };
@@ -749,6 +751,14 @@ ipcMain.handle('store:infos', async (event, sourceId) => ({ ...store.infos(sourc
 ipcMain.handle('store:chercher', async (event, sourceId, params) =>
   store.chercher(sourceId, params, SIMULATION_STORE ? __dirname : null));
 ipcMain.handle('store:telecharges', async () => store.telecharges(getProjectsDir(), SIMULATION_STORE ? __dirname : null));
+// #445 : le téléchargement. Le .glb revient au renderer, qui le RANGE par le chemin de l'import
+// (src/model-store.js : nom libre, doublon à l'identique) ; puis il demande l'attribution.
+ipcMain.handle('store:poids', async (event, sourceId, id) => store.poids(sourceId, id, SIMULATION_STORE ? __dirname : null));
+ipcMain.handle('store:telecharger', async (event, sourceId, id) =>
+  store.telecharger(sourceId, id, (recus, total) => {
+    if (!event.sender.isDestroyed()) event.sender.send('store:progression', recus, total);
+  }, SIMULATION_STORE ? __dirname : null));
+ipcMain.handle('store:attribuer', async (event, resultat, fichier) => store.attribuer(getProjectsDir(), resultat, fichier));
 
 // Télécharge puis installe. La progression part vers la fenêtre qui a demandé. En simulation, on
 // joue une progression factice et on s'arrête là : `npm start` n'a rien à remplacer.

@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.10.14**
+**Version 1.10.15**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -82,7 +82,7 @@ Versions précédentes et notes de version : [toutes les releases](https://githu
 - 📋 **Reprendre une correspondance** déjà faite pour le même squelette
 - 🧩 **Changer de figure** : un Élément articulé peut porter un autre fichier en gardant sa pose
 - 👻 **Morceaux détachés** d'un fichier masqués, réaffichables d'une case à cocher
-- 🔎 **Bibliothèque en ligne** : les modèles gratuits de Sketchfab et de Poly Haven, par mots-clés, catégorie, licence et taille, avec auteur, licence et aperçu 3D ; les modèles déjà téléchargés sont signalés (le téléchargement arrive dans une prochaine version)
+- 🔎 **Bibliothèque en ligne** : les modèles gratuits de Sketchfab et de Poly Haven, par mots-clés, catégorie, licence et taille, avec auteur, licence et aperçu 3D ; téléchargement en un clic depuis Poly Haven, les modèles déjà téléchargés sont signalés (Sketchfab arrive)
 
 > **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément.
 

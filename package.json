@@ -1,6 +1,6 @@
 {
   "name": "storyboard-bd",
-  "version": "1.10.14",
+  "version": "1.10.15",
   "engines": {
     "node": ">=22"
   },
@@ -44,6 +44,7 @@
       "store.js",
       "store-sketchfab.js",
       "store-polyhaven.js",
+      "gltf-glb.js",
       "store-sources.js",
       "update-policy.js",
       "updater.js",

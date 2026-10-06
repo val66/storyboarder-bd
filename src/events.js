@@ -8646,7 +8646,8 @@ if (helpModalOverlay) {
 enregistrerFermeture('helpModal', () => closeHelpModal());
 enregistrerFermeture('majModal', fermerModaleMaj);
 enregistrerFermeture('storeModal', fermerStore);
-cablerStore();
+// #445 : un modèle téléchargé depuis le store apparaît aussitôt dans la section Modèles.
+cablerStore({ apresTelechargement: () => renderAll() });
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));

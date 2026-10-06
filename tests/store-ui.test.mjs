@@ -27,7 +27,7 @@ describe('les textes', () => {
     // Tous les codes entre apostrophes des lignes qui posent une erreur, ternaires compris.
     const lignes = lire('store.js').split('\n').filter(l => /erreur: /.test(l) && !/^\s*(\/\/|\*)/.test(l));
     const codes = new Set(lignes.flatMap(l => [...l.slice(l.indexOf('erreur: ')).matchAll(/'(\w+)'/g)].map(m => m[1])));
-    assert.deepEqual([...codes].sort(), ['quota', 'reponse', 'reseau', 'source']);
+    assert.deepEqual([...codes].sort(), ['corrompu', 'quota', 'reponse', 'reseau', 'simulation', 'source', 'tropLourd']);
     for (const c of codes) { assert.ok(textesStore('fr').erreurs[c], c); assert.ok(textesStore('en').erreurs[c], c); }
   });
   test('la simulation dit comment en sortir', () => {
@@ -85,8 +85,10 @@ describe('le câblage', () => {
     assert.ok(!/innerHTML/.test(UI));
   });
   test('le téléchargement est désactivé tant que la connexion n\'existe pas, et la fiche dit pourquoi', () => {
-    assert.match(UI, /texte: fichier \? '✓ ' \+ t\.possede : t\.telecharger, classe: 'full-btn', attrs: \{ type: 'button', disabled: '' \}/);
-    assert.match(UI, /texte: fichier \? t\.possedeFiche\(fichier\) : t\.bientot\(r\.source\)/);
+    assert.match(UI, /texte: fichier \? '✓ ' \+ t\.possede : t\.telecharger, classe: 'full-btn'/);
+    assert.match(UI, /texte: fichier \? t\.possedeFiche\(fichier\) : t\.noteTelechargement\(r\.source\)/);
+    // Seule une source SANS connexion requise peut télécharger aujourd'hui (Sketchfab attend #444c).
+    assert.match(UI, /infos\.source\.connexion\.telechargement === false/);
   });
   test('l\'aperçu 3D ne se charge qu\'à la demande, et seulement depuis l\'adresse validée par la source', () => {
     const f = UI.slice(UI.indexOf('function ouvrirFiche'));
@@ -100,9 +102,9 @@ describe('le câblage', () => {
     assert.match(MAIN, /const SIMULATION_STORE = !app\.isPackaged && !!process\.env\.STORYBOARD_SIMULER_STORE;/);
     assert.match(MAIN, /store\.chercher\(sourceId, params, SIMULATION_STORE \? __dirname : null\)/);
   });
-  test('le pont n\'expose que les trois appels du store', () => {
+  test('le pont n\'expose que les six appels du store (et une écoute)', () => {
     const pre = lire('preload.js');
-    assert.equal((pre.match(/ipcRenderer\.invoke\('store:/g) || []).length, 3);
+    assert.equal((pre.match(/ipcRenderer\.invoke\('store:/g) || []).length, 6);
     assert.match(pre, /storeTelecharges: \(\) => ipcRenderer\.invoke\('store:telecharges'\)/);
     assert.match(MAIN, /store\.telecharges\(getProjectsDir\(\), SIMULATION_STORE \? __dirname : null\)/);
     assert.match(pre, /storeInfos: \(sourceId\) => ipcRenderer\.invoke\('store:infos', sourceId\)/);
@@ -167,8 +169,17 @@ describe('le câblage', () => {
     assert.match(css, /\.store-fiche-gauche \.store-fiche-visuel\{ flex:1 1 auto; aspect-ratio:auto;/);
     assert.match(css, /\.store-box \.maj-message:empty\{ display:none; \}/);
   });
+  test('store.js : chaque fichier téléchargé est vérifié, la simulation ne range rien, le poids est borné', () => {
+    const s = sans(lire('store.js'));
+    const f = s.slice(s.indexOf('async function telecharger('));
+    assert.match(f, /if \(f\.md5 && md5\(r\.octets\) !== f\.md5\) return \{ erreur: 'corrompu' \};/);
+    assert.ok(f.indexOf("if (simulation) return { erreur: 'simulation' };") < f.indexOf('lireJson(url)'));
+    assert.match(f, /if \(plan\.total > POIDS_MAX\) return \{ erreur: 'tropLourd' \};/);
+    // Le renommage d'un modèle fait suivre son attribution.
+    assert.match(sans(lire('main.js')), /await fs\.promises\.rename\(src, dst\);\n\s+await store\.renommerAttribution\(getProjectsDir\(\), ancien, nouveau\);/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
-    for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js']) assert.ok(pkg.build.files.includes(f), f);
+    for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js']) assert.ok(pkg.build.files.includes(f), f);
   });
 });

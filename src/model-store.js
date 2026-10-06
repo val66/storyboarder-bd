@@ -164,22 +164,33 @@ export async function importModel(){
   const choisi = await p.pickModelFile();
   if (!choisi || choisi.canceled) return { canceled: true };
   if (choisi.error) return { ok: false, error: choisi.error };
-  if (!choisi.data || !choisi.data.length) return { ok: false, error: 'fichier vide' };
+  return rangerModele(choisi.name, choisi.data);
+}
+
+/**
+ * Range des octets de modèle dans le dossier Modeles, sous un nom libre. Le chemin COMMUN de l'import
+ * et du store (#445) : même assainissement, mêmes collisions, même détection du doublon à l'identique.
+ * Rend { ok: true, name, déjàPrésent } ou { ok: false, error }.
+ */
+export async function rangerModele(nomSouhaite, data){
+  const p = pont();
+  if (!p || !p.writeModelFile) return { ok: false, error: 'indisponible hors de l\'application' };
+  if (!data || !data.length) return { ok: false, error: 'fichier vide' };
 
   const existants = await listModels();
 
   // Réimporter deux fois le même fichier ne doit pas produire « chaise.glb » ET « chaise (2).glb ».
   // On compare le CONTENU, pas le nom : c'est le seul critère qui ne se trompe pas.
-  const candidat = sanitizeModelName(choisi.name);
+  const candidat = sanitizeModelName(nomSouhaite);
   if (existants.some(n => n.toLowerCase() === candidat.toLowerCase())) {
     const actuel = await p.readModelFile(candidat);
-    if (actuel && actuel.ok && memeContenu(actuel.data, choisi.data)) {
+    if (actuel && actuel.ok && memeContenu(actuel.data, data)) {
       return { ok: true, name: candidat, déjàPrésent: true };
     }
   }
 
-  const nom = resolveModelName(choisi.name, existants);
-  const écrit = await p.writeModelFile(nom, choisi.data);
+  const nom = resolveModelName(nomSouhaite, existants);
+  const écrit = await p.writeModelFile(nom, data);
   if (!écrit || !écrit.ok) return { ok: false, error: (écrit && écrit.error) || 'écriture refusée' };
   return { ok: true, name: nom, déjàPrésent: false };
 }

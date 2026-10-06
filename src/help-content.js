@@ -196,7 +196,7 @@ export const HELP_MANUAL_EN = [
   { id: 'store', title: 'Online models', paragraphs: [
     '"Online library", at the top of the Models section, opens a search window over free models: keywords, category, license, maximum size, sorting. One tab per source: Sketchfab, and Poly Haven, all in CC0 (free for any use, no credit required).',
     'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around. Heavy models are flagged before downloading.',
-    'Downloading is coming in a future version; from Sketchfab, it will require signing in to an account.',
+    '"Download" on a Poly Haven model puts it in your models, as a single .glb with 1024 px textures; it then appears in the Models section. From Sketchfab, downloading will require signing in to an account: it is coming in a future version.',
     'A model you already downloaded carries a tick at the top right of its thumbnail, and its details give the file name instead of downloading it twice.',
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
@@ -398,7 +398,7 @@ export const HELP_MANUAL_FR = [
   { id: 'store', title: 'Modèles en ligne', paragraphs: [
     "« Bibliothèque en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans des modèles gratuits : mots-clés, catégorie, licence, taille maximale, tri. Un onglet par source : Sketchfab, et Poly Haven, tout en CC0 (libre pour tout usage, sans crédit obligatoire).",
     "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner. Les modèles lourds sont signalés avant le téléchargement.",
-    "Le téléchargement arrive dans une prochaine version ; depuis Sketchfab, il demandera de se connecter à un compte.",
+    "« Télécharger », sur un modèle Poly Haven, le range dans vos modèles, en un seul .glb aux textures de 1024 px ; il apparaît aussitôt dans la section Modèles. Depuis Sketchfab, le téléchargement demandera de se connecter à un compte : il arrive dans une prochaine version.",
     "Un modèle déjà téléchargé porte une coche en haut à droite de sa vignette, et sa fiche donne le nom du fichier au lieu de le télécharger une seconde fois.",
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [

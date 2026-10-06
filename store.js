@@ -17,6 +17,7 @@ const fs = require('fs');
 const sources = require('./store-sources');
 const sketchfab = require('./store-sketchfab');
 const polyhaven = require('./store-polyhaven');
+const { empaqueterGlb } = require('./gltf-glb');
 
 const DELAI_MS = 10000;
 
@@ -148,4 +149,138 @@ async function telecharges(dossierProjets, simulation){
   return sources.telechargesPresents(attributions, fichiers);
 }
 
-module.exports = { chercher, infos, telecharges, DELAI_MS, DUREE_CATALOGUE_MS };
+// ─────────────────────────────────────────────────────────────────────────────
+// Le téléchargement (#445 : Poly Haven, sans compte ; Sketchfab suivra avec la connexion)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Un fichier dépasse ce délai sans finir : on abandonne plutôt que de laisser la barre figée. */
+const DELAI_FICHIER_MS = 120000;
+/** Au-delà, on refuse : une réponse qui annoncerait des gigaoctets n'est pas un modèle de storyboard. */
+const POIDS_MAX = 300 * 1024 * 1024;
+
+/** Les octets d'une adresse, en signalant l'avancement (`chaque(octetsRecus)`). */
+async function lireOctets(url, chaque){
+  const abandon = new AbortController();
+  const minuterie = setTimeout(() => abandon.abort(), DELAI_FICHIER_MS);
+  try {
+    const rep = await net.fetch(url, { signal: abandon.signal, headers: { 'User-Agent': agent() } });
+    if (!rep.ok) return { erreur: rep.status === 429 ? 'quota' : 'reponse' };
+    const morceaux = [];
+    const lecteur = rep.body.getReader();
+    for (;;) {
+      const { done, value } = await lecteur.read();
+      if (done) break;
+      morceaux.push(Buffer.from(value));
+      if (chaque) chaque(value.length);
+    }
+    return { octets: Buffer.concat(morceaux) };
+  } catch (e) {
+    return { erreur: 'reseau' };
+  } finally {
+    clearTimeout(minuterie);
+  }
+}
+
+const md5 = (b) => require('crypto').createHash('md5').update(b).digest('hex');
+
+/** Ce que pèsera le téléchargement d'une ressource, en octets, ou `{ erreur }`. */
+async function poids(sourceId, id, simulation){
+  if (sourceId !== 'polyhaven') return { erreur: 'source' };
+  const url = polyhaven.urlFichiers(id);
+  if (!url) return { erreur: 'reponse' };
+  const r = simulation ? { json: fixture(simulation, 'polyhaven-fichiers.json') } : await lireJson(url);
+  if (r.erreur) return r;
+  const plan = polyhaven.planTelechargement(r.json);
+  return plan ? { octets: plan.total, resolution: plan.resolution } : { erreur: 'reponse' };
+}
+
+/**
+ * Télécharge une ressource et rend son .glb : `{ data, nom }` ou `{ erreur }`. `progression(recus,
+ * total)` est appelée au fil de l'eau. Chaque fichier est vérifié par son md5 quand la source le
+ * donne : un fichier tronqué ou altéré ne doit pas devenir un modèle qui s'affiche à moitié.
+ *
+ * En SIMULATION, rien n'est téléchargé : aucune réponse enregistrée ne contient de fichiers, et un
+ * faux modèle rangé dans le dossier de l'utilisateur serait pire que pas de modèle.
+ */
+async function telecharger(sourceId, id, progression, simulation){
+  if (sourceId !== 'polyhaven') return { erreur: 'source' };
+  if (simulation) return { erreur: 'simulation' };
+  const url = polyhaven.urlFichiers(id);
+  if (!url) return { erreur: 'reponse' };
+  const liste = await lireJson(url);
+  if (liste.erreur) return liste;
+  const plan = polyhaven.planTelechargement(liste.json);
+  if (!plan) return { erreur: 'reponse' };
+  if (plan.total > POIDS_MAX) return { erreur: 'tropLourd' };
+
+  let recus = 0;
+  const avance = (n) => { recus += n; if (progression) progression(Math.min(recus, plan.total), plan.total); };
+  const verifie = async (f) => {
+    const r = await lireOctets(f.url, avance);
+    if (r.erreur) return r;
+    if (f.md5 && md5(r.octets) !== f.md5) return { erreur: 'corrompu' };
+    return r;
+  };
+
+  const gltf = await verifie(plan.gltf);
+  if (gltf.erreur) return gltf;
+  const ressources = new Map();
+  for (const f of plan.inclus) {
+    const r = await verifie(f);
+    if (r.erreur) return r;
+    ressources.set(f.chemin, r.octets);
+  }
+  try {
+    const glb = empaqueterGlb(JSON.parse(gltf.octets.toString('utf8')), ressources);
+    return { data: new Uint8Array(glb), nom: id };
+  } catch (e) {
+    return { erreur: 'reponse' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Le fichier des attributions (#444e), à côté du dossier Modeles
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function lireAttributions(dossierProjets){
+  try { return JSON.parse(await fs.promises.readFile(path.join(dossierProjets, sources.FICHIER_ATTRIBUTIONS), 'utf8')); }
+  catch (e) { return null; }
+}
+
+/** Écrit À CÔTÉ puis remplace : une coupure en pleine écriture ne laisse jamais un fichier à moitié. */
+async function ecrireAttributions(dossierProjets, attributions){
+  const cible = path.join(dossierProjets, sources.FICHIER_ATTRIBUTIONS);
+  const temp = cible + '.tmp';
+  await fs.promises.writeFile(temp, JSON.stringify(attributions, null, 2), 'utf8');
+  await fs.promises.rename(temp, cible);
+}
+
+/**
+ * Note qu'une ressource a été rangée sous `fichier`. Le résultat vient du renderer : il est
+ * revalidé ici (format commun, source connue), un processus principal ne croit pas son renderer
+ * sur parole.
+ */
+async function attribuer(dossierProjets, resultat, fichier){
+  if (!sources.resultatValide(resultat) || typeof fichier !== 'string' || !/\.glb$/i.test(fichier) || fichier !== path.basename(fichier)) {
+    return { ok: false, raison: 'refuse' };
+  }
+  try {
+    const a = sources.ajouterAttribution(await lireAttributions(dossierProjets), sources.entreeAttribution(resultat, fichier));
+    await ecrireAttributions(dossierProjets, a);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, raison: String(e) };
+  }
+}
+
+/** Un modèle a été renommé : son attribution suit. Sans fichier d'attributions, rien à faire. */
+async function renommerAttribution(dossierProjets, ancien, nouveau){
+  const a = await lireAttributions(dossierProjets);
+  if (!a) return;
+  try { await ecrireAttributions(dossierProjets, sources.renommerDansAttributions(a, ancien, nouveau)); } catch (e) { /* l'attribution se perd, pas le modèle */ }
+}
+
+module.exports = {
+  chercher, infos, telecharges, poids, telecharger, attribuer, renommerAttribution,
+  DELAI_MS, DUREE_CATALOGUE_MS, POIDS_MAX,
+};

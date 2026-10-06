@@ -27,6 +27,10 @@ const T = {
       quota: 'Trop de recherches d\'affilée : le site demande de patienter un peu.',
       reponse: 'Le site a renvoyé une réponse inattendue. Réessayez plus tard.',
       source: 'Cette source n\'est pas disponible.',
+      simulation: 'Pas de téléchargement en simulation : relancez sans STORYBOARD_SIMULER_STORE.',
+      corrompu: 'Un fichier est arrivé abîmé. Réessayez.',
+      'tropLourd': 'Ce modèle est trop lourd pour être téléchargé ici.',
+      ecriture: 'Le modèle n\'a pas pu être rangé dans le dossier Modeles.',
     },
     simulation: 'Simulation (STORYBOARD_SIMULER_STORE) : résultats enregistrés, aucune requête. Pour revenir à la normale, fermez ce terminal ou tapez Remove-Item Env:STORYBOARD_SIMULER_STORE.',
     par: 'par',
@@ -48,9 +52,13 @@ const T = {
     // Largeur × profondeur × hauteur, en mètres, quand la source les donne (Poly Haven).
     dimensions: (d) => `Taille : ${d.map(x => deuxDecimales(x).replace('.', ',')).join(' × ')} m`,
     telecharger: 'Télécharger',
-    bientot: (source) => (source === 'sketchfab'
+    noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Le téléchargement demandera de se connecter à Sketchfab : il arrive dans une prochaine version.'
-      : 'Le téléchargement arrive dans une prochaine version.'),
+      : 'Textures en 1024 px, rangées avec le modèle dans un seul fichier .glb.'),
+    telechargerPoids: (p) => `Télécharger (${p})`,
+    telechargement: (pct) => `Téléchargement… ${pct} %`,
+    rangement: 'Rangement…',
+    telechargeOk: (f) => `Ajouté à vos modèles sous le nom « ${f} ».`,
     fermerFiche: 'Retour aux résultats',
     possede: 'Déjà téléchargé',
     possedeFiche: (f) => `Ce modèle est déjà dans vos modèles, sous le nom « ${f} ».`,
@@ -73,6 +81,10 @@ const T = {
       quota: 'Too many searches in a row: the site asks to wait a little.',
       reponse: 'The site sent an unexpected response. Try again later.',
       source: 'This source is not available.',
+      simulation: 'No downloading in simulation: start again without STORYBOARD_SIMULER_STORE.',
+      corrompu: 'A file arrived damaged. Try again.',
+      'tropLourd': 'This model is too heavy to be downloaded here.',
+      ecriture: 'The model could not be saved to the Modeles folder.',
     },
     simulation: 'Simulation (STORYBOARD_SIMULER_STORE): recorded results, no request. To go back to normal, close this terminal or type Remove-Item Env:STORYBOARD_SIMULER_STORE.',
     par: 'by',
@@ -93,9 +105,13 @@ const T = {
     anime: 'Animated',
     dimensions: (d) => `Size: ${d.map(deuxDecimales).join(' × ')} m`,
     telecharger: 'Download',
-    bientot: (source) => (source === 'sketchfab'
+    noteTelechargement: (source) => (source === 'sketchfab'
       ? 'Downloading will require signing in to Sketchfab: it is coming in a future version.'
-      : 'Downloading is coming in a future version.'),
+      : 'Textures at 1024 px, packed with the model into a single .glb file.'),
+    telechargerPoids: (p) => `Download (${p})`,
+    telechargement: (pct) => `Downloading… ${pct}%`,
+    rangement: 'Saving…',
+    telechargeOk: (f) => `Added to your models as "${f}".`,
     fermerFiche: 'Back to results',
     possede: 'Already downloaded',
     possedeFiche: (f) => `This model is already in your models, as "${f}".`,

@@ -80,6 +80,10 @@ interface StoryboarderAPI {
   }>;
   storeChercher(sourceId: string, params: object): Promise<{ resultats?: object[]; suivant?: string | null; ecartes?: number; erreur?: string }>;
   storeTelecharges(): Promise<{ source: string; id: string; fichier: string }[]>;
+  storePoids(sourceId: string, id: string): Promise<{ octets?: number; resolution?: string; erreur?: string }>;
+  storeTelecharger(sourceId: string, id: string): Promise<{ data?: Uint8Array; nom?: string; erreur?: string }>;
+  storeAttribuer(resultat: object, fichier: string): Promise<{ ok: boolean; raison?: string }>;
+  onStoreProgression(callback: (recus: number, total: number) => void): void;
   // Modèles 3D importés. `data` voyage en Uint8Array par le clonage structuré de l'IPC : décrire
   // ici la forme des réponses évite d'aller relire main.js pour savoir si un échec se lit sur `ok`
   // ou sur `error` — la même confusion qui avait produit « un échec annoncé comme un succès ».
