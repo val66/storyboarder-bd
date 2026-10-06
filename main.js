@@ -544,6 +544,15 @@ ipcMain.handle('vignettes:etat', async () => {
   const aFaireNoms = new Set(aFaire.map(f => f.nom));
   return { aFaire, pretes: noms.filter(n => !aFaireNoms.has(n)) };
 });
+// Le dossier Modeles avec, pour chaque fichier, sa taille et sa date (tri « récents »).
+ipcMain.handle('models:infos', async () => {
+  let noms = [];
+  try { noms = fs.readdirSync(getModelsDir()).filter(nomDeModeleAcceptable); } catch (e) { return []; }
+  return Promise.all(noms.map(async nom => {
+    try { const s = await fs.promises.stat(path.join(getModelsDir(), nom)); return { nom, taille: s.size, modifie: s.mtimeMs }; }
+    catch (e) { return { nom, taille: null, modifie: null }; }
+  }));
+});
 ipcMain.handle('vignettes:lire', async (event, nom) => {
   if (!nomDeModeleAcceptable(nom)) return { ok: false };
   try {

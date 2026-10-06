@@ -20,7 +20,7 @@ describe('les textes', () => {
     const fr = textesStore('fr'); const en = textesStore('en');
     assert.deepEqual(Object.keys(fr).sort(), Object.keys(en).sort());
     assert.deepEqual(Object.keys(fr.erreurs).sort(), Object.keys(en.erreurs).sort());
-    assert.deepEqual(Object.keys(fr.tris).sort(), [...sources.TRIS].sort());
+    assert.deepEqual(Object.keys(fr.tris).sort(), [...sources.TRIS, 'nom'].sort());   // « nom » : Mes modèles
     assert.equal(textesStore('de'), fr);
   });
   test('chaque erreur que store.js peut rendre a son texte', () => {
@@ -185,6 +185,22 @@ describe('le câblage', () => {
     assert.match(f, /if \(plan\.total > POIDS_MAX\) return \{ erreur: 'tropLourd' \};/);
     // Le renommage d'un modèle fait suivre son attribution.
     assert.match(sans(lire('main.js')), /await fs\.promises\.rename\(src, dst\);\n\s+await store\.renommerAttribution\(getProjectsDir\(\), ancien, nouveau\);/);
+  });
+  test('« Mes modèles » : la bibliothèque passe SOUS les fenêtres qu\'elle ouvre, et le clic droit devant elle', () => {
+    const html = lire('index.html');
+    const store = html.indexOf('id="storeModal"');
+    for (const id of ['renameEntityModal', 'confirmActionModal', 'skeletonMapModal', 'modelUsagesModal']) {
+      assert.ok(store < html.indexOf(`id="${id}"`), `${id} s'ouvrirait DERRIÈRE la bibliothèque`);
+    }
+    assert.match(lire('style.css'), /#modelContextMenu\{ z-index:1100; \}/);
+  });
+  test('« Mes modèles » : les actions de la fiche sont celles de l\'application, injectées', () => {
+    const ev = sans(lire('src/events.js'));
+    for (const r of ['menuModele', 'ouvrirEndroitModele', 'renommerModele', 'supprimerModele', 'squeletteModele']) {
+      assert.match(ev, new RegExp(`${r}: \\(`), `rappel absent : ${r}`);
+    }
+    const f = UI.slice(UI.indexOf('function ficheLocale'));
+    assert.match(f, /b\.onclick = \(\) => \{ fermerStore\(\); if \(_rappels\.ouvrirEndroitModele\)/, 'aller à un endroit doit fermer la fenêtre');
   });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));

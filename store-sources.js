@@ -159,7 +159,8 @@ function telechargesPresents(attributions, fichiersPresents){
   return liste
     .filter(e => e && typeof e.source === 'string' && e.id != null && typeof e.fichier === 'string')
     .filter(e => presents.has(e.fichier.toLowerCase()))
-    .map(e => ({ source: e.source, id: String(e.id), fichier: e.fichier, resolution: typeof e.resolution === 'string' ? e.resolution : null }));
+    // Toute l'entrée (nom, auteur, licence, catégorie…) : la bibliothèque « Mes modèles » s'en sert.
+    .map(e => ({ ...e, id: String(e.id), resolution: typeof e.resolution === 'string' ? e.resolution : null }));
 }
 
 /**

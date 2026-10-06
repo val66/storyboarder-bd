@@ -9,6 +9,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 const { ouvrirStore, choisirSource, SOURCES_STORE } = await import('../src/store-ui.js');
+const { S } = await import('../src/state.js');
+S.appLang = 'fr';   // les libellés d'onglets sont traduits
 
 const LICENCES_SKETCHFAB = [{ code: 'by', libelle: 'CC Attribution', commercial: true }, { code: 'by-nc', libelle: 'CC Attribution-NonCommercial', commercial: false }];
 const infos = (id) => ({
@@ -27,6 +29,7 @@ function pont(){
   window.storyboarderAPI = {
     storeInfos: async (id) => infos(id),
     storeTelecharges: async () => [],
+    modelesInfos: async () => [{ nom: 'chaise.glb', taille: 1000, modifie: 1 }],
     // Chaque recherche attend qu'on la libère : c'est ce qui permet de faire arriver une réponse EN RETARD.
     storeChercher: (id) => new Promise(res => { demandes.push(id); attentes.push(() => res({ resultats: [resultat(id, id + '-1')], suivant: null })); }),
   };
@@ -38,16 +41,27 @@ const onglets = () => document.getElementById('storeOnglets').children;
 const attendre = () => new Promise(r => setTimeout(r, 0));
 
 describe('Les onglets des sources', () => {
-  test('un onglet par source, la première active, et ses filtres', async () => {
+  test('« Mes modèles » d\'abord, actif à l\'ouverture, avec ses propres filtres et SANS requête', async () => {
     pont();
-    ouvrirStore();
+    await ouvrirStore();
     await attendre(); await attendre();
-    assert.deepEqual(onglets().map(o => o.textContent), ['Sketchfab', 'Poly Haven']);
+    assert.deepEqual(onglets().map(o => o.textContent), ['Mes modèles', 'Sketchfab', 'Poly Haven']);
     assert.ok(onglets()[0].className.includes('actif'));
+    assert.deepEqual(demandes, [], 'la bibliothèque locale a interrogé une source en ligne');
+    assert.equal(grille()[0].title, 'chaise');
+    assert.equal(document.getElementById('storeUsage').hidden, false);
+    assert.equal(document.getElementById('storeFaces').hidden, true);
+    assert.equal(document.getElementById('storeLicence').hidden, true);
+  });
+
+  test('vers Sketchfab : ses filtres reviennent, le filtre d\'usage s\'en va', async () => {
+    const p = choisirSource('sketchfab');
+    await attendre();
     assert.equal(document.getElementById('storeLicence').hidden, false);
     assert.equal(document.getElementById('storeCommercialCase').hidden, false);
+    assert.equal(document.getElementById('storeUsage').hidden, true);
     attentes.shift()();
-    await attendre();
+    await p;
     assert.equal(grille()[0].title, 'sketchfab-1');
   });
 
@@ -55,7 +69,7 @@ describe('Les onglets des sources', () => {
     const p = choisirSource('polyhaven');
     await attendre();
     assert.equal(demandes[demandes.length - 1], 'polyhaven');
-    assert.ok(onglets()[1].className.includes('actif'));
+    assert.ok(onglets()[2].className.includes('actif'));   // Mes modèles, Sketchfab, Poly Haven
     assert.equal(document.getElementById('storeLicence').hidden, true, 'une seule licence : pas de filtre');
     assert.equal(document.getElementById('storeCommercialCase').hidden, true, 'tout est commercial : pas de case');
     attentes.shift()();
@@ -77,6 +91,6 @@ describe('Les onglets des sources', () => {
   });
 
   test('les sources annoncées sont celles que store.js connaît', () => {
-    assert.deepEqual(SOURCES_STORE, ['sketchfab', 'polyhaven']);
+    assert.deepEqual(SOURCES_STORE, ['local', 'sketchfab', 'polyhaven']);
   });
 });

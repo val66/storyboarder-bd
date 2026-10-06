@@ -79,6 +79,7 @@ interface StoryboarderAPI {
     simulation: boolean;
   }>;
   storeChercher(sourceId: string, params: object): Promise<{ resultats?: object[]; suivant?: string | null; ecartes?: number; erreur?: string }>;
+  modelesInfos(): Promise<{ nom: string; taille: number | null; modifie: number | null }[]>;
   vignettesEtat(): Promise<{ aFaire: { nom: string; signature: string }[]; pretes: string[] }>;
   vignettesLire(nom: string): Promise<{ ok: boolean; data?: Uint8Array; type?: string }>;
   vignettesEcrire(nom: string, data: Uint8Array): Promise<{ ok: boolean }>;

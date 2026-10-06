@@ -43,7 +43,8 @@ import { propositionDeRoles3D } from './archetype-roles.js';
 import { enregistrerFermeture, pileOuverte } from './modal-stack.js';
 import { initialiserMiseAJour, rafraichirTextesMaj, fermerModaleMaj } from './update-button.js';
 import { verifierRessources, rafraichirApresChangementDeDossier, simulationRessources } from './missing-resources.js';
-import { cablerStore, rafraichirTextesStore, fermerStore } from './store-ui.js';
+import { cablerStore, rafraichirTextesStore, fermerStore, rafraichirBibliothequeLocale } from './store-ui.js';
+import { oublierVignette } from './model-thumbnails.js';
 import { definirLumiereDeCase3D, effacerLumiereDeCase3D, directionDepuisDome3D,
   geometrieDome3D } from './lighting-3d.js';
 import { placerMenuFlottant3D } from './ui-scale.js';
@@ -4546,15 +4547,19 @@ document.getElementById('ctxSkeletonMap').onclick = () => {
 };
 // Ouvre la saisie du nom. Le renommage lui-même est dans `_renommerModele` ci-dessous, appelé par
 // la modale à la confirmation : le clic ne fait qu'ouvrir, comme pour un Tome ou une Scène.
-document.getElementById('ctxRenameModel').onclick = async () => {
+document.getElementById('ctxRenameModel').onclick = () => {
   const fichier = _modelCtxFichier;
   modelContextMenu.classList.add('hidden');
+  demanderRenommageModele(fichier);
+};
+// Partagée avec la bibliothèque « Mes modèles » (bouton « Renommer… » de la fiche).
+async function demanderRenommageModele(fichier){
   if (!fichier) return;
   // La liste des noms pris est capturée MAINTENANT et passée à la modale : c'est elle qui grise le
   // bouton en cas de collision, et elle ne peut pas relire le disque (elle est synchrone).
   const pris = await listModels();
   openRenameEntityModal('modele', fichier, fichier.replace(/\.glb$/i, ''), { pris });
-};
+}
 
 /**
  * Renomme le fichier, puis répare ce qui peut l'être ici.
@@ -4596,14 +4601,20 @@ async function _renommerModele(ancien, nomVoulu){
   await renommerCorrespondance(ancien, r.name);
   // Le cache garde le modèle décodé sous l'ANCIEN nom : le vider force sa relecture sous le nouveau.
   clearModelCache();
+  oublierVignette(ancien);
   renderAll();
   renderModelList();
+  rafraichirBibliothequeLocale();
 }
 setRenameModelCallback(_renommerModele);
 
-document.getElementById('ctxDeleteModel').onclick = async () => {
+document.getElementById('ctxDeleteModel').onclick = () => {
   const fichier = _modelCtxFichier;
   modelContextMenu.classList.add('hidden');
+  supprimerModeleAvecConfirmation(fichier);
+};
+// Partagée avec la bibliothèque « Mes modèles » (bouton « Supprimer » de la fiche).
+async function supprimerModeleAvecConfirmation(fichier){
   if (!fichier) return;
   // Le décompte porte sur le Projet OUVERT : c'est tout ce qu'on peut savoir, et le message le dit.
   const usages = countModelUsages(fichier, { tomes: S.tomes, scenes: S.scenes });
@@ -4623,9 +4634,11 @@ document.getElementById('ctxDeleteModel').onclick = async () => {
   // un fichier partagé par tous les Projets, et elle ressusciterait au réimport d'un homonyme,
   // avec les os de l'ANCIEN squelette.
   await oublierCorrespondance(fichier);
+  oublierVignette(fichier);
   renderAll();
   renderModelList();
-};
+  rafraichirBibliothequeLocale();
+}
 
 // ─── Bibliothèque d'images : clic GAUCHE sur un endroit → la Case ───
 // Pas de modale de choix, contrairement aux modèles : une Case porte AU PLUS une image, donc chaque
@@ -8649,7 +8662,15 @@ enregistrerFermeture('storeModal', fermerStore);
 // #445 : un modèle téléchargé depuis le store apparaît aussitôt dans la section Modèles. REMPLACÉ
 // (autre résolution, même nom), le cache garde l'ancien décodé : le vider fait relire le nouveau
 // par toutes les Cases qui l'utilisent.
-cablerStore({ apresTelechargement: (fichier, remplace) => { if (remplace) clearModelCache(); renderAll(); } });
+cablerStore({
+  apresTelechargement: (fichier, remplace) => { if (remplace) { clearModelCache(); oublierVignette(fichier); } renderAll(); },
+  // La bibliothèque « Mes modèles » : les mêmes gestes que le clic droit et la liste d'autrefois.
+  menuModele: (e, fichier) => openModelContextMenu(e, fichier),
+  ouvrirEndroitModele: (fichier, groupe) => openModelPlace(fichier, groupe),
+  renommerModele: (fichier) => demanderRenommageModele(fichier),
+  supprimerModele: (fichier) => supprimerModeleAvecConfirmation(fichier),
+  squeletteModele: (fichier) => openSkeletonMapModal(fichier),
+});
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));
 enregistrerFermeture('modelUsagesModal', () => modelUsagesModal.classList.add('hidden'));

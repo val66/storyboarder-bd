@@ -952,8 +952,8 @@ describe('Câblage de l\'écran de correspondance', () => {
   test('RÉGRESSION : supprimer un modèle oublie sa correspondance', () => {
     // Sans cela, une entrée orpheline resterait dans un fichier partagé par tous les Projets, et
     // ressusciterait au réimport d'un homonyme, avec les os de l'ANCIEN squelette.
-    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
-    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /oublierCorrespondance\(/);
+    const bloc = EVENTS.slice(EVENTS.indexOf('async function supprimerModeleAvecConfirmation('));
+    assert.match(bloc.slice(0, bloc.indexOf('\n}\n')), /oublierCorrespondance\(/);
   });
 
   test('un échec d\'enregistrement est rapporté', () => {

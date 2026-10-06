@@ -2153,6 +2153,13 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 }
 .store-menu-resolution:hover{ background:var(--accent-soft); }
 .store-menu-resolution.actif{ font-weight:600; color:var(--accent); }
+/* « Mes modèles » (bibliothèque locale) */
+.store-fiche-sous-titre{ margin:8px 0 2px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); }
+.store-carte-introuvable .store-carte-auteur{ color:var(--warn); }
+.store-fiche-actions-locales{ flex-wrap:wrap; }
+.store-action-danger{ color:var(--danger); }
+/* Le menu du clic droit d'un modèle s'ouvre aussi depuis la bibliothèque : il passe devant elle. */
+#modelContextMenu{ z-index:1100; }
 /* Le message vide ne doit pas creuser d'écart entre le titre et la fiche (demandé). */
 .store-box .maj-message:empty{ display:none; }
 /* ⚠️ L'IMAGE NE DONNE PAS SA TAILLE AU CADRE (signalé à l'usage). En flux normal, une vignette

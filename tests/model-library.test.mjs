@@ -279,9 +279,14 @@ describe('Section Modèles : le câblage', () => {
       'le renommage est rendu annulable, alors que le disque ne l\'est pas');
   });
 
+  test('le clic droit et la fiche de « Mes modèles » passent par la MÊME suppression', () => {
+    assert.match(EVENTS, /ctxDeleteModel'\)\.onclick = \(\) => \{[^}]*supprimerModeleAvecConfirmation\(fichier\);/);
+    assert.match(EVENTS, /supprimerModele: \(fichier\) => supprimerModeleAvecConfirmation\(fichier\),/);
+  });
+
   test('RÉGRESSION : la suppression demande confirmation AVANT de supprimer', () => {
-    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
-    const corps = bloc.slice(0, bloc.indexOf('\n};'));
+    const bloc = EVENTS.slice(EVENTS.indexOf('async function supprimerModeleAvecConfirmation('));
+    const corps = bloc.slice(0, bloc.indexOf('\n}\n'));
     assert.ok(corps.indexOf('confirmAction') < corps.indexOf('deleteModelFile'),
       'le fichier est supprimé avant que l\'utilisateur ait répondu');
     assert.match(corps, /messageSuppressionModele/, 'le message chiffré n\'est pas utilisé');
@@ -292,14 +297,14 @@ describe('Section Modèles : le câblage', () => {
     // Sans cela, un modèle supprimé du disque continuerait de s'afficher jusqu'au prochain
     // changement de Projet, un mensonge à l'écran, et le contraire de ce que l'utilisateur vient
     // de demander.
-    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
-    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /clearModelCache\(\)/,
+    const bloc = EVENTS.slice(EVENTS.indexOf('async function supprimerModeleAvecConfirmation('));
+    assert.match(bloc.slice(0, bloc.indexOf('\n}\n')), /clearModelCache\(\)/,
       'le modèle supprimé resterait affiché');
   });
 
   test('un échec de suppression est rapporté, pas avalé', () => {
-    const bloc = EVENTS.slice(EVENTS.indexOf("ctxDeleteModel').onclick"));
-    assert.match(bloc.slice(0, bloc.indexOf('\n};')), /alertAction/);
+    const bloc = EVENTS.slice(EVENTS.indexOf('async function supprimerModeleAvecConfirmation('));
+    assert.match(bloc.slice(0, bloc.indexOf('\n}\n')), /alertAction/);
   });
 
   test('la liste se recalcule à chaque rendu, comme celle des Scènes', () => {

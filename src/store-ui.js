@@ -16,16 +16,21 @@
  * fichier des attributions (store.js, telecharges), relue à chaque ouverture du store.
  */
 import { S } from './state.js';
-import { rangerModele, remplacerModele } from './model-store.js';
+import { rangerModele, remplacerModele, readModel } from './model-store.js';
+import { entreesLocales, filtrerEntrees, NON_CLASSE, USAGES, TRIS_LOCAUX } from './local-library.js';
+import { preparerVignettes, vignetteLocale } from './model-thumbnails.js';
+import { usageLabel } from './model-usages.js';
 import { ouvrirApercu3D } from './store-apercu-3d.js';
 import { textesStore, PLAFONDS_FACES, nombreCourt, poidsLisible, estLourd, phrasesLicence, lignesDetails } from './store-texts.js';
 
 /**
- * Les sources, dans l'ordre des onglets (demandé : un onglet par source). Chacune garde ses propres
- * filtres (catégories, licences) : on les relit en changeant d'onglet.
+ * Les onglets, dans l'ordre (demandé : un onglet par source). « local » est la bibliothèque « Mes
+ * modèles », le contenu du dossier Modeles, en premier : c'est par elle qu'on entre. Les catégories
+ * sont communes à tous (store-categories.js).
  */
-export const SOURCES_STORE = ['sketchfab', 'polyhaven'];
-let source = SOURCES_STORE[0];
+export const SOURCES_STORE = ['local', 'sketchfab', 'polyhaven'];
+const LOCAL = 'local';
+let source = LOCAL;
 /** Ce que chaque source a dit d'elle-même (store:infos), lu une fois par source. */
 const infosPar = {};
 const $ = (id) => document.getElementById(id);
@@ -75,11 +80,18 @@ export function rafraichirTextesStore(){
   if (!infos) return;
   $('storeTitre').textContent = t.titre;
   rendreOnglets();
-  $('storeTexte').placeholder = t.placeholder;
+  const local = source === LOCAL;
+  $('storeTexte').placeholder = local ? t.placeholderLocal : t.placeholder;
   $('storeCommercialLibelle').textContent = t.commercial;
   $('storePlusBtn').textContent = t.plus;
   const garder = (id, f) => { const v = $(id).value; f(); if ([...$(id).options].some(o => o.value === v)) $(id).value = v; };
-  garder('storeCategorie', () => options($('storeCategorie'), [['', t.toutesCategories], ...infos.categories.map(c => [c.slug, c[langue()]])]));
+  garder('storeCategorie', () => options($('storeCategorie'), [['', t.toutesCategories], ...infos.categories.map(c => [c.slug, c[langue()]]),
+    ...(local ? [[NON_CLASSE, t.nonClasse]] : [])]));
+  garder('storeUsage', () => options($('storeUsage'), USAGES.map(u => [u, t.usages[u]])));
+  // Ce qui n'a de sens que d'un côté : l'usage pour ses modèles, la taille pour une source en ligne
+  // (un modèle local n'a pas son nombre de faces sans être décodé).
+  $('storeUsage').hidden = !local;
+  $('storeFaces').hidden = local;
   garder('storeLicence', () => options($('storeLicence'), [['', t.toutesLicences], ...infos.licences.map(l => [l.code, l.libelle])]));
   garder('storeFaces', () => options($('storeFaces'), PLAFONDS_FACES.map(n => [n ? String(n) : '', n ? t.facesMax(nombreCourt(n, langue())) : t.facesToutes])));
   garder('storeTri', () => options($('storeTri'), infos.tris.map(c => [c, t.tris[c]])));
@@ -87,7 +99,7 @@ export function rafraichirTextesStore(){
   // commercial ». Un choix qui ne change rien n'a pas sa place dans la barre.
   $('storeLicence').hidden = infos.licences.length <= 1;
   $('storeCommercialCase').hidden = infos.licences.every(l => l.commercial);
-  $('storeCredit').replaceChildren(lien(infos.source.credit[langue()], infos.source.site));
+  $('storeCredit').replaceChildren(...(infos.source.credit ? [lien(infos.source.credit[langue()], infos.source.site)] : []));
   $('storeSimulation').hidden = !infos.simulation;
   $('storeSimulation').textContent = infos.simulation ? t.simulation : '';
 }
@@ -97,7 +109,7 @@ function rendreOnglets(){
   const zone = $('storeOnglets');
   if (!zone) return;
   zone.replaceChildren(...SOURCES_STORE.map(id => {
-    const nom = (infosPar[id] && infosPar[id].source.nom) || id;
+    const nom = id === LOCAL ? textesStore(langue()).mesModeles : ((infosPar[id] && infosPar[id].source.nom) || id);
     const b = el('button', { texte: nom, classe: 'store-onglet' + (id === source ? ' actif' : ''),
       attrs: { type: 'button', role: 'tab', 'aria-selected': String(id === source) } });
     b.onclick = () => choisirSource(id);
@@ -113,7 +125,7 @@ function rendreOnglets(){
 export async function choisirSource(id){
   if (!SOURCES_STORE.includes(id) || id === source) return;
   const pont = window.storyboarderAPI;
-  if (!infosPar[id]) infosPar[id] = await pont.storeInfos(id);
+  if (!infosPar[id]) infosPar[id] = id === LOCAL ? infosLocales() : await pont.storeInfos(id);
   source = id;
   infos = infosPar[id];
   $('storeLicence').value = '';
@@ -128,6 +140,7 @@ function parametres(curseur){
     licence: $('storeLicence').value || null,
     commercialSeulement: $('storeCommercial').checked,
     facesMax: Number($('storeFaces').value) || null,
+    usage: $('storeUsage').value || 'tous',
     tri: $('storeTri').value || undefined,
     curseur: curseur || null,
   };
@@ -168,6 +181,7 @@ function pastillePossede(t, fichier){
 }
 
 function carte(r){
+  if (r.local) return carteLocale(r);
   const t = textesStore(langue());
   const fichier = fichierPossede(r);
   const img = r.vignettes.petite
@@ -191,6 +205,7 @@ function carte(r){
 }
 
 function ouvrirFiche(r){
+  if (r.local) { ficheLocale(r); return; }
   const t = textesStore(langue());
   const fiche = $('storeFiche');
   const image = () => (r.vignettes.grande ? [el('img', { attrs: { src: r.vignettes.grande, alt: '', referrerpolicy: 'no-referrer' } })] : []);
@@ -471,7 +486,7 @@ function fermerApercuLocal(){
   if (apercuCourant) { apercuCourant.fermer(); apercuCourant = null; }
 }
 
-function boutonApercuLocal(r, visuel, image){
+function boutonApercuLocal(r, visuel, image, charger = () => window.storyboarderAPI.storeApercu(r.source, r.id)){
   const t = textesStore(langue());
   const b = el('button', { texte: t.voir3D, classe: 'nav-btn', attrs: { type: 'button' } });
   let en3D = false;
@@ -486,7 +501,7 @@ function boutonApercuLocal(r, visuel, image){
     apercuAttendu = { cle: cleDe(r), etiquette };
     const dire = (texte) => { etiquette.textContent = texte; etiquette.classList.add('erreur'); visuel.replaceChildren(etiquette); };
     let rep;
-    try { rep = await window.storyboarderAPI.storeApercu(r.source, r.id); } catch (e) { rep = { erreur: 'reseau' }; }
+    try { rep = await charger(); } catch (e) { rep = { erreur: 'reseau' }; }
     if (moi !== apercuGeneration) return;   // revenu à l'image, ou fiche fermée, entre-temps
     apercuAttendu = null;
     if (!rep || rep.erreur || !rep.data) { dire(t.erreurs[rep && rep.erreur] || t.erreurs.reponse); return; }
@@ -531,6 +546,7 @@ async function chercher(suite = false){
   const moi = ++generation;
   enCours = true;
   if (!suite) { fermerFiche(); $('storeGrille').replaceChildren(); affiches = []; suivant = null; derniereRecherche = parametres(); }
+  if (source === LOCAL) { await chercherLocal(moi); return; }
   message(t.chargement);
   $('storePlusBtn').hidden = true;
   const page = await window.storyboarderAPI.storeChercher(source, suite ? { ...derniereRecherche, curseur: suivant } : derniereRecherche);
@@ -543,13 +559,187 @@ async function chercher(suite = false){
   message($('storeGrille').children.length ? '' : t.aucun);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// L'onglet « Mes modèles » : la bibliothèque locale (le dossier Modeles)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Même fenêtre, même grille, même fiche que le store : on passe de ses modèles à ceux d'une source
+// sans changer d'outil. Ce qui DÉCIDE (entrées, filtres, tri) est dans local-library.js ; les
+// vignettes dans model-thumbnails.js. Les actions (renommer, supprimer, squelette, aller à un
+// endroit) sont celles du reste de l'application, injectées par events.js (`_rappels`).
+
+/** Ce que l'onglet local dit de lui-même, comme store:infos pour une source. */
+function infosLocales(){
+  const enLigne = SOURCES_STORE.map(id => infosPar[id]).find(i => i && i.categories);
+  return {
+    source: { id: LOCAL, nom: textesStore(langue()).mesModeles, site: null, credit: null, connexion: {} },
+    categories: enLigne ? enLigne.categories : [],
+    licences: [],
+    tris: TRIS_LOCAUX,
+  };
+}
+
+let entreesAffichees = [];
+/** Les cartes par fichier, pour poser une vignette dès qu'elle est prête. */
+const cartesLocales = new Map();
+
+async function chercherLocal(moi){
+  const t = textesStore(langue());
+  const pont = window.storyboarderAPI || {};
+  const [fichiers, attributions] = await Promise.all([
+    pont.modelesInfos ? pont.modelesInfos() : [],
+    pont.storeTelecharges ? pont.storeTelecharges() : [],
+  ]);
+  if (moi !== generation) return;
+  enCours = false;
+  const toutes = entreesLocales({ fichiers, attributions, projet: { tomes: S.tomes, scenes: S.scenes } });
+  const p = derniereRecherche || {};
+  entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom' });
+  cartesLocales.clear();
+  affiches = entreesAffichees.map(e => ({ ...e, local: true }));
+  affiches.forEach(e => $('storeGrille').appendChild(carte(e)));
+  $('storePlusBtn').hidden = true;
+  message(toutes.length ? (affiches.length ? '' : t.aucunLocal) : t.videLocal);
+  // Les vignettes manquantes se rendent en arrière-plan ; chaque carte se met à jour à son tour.
+  preparerVignettes((fait, total, nom) => {
+    if (source !== LOCAL) return;
+    if (nom && cartesLocales.has(nom)) poserVignette(cartesLocales.get(nom), nom);
+    if (total) message(fait < total ? t.preparationVignettes(fait, total) : (affiches.length ? '' : t.aucunLocal));
+  }).then(() => {
+    if (source === LOCAL) cartesLocales.forEach((c, nom) => poserVignette(c, nom));
+  });
+}
+
+function poserVignette(carteEl, nom){
+  const url = vignetteLocale(nom);
+  const cadre = carteEl && carteEl.children && carteEl.children[0];
+  if (!url || !cadre || cadre.tagName === 'IMG') return;
+  carteEl.replaceChild(el('img', { attrs: { src: url, alt: '' } }), cadre);
+}
+
+/** Recharge l'onglet local s'il est affiché (après un renommage, une suppression, un import). */
+export function rafraichirBibliothequeLocale(){
+  if (source !== LOCAL || $('storeModal').classList.contains('hidden')) return;
+  chercher();
+}
+
+function nomCategorie(slug){
+  const t = textesStore(langue());
+  if (slug === NON_CLASSE) return t.nonClasse;
+  const c = (infos && infos.categories || []).find(x => x.slug === slug);
+  return c ? c[langue()] : slug;
+}
+
+function carteLocale(e){
+  const t = textesStore(langue());
+  const url = vignetteLocale(e.fichier);
+  const c = el('button', { classe: 'store-carte' + (e.introuvable ? ' store-carte-introuvable' : ''), attrs: { type: 'button', title: e.fichier } }, [
+    url ? el('img', { attrs: { src: url, alt: '' } }) : el('div', { classe: 'store-sans-vignette' }),
+    el('span', { texte: e.titre, classe: 'store-carte-nom' }),
+    el('span', { texte: e.introuvable ? '⚠ ' + t.introuvableFiche.split(' :')[0] : t.resumeUsages(e.scenes.length, e.cases.length), classe: 'store-carte-auteur' }),
+    el('span', { classe: 'store-carte-infos' }, [
+      el('span', { texte: nomCategorie(e.categorie), classe: 'store-badge' + (e.categorie === NON_CLASSE ? ' store-badge-nc' : '') }),
+      e.taille ? el('span', { texte: poidsLisible(e.taille, langue()) }) : null,
+    ]),
+  ]);
+  c.onclick = () => ouvrirFiche(e);
+  // Le clic droit garde le menu du reste de l'application (demandé).
+  c.addEventListener('contextmenu', (ev) => {
+    ev.preventDefault();
+    if (_rappels.menuModele) _rappels.menuModele(ev, e.fichier);
+  });
+  cartesLocales.set(e.fichier, c);
+  return c;
+}
+
+function ficheLocale(e){
+  const t = textesStore(langue());
+  const fiche = $('storeFiche');
+  const a = e.attribution;
+  const image = () => {
+    const url = vignetteLocale(e.fichier);
+    return url ? [el('img', { attrs: { src: url, alt: '' } })] : [];
+  };
+  const visuel = el('div', { classe: 'store-fiche-visuel' }, image());
+  const boutons = el('div', { classe: 'store-fiche-boutons' });
+  if (!e.introuvable) {
+    boutons.appendChild(boutonApercuLocal({ source: LOCAL, id: e.fichier }, visuel, image, async () => {
+      const data = await readModel(e.fichier);
+      return data ? { data } : { erreur: 'reponse' };
+    }));
+  }
+  const nomSource = a && (infosPar[a.source] ? infosPar[a.source].source.nom : a.source);
+  if (a && a.url) boutons.appendChild(lien(t.voirSur(nomSource), a.url, 'nav-btn store-lien-bouton'));
+
+  const section = (titre, enfants) => el('section', { classe: 'store-fiche-section' }, [el('h5', { texte: titre }), ...enfants]);
+  const liste = (lignes) => el('ul', {}, lignes.filter(Boolean).map(p => el('li', { texte: p })));
+  // OÙ IL SERT : un bouton par endroit, comme dans l'ancienne liste du menu de gauche. Y aller ferme
+  // la fenêtre.
+  const endroit = (g) => {
+    const n = g.elements.length;
+    const b = el('button', { texte: usageLabel(g, (en, fr) => (langue() === 'en' ? en : fr)) + (n > 1 ? ` ×${n}` : ''), classe: 'image-row-where', attrs: { type: 'button' } });
+    b.onclick = () => { fermerStore(); if (_rappels.ouvrirEndroitModele) _rappels.ouvrirEndroitModele(e.fichier, g); };
+    return b;
+  };
+  const usages = (e.scenes.length || e.cases.length)
+    ? [
+      e.scenes.length ? el('p', { texte: t.scenesLibelle, classe: 'store-fiche-sous-titre' }) : null,
+      ...e.scenes.map(endroit),
+      e.cases.length ? el('p', { texte: t.casesLibelle, classe: 'store-fiche-sous-titre' }) : null,
+      ...e.cases.map(endroit),
+    ].filter(Boolean)
+    : [el('p', { texte: t.nullePart, classe: 'store-note' })];
+
+  const droite = [
+    el('h4', { texte: e.titre }),
+    a ? el('p', {}, [el('span', { texte: t.par + ' ' }), lien(a.auteur && a.auteur.nom, a.auteur && a.auteur.url)]) : el('p', { texte: t.importeLocal }),
+    e.introuvable ? el('p', { texte: t.introuvableFiche, classe: 'store-avertissement' }) : null,
+    section(t.utilisation, usages),
+    a && a.licence ? section(t.licence, [el('p', {}, [lien(a.licence.libelle, a.licence.url)]),
+      liste([a.licence.attribution ? t.attributionRequise : t.attributionLibre])]) : null,
+    section(t.caracteristiques, [liste([
+      t.ligneFichier(e.fichier),
+      t.ligneCategorie(nomCategorie(e.categorie)),
+      e.taille ? t.ligneTaille(poidsLisible(e.taille, langue())) : null,
+      a && a.resolution ? t.ligneResolution(a.resolution) : null,
+      a ? t.depuisSource(nomSource) : null,
+    ])]),
+  ];
+  const retour = el('button', { texte: t.fermerFiche, classe: 'nav-btn', attrs: { type: 'button' } });
+  retour.onclick = fermerFiche;
+  // Les actions du menu contextuel, en boutons (demandé). Elles ouvrent les mêmes fenêtres que le clic
+  // droit ; la bibliothèque se recharge ensuite (rafraichirBibliothequeLocale).
+  const action = (texte, rappel, classe = 'nav-btn') => {
+    const b = el('button', { texte, classe, attrs: { type: 'button' } });
+    b.onclick = () => { if (_rappels[rappel]) _rappels[rappel](e.fichier); };
+    return b;
+  };
+  const actions = e.introuvable
+    ? [retour]
+    : [retour, action(t.squelette, 'squeletteModele'), action(t.renommer, 'renommerModele'), action(t.supprimer, 'supprimerModele', 'nav-btn store-action-danger')];
+  fiche.replaceChildren(
+    el('div', { classe: 'store-fiche-corps' }, [
+      el('div', { classe: 'store-fiche-gauche' }, [visuel, boutons]),
+      el('div', { classe: 'store-fiche-droite' }, droite.filter(Boolean)),
+    ]),
+    el('div', { classe: 'store-fiche-pied' }, [el('div', { classe: 'store-fiche-actions store-fiche-actions-locales' }, actions)]),
+  );
+  positionListe = $('storeDefilement').scrollTop;
+  $('storeGrille').hidden = true;
+  $('storePlusBtn').hidden = true;
+  $('storeFormulaire').hidden = true;
+  message('');
+  fiche.hidden = false;
+  $('storeDefilement').scrollTop = 0;
+}
+
 export async function ouvrirStore(){
   const pont = window.storyboarderAPI;
   if (!pont || !pont.storeChercher) return;
   if (!infos) {
-    infosPar[source] = await pont.storeInfos(source);
-    // Les noms des autres onglets : sans eux, l'onglet afficherait l'identifiant technique.
-    await Promise.all(SOURCES_STORE.filter(id => !infosPar[id]).map(async id => { infosPar[id] = await pont.storeInfos(id); }));
+    // Les sources en ligne d'abord : la bibliothèque locale reprend leurs catégories communes.
+    await Promise.all(SOURCES_STORE.filter(id => id !== LOCAL && !infosPar[id]).map(async id => { infosPar[id] = await pont.storeInfos(id); }));
+    infosPar[LOCAL] = infosLocales();
     infos = infosPar[source];
     rafraichirTextesStore();
   }
@@ -559,7 +749,8 @@ export async function ouvrirStore(){
   $('storeModal').classList.remove('hidden');
   $('storeTexte').focus();
   // Une première page dès l'ouverture : une fenêtre vide n'apprend rien sur ce qu'on peut y trouver.
-  if (!$('storeGrille').children.length) chercher();
+  // La bibliothèque locale est TOUJOURS relue : un modèle a pu être placé, renommé ou importé.
+  if (source === LOCAL || !$('storeGrille').children.length) chercher();
   else $('storeGrille').replaceChildren(...affiches.map(carte));
 }
 
@@ -588,7 +779,7 @@ export function cablerStore(rappels = {}){
     minuterie = setTimeout(() => chercher(), PAUSE_SAISIE_MS);
   });
   $('storeFormulaire').addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(minuterie); chercher(); });
-  for (const id of ['storeCategorie', 'storeLicence', 'storeFaces', 'storeTri', 'storeCommercial']) {
+  for (const id of ['storeCategorie', 'storeLicence', 'storeFaces', 'storeTri', 'storeCommercial', 'storeUsage']) {
     $(id).addEventListener('change', () => chercher());
   }
   $('storePlusBtn').onclick = () => chercher(true);

@@ -925,6 +925,37 @@
   <button id="ctxDeleteScene"><span class="ctx-icon">🗑</span> Supprimer cette scène</button>
 </div>
 
+<!-- ⚠️ LA BIBLIOTHÈQUE AVANT TOUTES LES AUTRES FENÊTRES. Les modales ont toutes le même z-index :
+     c'est l'ordre du document qui décide laquelle passe devant. Depuis « Mes modèles », on renomme,
+     on supprime, on règle un squelette : ces fenêtres-là doivent s'ouvrir PAR-DESSUS la bibliothèque. -->
+<div class="modal-overlay hidden" id="storeModal">
+  <div class="modal-box store-box">
+    <h3 id="storeTitre"></h3>
+    <!-- #445 : un onglet par source, écrit par le code (src/store-ui.js, SOURCES_STORE). -->
+    <div id="storeOnglets" class="store-onglets" role="tablist"></div>
+    <p id="storeSimulation" class="maj-simulation" hidden></p>
+    <form id="storeFormulaire" class="store-filtres">
+      <input id="storeTexte" class="modal-input" type="search" autocomplete="off">
+      <select id="storeCategorie"></select>
+      <select id="storeLicence"></select>
+      <select id="storeFaces"></select>
+      <select id="storeTri"></select>
+      <!-- « Mes modèles » seulement : où le modèle sert dans le Projet ouvert. -->
+      <select id="storeUsage"></select>
+      <span id="storeCommercialCase"><label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label></span>
+    </form>
+    <p id="storeMessage" class="maj-message"></p>
+    <!-- Seule cette zone défile : les filtres restent en haut, la mention en bas. La fiche d'un
+         modèle y REMPLACE la grille (demandé). -->
+    <div id="storeDefilement" class="store-defilement">
+      <div id="storeGrille" class="store-grille"></div>
+      <button id="storePlusBtn" class="nav-btn store-plus" type="button" hidden></button>
+      <div id="storeFiche" class="store-fiche" hidden></div>
+    </div>
+    <p id="storeCredit" class="store-credit"></p>
+  </div>
+</div>
+
 <!-- Modale "Projet" (cf. #projectNameHeader) : Nouveau / Charger / Enregistrer un Projet entier
      (ensemble de Tomes/Planches/Cases), sous forme de fichier .json — sur demande utilisateur. -->
 <div class="modal-overlay hidden" id="projectModal">
@@ -1250,31 +1281,6 @@
 
 <!-- Store de ressources (#444b) : recherche, grille, fiche. Tout le texte est écrit par le code
      (src/store-texts.js) ; les résultats viennent du processus principal, déjà normalisés. -->
-<div class="modal-overlay hidden" id="storeModal">
-  <div class="modal-box store-box">
-    <h3 id="storeTitre"></h3>
-    <!-- #445 : un onglet par source, écrit par le code (src/store-ui.js, SOURCES_STORE). -->
-    <div id="storeOnglets" class="store-onglets" role="tablist"></div>
-    <p id="storeSimulation" class="maj-simulation" hidden></p>
-    <form id="storeFormulaire" class="store-filtres">
-      <input id="storeTexte" class="modal-input" type="search" autocomplete="off">
-      <select id="storeCategorie"></select>
-      <select id="storeLicence"></select>
-      <select id="storeFaces"></select>
-      <select id="storeTri"></select>
-      <span id="storeCommercialCase"><label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label></span>
-    </form>
-    <p id="storeMessage" class="maj-message"></p>
-    <!-- Seule cette zone défile : les filtres restent en haut, la mention en bas. La fiche d'un
-         modèle y REMPLACE la grille (demandé). -->
-    <div id="storeDefilement" class="store-defilement">
-      <div id="storeGrille" class="store-grille"></div>
-      <button id="storePlusBtn" class="nav-btn store-plus" type="button" hidden></button>
-      <div id="storeFiche" class="store-fiche" hidden></div>
-    </div>
-    <p id="storeCredit" class="store-credit"></p>
-  </div>
-</div>
 
 <!-- Mise à jour facultative (#442) : confirmation, poids du téléchargement, redémarrage, puis
      progression. Tout le texte est écrit par le code (src/update-texts.js), dans la langue choisie. -->

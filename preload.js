@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   storeTelecharges: () => ipcRenderer.invoke('store:telecharges'),
   // Vignettes des modèles locaux : ce qui est à rendre, lire une vignette, en écrire une.
   vignettesEtat: () => ipcRenderer.invoke('vignettes:etat'),
+  modelesInfos: () => ipcRenderer.invoke('models:infos'),
   vignettesLire: (nom) => ipcRenderer.invoke('vignettes:lire', nom),
   vignettesEcrire: (nom, data) => ipcRenderer.invoke('vignettes:ecrire', nom, data),
   // #445 : poids annoncé, téléchargement (le .glb revient ici pour être rangé), attribution.
