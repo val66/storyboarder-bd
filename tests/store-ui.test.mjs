@@ -211,7 +211,8 @@ describe('le câblage', () => {
     const f = UI.slice(UI.indexOf('function ficheLocale'));
     assert.match(f, /const cle = 'fiche-modele:' \+ id;/);
     assert.match(lire('style.css'), /\.store-usages\{ max-height:38vh; overflow-y:auto;/);
-    assert.match(lire('style.css'), /\.store-usages-groupe \+ \.store-usages-groupe\{ margin-top:16px; \}/);
+    assert.match(lire('style.css'), /\.store-usages-groupe \+ \.store-usages-groupe\{ margin-top:4px; \}/);
+    assert.match(lire('style.css'), /\.store-fiche-droite > p\{ margin:4px 0 0; \}/);
   });
   test('fermer garde la fiche ouverte pour la réouverture ; la fiche locale s\'ouvre en 3D', () => {
     const f = UI.slice(UI.indexOf('export function fermerStore('));

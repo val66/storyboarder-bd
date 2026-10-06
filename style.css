@@ -2156,8 +2156,9 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 }
 .store-fiche-sous-titre:hover{ color:var(--ink); }
 .store-fiche-sous-titre .model-group-caret{ font-size:12px; }
-/* De l'air ENTRE les sous-sections (demandé : CASES collait à la dernière Scène). */
-.store-usages-groupe + .store-usages-groupe{ margin-top:16px; }
+/* Entre deux sous-sections, le MÊME écart qu'entre le titre de section et la première (demandé) :
+   4px de marge ici comme sous le h5, plus les 2px de padding du titre, des deux côtés. */
+.store-usages-groupe + .store-usages-groupe{ margin-top:4px; }
 .store-usages-liste[hidden]{ display:none; }
 /* La zone des endroits défile seule quand elle est longue (demandé), sans faire défiler la fiche. */
 .store-usages{ max-height:38vh; overflow-y:auto; padding-right:6px; }
@@ -2187,7 +2188,13 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-apercu-chargement{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; padding:16px; text-align:center; font-size:13px; color:var(--ink-soft); }
 .store-apercu-chargement.erreur{ color:var(--danger); }
 .store-fiche-boutons{ display:flex; gap:8px; margin-top:8px; }
-.store-fiche-section{ margin:10px 0 0; }
+.store-fiche-section{ margin:18px 0 0; }
+/* ⚠️ LE MÊME ÉCART AU-DESSUS DE CHAQUE SECTION (demandé) : un paragraphe garde sinon sa marge basse
+   par défaut (1em), qui s'ajoutait au-dessus de la première section et pas au-dessus des suivantes,
+   précédées d'une liste ou d'une zone sans marge. Les paragraphes de la colonne n'ont donc pas de
+   marge basse : seule la section décide de l'écart. */
+.store-fiche-droite > p{ margin:4px 0 0; }
+.store-fiche-section > ul{ margin:0; }
 .store-fiche-section h5{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
 .store-fiche-actions{ display:flex; gap:8px; align-items:stretch; margin-top:12px; }
 .store-fiche-actions > *{ flex:1 1 0; width:auto; margin:0; }   /* parts égales (demandé) */
