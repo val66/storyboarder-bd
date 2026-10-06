@@ -132,21 +132,27 @@ function ouvrirFiche(r){
     el('h5', { texte: titre }), ...avant, el('ul', {}, lignes.map(p => el('li', { texte: p }))),
   ]);
   const details = lignesDetails(r, langue());
-  const enfants = [
-    visuel,
-    boutons,
+  // DEUX COLONNES (demandé) : l'aperçu et ses boutons à gauche, la description à droite. Pleine
+  // largeur, l'aperçu poussait les boutons du bas hors de la fenêtre.
+  const droite = [
     el('h4', { texte: r.nom }),
     el('p', {}, [el('span', { texte: t.par + ' ' }), lien(r.auteur.nom, r.auteur.url)]),
     section(t.licence, phrasesLicence(r.licence, langue()), [el('p', {}, [lien(r.licence.libelle, r.licence.url)])]),
     details.length ? section(t.caracteristiques, details) : null,
     estLourd(r) ? el('p', { texte: t.lourd, classe: 'store-avertissement' }) : null,
-    // Retour et Téléchargement côte à côte, en bas (demandé) : le gros bouton du haut prenait la
-    // place de l'aperçu.
-    el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
-    el('p', { texte: t.bientot, classe: 'store-note' }),
   ];
   // ⚠️ replaceChildren(null) écrit « null » : un enfant conditionnel absent doit être RETIRÉ.
-  fiche.replaceChildren(...enfants.filter(Boolean));
+  fiche.replaceChildren(
+    el('div', { classe: 'store-fiche-corps' }, [
+      el('div', { classe: 'store-fiche-gauche' }, [visuel, boutons]),
+      el('div', { classe: 'store-fiche-droite' }, droite.filter(Boolean)),
+    ]),
+    // Retour et Télécharger TOUJOURS visibles (demandé) : un pied collé au bas de la zone qui défile.
+    el('div', { classe: 'store-fiche-pied' }, [
+      el('div', { classe: 'store-fiche-actions' }, [retour, telecharger]),
+      el('p', { texte: t.bientot, classe: 'store-note' }),
+    ]),
+  );
   // La fiche REMPLACE la liste (demandé) ; on garde la position dans la liste pour le retour.
   positionListe = $('storeDefilement').scrollTop;
   $('storeGrille').hidden = true;

@@ -124,13 +124,10 @@ describe('le câblage', () => {
   test('retours de Valentin (6 octobre 2026, 2e passe)', () => {
     const f = UI.slice(UI.indexOf('function ouvrirFiche'));
     // « null » écrit dans la fiche : les enfants conditionnels absents sont retirés.
-    assert.match(f, /fiche\.replaceChildren\(\.\.\.enfants\.filter\(Boolean\)\)/);
     // L'aperçu 3D se BASCULE, et revenir à l'image le décharge.
     assert.match(f, /en3D = !en3D;/);
     assert.match(f, /visuel\.replaceChildren\(\.\.\.image\(\)\)/);
     assert.match(f, /bascule\.textContent = en3D \? t\.voirImage : t\.voir3D;/);
-    // Retour et Télécharger côte à côte, en bas.
-    assert.match(f, /el\('div', \{ classe: 'store-fiche-actions' \}, \[retour, telecharger\]\)/);
     // Deux sections titrées : licence, caractéristiques.
     assert.match(f, /section\(t\.licence,/);
     assert.match(f, /section\(t\.caracteristiques, details\)/);
@@ -152,6 +149,16 @@ describe('le câblage', () => {
     assert.match(f, /\$\('storeFormulaire'\)\.hidden = true;/);
     assert.match(r, /\$\('storeFormulaire'\)\.hidden = false;/);
     assert.match(lire('style.css'), /\.store-filtres\[hidden\]\{ display:none; \}/);
+  });
+  test('retours de Valentin (5e passe) : deux colonnes, boutons du bas toujours visibles', () => {
+    const f = UI.slice(UI.indexOf('function ouvrirFiche'), UI.indexOf('function fermerFiche'));
+    assert.match(f, /el\('div', \{ classe: 'store-fiche-gauche' \}, \[visuel, boutons\]\)/);
+    assert.match(f, /el\('div', \{ classe: 'store-fiche-droite' \}, droite\.filter\(Boolean\)\)/);
+    assert.match(f, /el\('div', \{ classe: 'store-fiche-pied' \}, \[\n\s+el\('div', \{ classe: 'store-fiche-actions' \}, \[retour, telecharger\]\)/);
+    const css = lire('style.css');
+    assert.match(css, /\.store-fiche-pied\{ position:sticky; bottom:0;/);
+    assert.match(css, /\.store-fiche-corps\{ display:grid; grid-template-columns:minmax\(0, 1fr\) minmax\(0, 1fr\);/);
+    assert.match(css, /\.store-box \.maj-message:empty\{ display:none; \}/);
   });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
