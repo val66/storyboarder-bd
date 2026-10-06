@@ -194,7 +194,7 @@ export const HELP_MANUAL_EN = [
     'Its selection box on the Page follows the span of the model\'s own skeleton: a slim figure gets a slim box, not a square one.',
   ]},
   { id: 'store', title: 'Online models', paragraphs: [
-    '"Online store", at the top of the Models section, opens a search window over the free models of Sketchfab: keywords, category, license, maximum size, sorting.',
+    '"Online library", at the top of the Models section, opens a search window over the free models of Sketchfab: keywords, category, license, maximum size, sorting.',
     'Click a model for its details: author, license and what it allows, size, and "View in 3D" to turn it around. Heavy models are flagged before downloading.',
     'Downloading will require signing in to a Sketchfab account: it is coming in a future version.',
   ]},
@@ -395,7 +395,7 @@ export const HELP_MANUAL_FR = [
     'Sa boîte de sélection sur la Planche suit l\'envergure du squelette du modèle : une figure élancée reçoit une boîte élancée, pas un carré.',
   ]},
   { id: 'store', title: 'Modèles en ligne', paragraphs: [
-    "« Store en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans les modèles gratuits de Sketchfab : mots-clés, catégorie, licence, taille maximale, tri.",
+    "« Bibliothèque en ligne », en tête de la section Modèles, ouvre une fenêtre de recherche dans les modèles gratuits de Sketchfab : mots-clés, catégorie, licence, taille maximale, tri.",
     "Cliquez un modèle pour sa fiche : auteur, licence et ce qu'elle permet, poids, et « Voir en 3D » pour le faire tourner. Les modèles lourds sont signalés avant le téléchargement.",
     "Le téléchargement demandera de se connecter à un compte Sketchfab : il arrive dans une prochaine version.",
   ]},

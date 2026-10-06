@@ -7,7 +7,7 @@
 
 const T = {
   fr: {
-    ouvrir: 'Store en ligne',
+    ouvrir: 'Bibliothèque en ligne',
     titre: 'Modèles en ligne',
     placeholder: 'Banc, voiture, chat…',
     toutesCategories: 'Toutes les catégories',
@@ -47,7 +47,7 @@ const T = {
     fermerFiche: 'Retour aux résultats',
   },
   en: {
-    ouvrir: 'Online store',
+    ouvrir: 'Online library',
     titre: 'Online models',
     placeholder: 'Bench, car, cat…',
     toutesCategories: 'All categories',

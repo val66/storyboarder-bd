@@ -119,7 +119,7 @@ describe('le câblage', () => {
     for (const id of ['storeGrille', 'storePlusBtn', 'storeFiche']) assert.ok(zone.includes(`id="${id}"`), id);
     assert.match(css, /\.store-badge\{ min-width:0;[^}]*white-space:nowrap;/);
     assert.match(css, /\.modal-box \.store-filtres select\{ flex:1 1 180px; max-width:260px; width:auto; margin:0; \}/);
-    assert.equal(textesStore('fr').ouvrir, 'Store en ligne');
+    assert.equal(textesStore('fr').ouvrir, 'Bibliothèque en ligne');
   });
   test('retours de Valentin (6 octobre 2026, 2e passe)', () => {
     const f = UI.slice(UI.indexOf('function ouvrirFiche'));
