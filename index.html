@@ -933,13 +933,14 @@
     <form id="storeFormulaire" class="store-filtres">
       <input id="storeTexte" class="modal-input" type="search" autocomplete="off">
       <select id="storeCategorie"></select>
+      <!-- « Mes modèles » seulement : le filtre par tags, À CÔTÉ des catégories (demandé). On y crée,
+           renomme et supprime aussi les tags (src/store-ui.js, rendreFiltreTags). -->
+      <span id="storeTagsZone" class="store-tags-zone" hidden><button id="storeTagsBtn" class="store-tags-btn" type="button"></button></span>
       <select id="storeLicence"></select>
       <select id="storeFaces"></select>
       <select id="storeTri"></select>
       <!-- « Mes modèles » seulement : où le modèle sert dans le Projet ouvert. -->
       <select id="storeUsage"></select>
-      <!-- « Mes modèles » seulement, et s'il existe des tags : le filtre par tags (src/store-ui.js). -->
-      <span id="storeTagsZone" class="store-tags-zone" hidden><button id="storeTagsBtn" class="store-tags-btn" type="button"></button></span>
       <span id="storeCommercialCase"><label class="store-case"><input type="checkbox" id="storeCommercial"> <span id="storeCommercialLibelle"></span></label></span>
     </form>
     <p id="storeMessage" class="maj-message"></p>

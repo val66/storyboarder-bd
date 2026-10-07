@@ -736,67 +736,103 @@ function blocClassement(fichier){
     if (menuTags) ouvrirTags();
   };
 
-  /** Le menu des tags : cocher pour ce modèle, renommer, supprimer, créer. */
-  const remplirMenuTags = (menu, e) => {
-    const erreur = el('p', { classe: 'store-menu-erreur' });
-    const refaire = () => { majBloc(); };
-    const ligneTag = (tag) => {
-      const coche = el('input', { attrs: { type: 'checkbox' } });
-      coche.checked = e.tags.includes(tag.id);
-      coche.onchange = async () => { await operer('tagModele', { fichier, id: tag.id, actif: coche.checked }); refaire(); };
-      const nom = el('span', { texte: tag.nom, classe: 'store-tag-nom' });
-      const libelle = el('label', { classe: 'store-tag-coche' }, [coche, nom]);
-      const crayon = el('button', { texte: '✏️', classe: 'store-tag-outil', attrs: { type: 'button', title: t.renommerTag } });
-      const corbeille = el('button', { texte: '🗑', classe: 'store-tag-outil', attrs: { type: 'button', title: t.supprimerTag } });
-      const ligne = el('div', { classe: 'store-tag-ligne' }, [libelle, crayon, corbeille]);
-      crayon.onclick = () => {
-        const champ = el('input', { classe: 'store-tag-champ', attrs: { type: 'text', value: tag.nom, maxlength: '40' } });
-        champ.value = tag.nom;
-        ligne.replaceChildren(champ);
-        champ.focus();
-        champ.select();
-        champ.onkeydown = async (ev) => {
-          if (ev.key === 'Escape') { ev.stopPropagation(); refaire(); return; }
-          if (ev.key !== 'Enter') return;
-          ev.preventDefault();
-          const r = await operer('renommerTag', { id: tag.id, nom: champ.value });
-          if (r.erreur) { erreur.textContent = t.erreursTag[r.erreur] || t.erreursTag.vide; return; }
-          refaire();
-        };
-      };
-      corbeille.onclick = async () => {
-        const n = Object.values((bibliotheque && bibliotheque.tagsParModele) || {}).filter(ids => ids.includes(tag.id)).length;
-        const ok = _rappels.confirmer ? await _rappels.confirmer(t.confirmerSuppressionTag(tag.nom, n)) : true;
-        if (!ok) return;
-        await operer('supprimerTag', { id: tag.id });
-        tagsFiltre = tagsFiltre.filter(x => x !== tag.id);
-        refaire();
-      };
-      return ligne;
-    };
-    const nouveau = el('input', { classe: 'store-tag-champ', attrs: { type: 'text', placeholder: t.nouveauTag, maxlength: '40' } });
-    nouveau.onkeydown = async (ev) => {
-      if (ev.key !== 'Enter') return;
-      ev.preventDefault();
-      const r = await operer('creerTag', { nom: nouveau.value });
-      if (!r.id) { erreur.textContent = t.erreursTag.vide; return; }
-      await operer('tagModele', { fichier, id: r.id, actif: true });   // créé depuis ce modèle : il le porte
-      refaire();
-    };
-    const tags = tousLesTags();
-    menu.replaceChildren(
-      ...(tags.length ? tags.map(ligneTag) : [el('p', { texte: t.aucunTag, classe: 'store-menu-vide' })]),
-      nouveau,
-      erreur,
-    );
-    setTimeout(() => nouveau.focus(), 0);
-  };
+  /** Le menu des tags de la fiche : cocher pour CE modèle, et la gestion commune. */
+  const remplirMenuTags = (menu, e) => remplirListeTags(menu, {
+    estCoche: (tag) => e.tags.includes(tag.id),
+    cocher: (tag, actif) => operer('tagModele', { fichier, id: tag.id, actif }),
+    // Créé depuis ce modèle : il le porte aussitôt.
+    apresCreation: (id) => operer('tagModele', { fichier, id, actif: true }),
+    refaire: () => majBloc(),
+  });
 
   majBloc();
   return bloc;
 }
 
-/** Le filtre par tags de « Mes modèles » : un bouton, et un menu de cases à cocher. */
+/** L'icône de corbeille, en SVG (l'émoji sortait noir sur fond sombre, signalé). */
+function iconeCorbeille(){
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  const trait = document.createElementNS(NS, 'path');
+  trait.setAttribute('d', 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5M7 7v4M9 7v4');
+  trait.setAttribute('fill', 'none');
+  trait.setAttribute('stroke', 'currentColor');
+  trait.setAttribute('stroke-width', '1.4');
+  trait.setAttribute('stroke-linecap', 'round');
+  trait.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(trait);
+  return svg;
+}
+
+/**
+ * La LISTE DES TAGS, commune au menu de la fiche et au filtre (demandé : créer, renommer et
+ * supprimer depuis les deux). Une ligne par tag (case à cocher, ✏️ renommer, corbeille), puis un
+ * champ « Nouveau tag ». Ce que COCHER veut dire dépend de l'appelant : poser le tag sur un modèle,
+ * ou le mettre dans le filtre.
+ *   estCoche(tag), cocher(tag, actif), apresCreation(id) (facultatif), refaire()
+ */
+function remplirListeTags(menu, { estCoche, cocher, apresCreation, refaire }){
+  const t = textesStore(langue());
+  const erreur = el('p', { classe: 'store-menu-erreur' });
+  const ligneTag = (tag) => {
+    const coche = el('input', { attrs: { type: 'checkbox' } });
+    coche.checked = estCoche(tag);
+    coche.onchange = async () => { await cocher(tag, coche.checked); refaire(); };
+    const libelle = el('label', { classe: 'store-tag-coche' }, [coche, el('span', { texte: tag.nom, classe: 'store-tag-nom' })]);
+    const crayon = el('button', { texte: '✏️', classe: 'store-tag-outil', attrs: { type: 'button', title: t.renommerTag } });
+    const corbeille = el('button', { classe: 'store-tag-outil store-tag-corbeille', attrs: { type: 'button', title: t.supprimerTag, 'aria-label': t.supprimerTag } }, [iconeCorbeille()]);
+    const ligne = el('div', { classe: 'store-tag-ligne' }, [libelle, crayon, corbeille]);
+    crayon.onclick = () => {
+      const champ = el('input', { classe: 'store-tag-champ', attrs: { type: 'text', maxlength: '40' } });
+      champ.value = tag.nom;
+      ligne.replaceChildren(champ);
+      champ.focus();
+      champ.select();
+      champ.onkeydown = async (ev) => {
+        if (ev.key === 'Escape') { ev.stopPropagation(); refaire(); return; }
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        const r = await operer('renommerTag', { id: tag.id, nom: champ.value });
+        if (r.erreur) { erreur.textContent = t.erreursTag[r.erreur] || t.erreursTag.vide; return; }
+        refaire();
+      };
+    };
+    corbeille.onclick = async () => {
+      const n = Object.values((bibliotheque && bibliotheque.tagsParModele) || {}).filter(ids => ids.includes(tag.id)).length;
+      const ok = _rappels.confirmer ? await _rappels.confirmer(t.confirmerSuppressionTag(tag.nom, n)) : true;
+      if (!ok) return;
+      await operer('supprimerTag', { id: tag.id });
+      tagsFiltre = tagsFiltre.filter(x => x !== tag.id);
+      refaire();
+    };
+    return ligne;
+  };
+  const nouveau = el('input', { classe: 'store-tag-champ', attrs: { type: 'text', placeholder: t.nouveauTag, maxlength: '40' } });
+  nouveau.onkeydown = async (ev) => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    const r = await operer('creerTag', { nom: nouveau.value });
+    if (!r.id) { erreur.textContent = t.erreursTag.vide; return; }
+    if (apresCreation) await apresCreation(r.id);
+    refaire();
+  };
+  const tags = tousLesTags();
+  menu.replaceChildren(
+    ...(tags.length ? tags.map(ligneTag) : [el('p', { texte: t.aucunTag, classe: 'store-menu-vide' })]),
+    nouveau,
+    erreur,
+  );
+  setTimeout(() => nouveau.focus(), 0);
+}
+
+/**
+ * Le filtre par tags de « Mes modèles », à côté des catégories (demandé) : un bouton, et la liste
+ * des tags. Cocher met le tag dans le filtre (le modèle doit les porter TOUS) ; on y crée, renomme
+ * et supprime les tags comme dans la fiche. Visible dès l'onglet local, même sans tag : c'est aussi
+ * là qu'on crée le premier.
+ */
 function rendreFiltreTags(){
   const zone = $('storeTagsZone');
   const bouton = $('storeTagsBtn');
@@ -805,23 +841,20 @@ function rendreFiltreTags(){
   const tags = tousLesTags();
   // Un tag supprimé ailleurs quitte le filtre.
   tagsFiltre = tagsFiltre.filter(id => tags.some(x => x.id === id));
-  zone.hidden = source !== LOCAL || !tags.length;
+  zone.hidden = source !== LOCAL;
   bouton.textContent = (tagsFiltre.length ? t.tagsChoisis(tagsFiltre.length) : t.tousLesTags) + ' ▾';
   bouton.classList.toggle('actif', tagsFiltre.length > 0);
-  bouton.onclick = () => menuFlottant(zone, (menu) => {
-    tousLesTags().forEach(tag => {
-        const coche = el('input', { attrs: { type: 'checkbox' } });
-        coche.checked = tagsFiltre.includes(tag.id);
-        coche.onchange = () => {
-          tagsFiltre = coche.checked ? [...tagsFiltre, tag.id] : tagsFiltre.filter(x => x !== tag.id);
-          bouton.textContent = (tagsFiltre.length ? t.tagsChoisis(tagsFiltre.length) : t.tousLesTags) + ' ▾';
-          bouton.classList.toggle('actif', tagsFiltre.length > 0);
-          if (afficherLocal) afficherLocal();
-          memoriserEtat();
-        };
-        menu.appendChild(el('label', { classe: 'store-tag-coche' }, [coche, el('span', { texte: tag.nom, classe: 'store-tag-nom' })]));
-    });
-  }, 'store-menu-tags');
+  const remplir = (menu) => remplirListeTags(menu, {
+    estCoche: (tag) => tagsFiltre.includes(tag.id),
+    cocher: (tag, actif) => { tagsFiltre = actif ? [...tagsFiltre, tag.id] : tagsFiltre.filter(x => x !== tag.id); },
+    refaire: () => {
+      rendreFiltreTags();
+      if (afficherLocal) afficherLocal();
+      memoriserEtat();
+      if (menuOuvert) remplir(menuOuvert.menu);
+    },
+  });
+  bouton.onclick = () => menuFlottant(zone, remplir, 'store-menu-tags');
 }
 
 /** Recharge l'onglet local s'il est affiché (après un renommage, une suppression, un import). */

@@ -80,8 +80,8 @@ other modals in the document: the ones it opens come in front of it.
 
 In the details of a model in "My models", under the source: the **category** (one, from the common
 list; it replaces the source's or the guessed one, "Automatic" hands it back) and the user's
-**tags** (several per model, created, renamed and deleted from the "+ Tags" menu). The "Tags"
-filter keeps the models that have ALL the ticked tags. It all lives in `bibliotheque-modeles.json`,
+**tags** (several per model, created, renamed and deleted from the "+ Tags" menu, or from the "Tags" filter, next to the categories). The filter
+keeps the models that have ALL the ticked tags. It all lives in `bibliotheque-modeles.json`,
 next to the Modeles folder, and follows model renames and deletions. What decides is in
 `bibliotheque-modeles.js` (pure); the interface asks for an operation (`bibliotheque:operation`) and
 gets the new state back.

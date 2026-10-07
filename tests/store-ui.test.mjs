@@ -231,6 +231,15 @@ describe('le câblage', () => {
     // Le menu des tags rouvre après un changement, mais pas après une fermeture par l'utilisateur.
     assert.match(UI, /\(\) => \{ if \(!reconstruction\) menuTags = false; \}/);
   });
+  test('retours sur les tags : filtre à côté des catégories, menu qui s\'ouvre vers la droite, corbeille visible', () => {
+    const html = lire('index.html');
+    assert.ok(html.indexOf('id="storeTagsZone"') > html.indexOf('id="storeCategorie"') && html.indexOf('id="storeTagsZone"') < html.indexOf('id="storeTri"'));
+    assert.match(lire('style.css'), /\.store-tags-zone \.store-menu-flottant\{ left:0; right:auto; \}/);
+    assert.match(lire('style.css'), /\.store-tag-corbeille\{ color:var\(--ink\);/);
+    // La même liste de tags (créer, renommer, supprimer) dans la fiche ET dans le filtre.
+    assert.equal((UI.match(/remplirListeTags\(menu, \{/g) || []).length, 3);   // la définition, la fiche, le filtre
+    assert.doesNotMatch(UI, /texte: '🗑'/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);
