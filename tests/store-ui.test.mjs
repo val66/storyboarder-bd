@@ -273,6 +273,14 @@ describe('le câblage', () => {
     assert.match(apres, /margin-left:8px/);
     assert.match(apres, /background:currentColor/);
   });
+  test('recliquer sur le bouton d\'un menu ouvert le referme (catégorie, tags, filtre)', () => {
+    const f = UI.slice(UI.indexOf('function menuFlottant'), UI.indexOf('async function operer'));
+    assert.match(f, /const memeBouton = declencheur && menuOuvert\.declencheur === declencheur;\n    menuOuvert\.fermer\(\);\n    if \(memeBouton\) return null;/);
+    assert.match(f, /menuOuvert = \{ menu, fermer, declencheur \};/);
+    assert.match(UI, /'store-menu-categories', null, chipCat\); \};/);
+    assert.match(UI, /\(\) => \{ if \(!reconstruction\) menuTags = false; \}, ajouter\);/);
+    assert.match(UI, /menuFlottant\(zone, remplir, 'store-menu-tags', null, bouton\)/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);

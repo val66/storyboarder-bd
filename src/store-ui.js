@@ -659,8 +659,14 @@ let menuOuvert = null;   // { fermer } du menu flottant ouvert
  * Un menu flottant sous `ancre`, dans `conteneur` (en position relative). Se ferme d'un clic
  * ailleurs ou par Échap ; un seul à la fois. `remplir(menu, fermer)` le construit.
  */
-function menuFlottant(conteneur, remplir, classe = '', quandFerme = null){
-  if (menuOuvert) menuOuvert.fermer();
+// `declencheur` : le bouton qui ouvre ce menu. Recliquer dessus quand son menu est ouvert le REFERME
+// (demandé) au lieu de le rouvrir : le clic sur le bouton n'est pas « ailleurs », il ne fermait rien.
+function menuFlottant(conteneur, remplir, classe = '', quandFerme = null, declencheur = null){
+  if (menuOuvert) {
+    const memeBouton = declencheur && menuOuvert.declencheur === declencheur;
+    menuOuvert.fermer();
+    if (memeBouton) return null;
+  }
   const menu = el('div', { classe: 'store-menu-flottant ' + classe, attrs: { role: 'menu' } });
   const ailleurs = (e) => { if (!menu.contains(e.target) && !conteneur.contains(e.target)) fermer(); };
   const echap = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fermer(); } };
@@ -675,7 +681,7 @@ function menuFlottant(conteneur, remplir, classe = '', quandFerme = null){
   conteneur.appendChild(menu);
   document.addEventListener('mousedown', ailleurs, true);
   document.addEventListener('keydown', echap, true);
-  menuOuvert = { menu, fermer };
+  menuOuvert = { menu, fermer, declencheur };
   return menuOuvert;
 }
 
@@ -720,12 +726,12 @@ function blocClassement(fichier){
       if (e.categorieChoisie && e.attribution && e.attribution.categorie) menu.appendChild(choix(null, t.categorieAuto, false));
       (infos && infos.categories || []).forEach(c => menu.appendChild(choix(c.slug, c[langue()], e.categorie === c.slug)));
       menu.appendChild(choix(NON_CLASSE, t.nonClasse, e.categorie === NON_CLASSE));
-    }, 'store-menu-categories'); };
+    }, 'store-menu-categories', null, chipCat); };
 
     const chips = e.nomsTags.map(n => el('span', { texte: n, classe: 'store-chip store-chip-tag' }));
     const ajouter = el('button', { texte: e.tags.length ? t.modifierTags : t.ajouterTags, classe: 'store-chip store-chip-action', attrs: { type: 'button', 'aria-haspopup': 'menu' } });
     // Le menu se rouvre après un changement fait depuis lui ; fermé par l'utilisateur, il le reste.
-    const ouvrirTags = () => menuFlottant(bloc, (menu) => remplirMenuTags(menu, e), 'store-menu-tags', () => { if (!reconstruction) menuTags = false; });
+    const ouvrirTags = () => menuFlottant(bloc, (menu) => remplirMenuTags(menu, e), 'store-menu-tags', () => { if (!reconstruction) menuTags = false; }, ajouter);
     ajouter.onclick = () => { menuTags = true; ouvrirTags(); };
     reconstruction = true;
     if (menuOuvert) menuOuvert.fermer();
@@ -858,7 +864,7 @@ function rendreFiltreTags(){
       if (menuOuvert) remplir(menuOuvert.menu);
     },
   });
-  bouton.onclick = () => menuFlottant(zone, remplir, 'store-menu-tags');
+  bouton.onclick = () => menuFlottant(zone, remplir, 'store-menu-tags', null, bouton);
 }
 
 /** Recharge l'onglet local s'il est affiché (après un renommage, une suppression, un import). */
