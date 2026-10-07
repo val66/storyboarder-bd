@@ -39,7 +39,7 @@ import { clearImageCache } from './image-cache.js';
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
 // squelette, pas seulement de la géométrie brute, sinon l'échelle réelle et la boîte de sélection
 // 2D divergent de ce que le GPU affiche réellement.
-import { box3FromObjectSkinAware3D, box3FromObjectSkinAwareCached3D } from './skinned-box-3d.js';
+import { box3FromObjectSkinAwareCached3D } from './skinned-box-3d.js';
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 // Le champ visible d'une Case : il sert de plan éloigné à l'ombre d'une source SANS portée (#422d).
 import { champVisibleDeCase3D } from './shadows-3d.js';
@@ -3628,7 +3628,11 @@ function osInfluents3D(racine){
 }
 
 export function boiteDeCadrageModele3D(entry){
-  const boite = box3FromObjectSkinAware3D(entry && entry.figureGroup);
+  // ⚠️ LA BOÎTE MÉMORISÉE (#438), et c'est ce qui rend l'orbite de l'Éditeur fluide (signalé : bien
+  // moins fluide que l'aperçu 3D du store). La boîte d'un modèle articulé déforme chaque sommet sur
+  // le processeur ; l'Éditeur la redemandait à CHAQUE image d'orbite, alors que tourner la caméra
+  // ne change ni la pose ni le modèle. La clé de la mémoire suit la pose : un geste la recalcule.
+  const boite = entry && entry.figureGroup ? box3FromObjectSkinAwareCached3D(entry.figureGroup) : new THREE.Box3();
   const influents = osInfluents3D(entry && entry.figureGroup);
   const osMappes = influents && entry && entry.skeletonBones
     ? Object.fromEntries(Object.entries(entry.skeletonBones).filter(([, e]) => e && e.os && influents.has(e.os)))

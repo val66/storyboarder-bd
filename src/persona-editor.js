@@ -958,6 +958,18 @@ function dessinerModeleDansEditeur(cnv, fichier, size){
   ctx.drawImage(rendu, 0, 0, rendu.width, rendu.height, 0, 0, cnv.width, cnv.height);
 }
 
+// UN DESSIN PAR IMAGE pendant un glisser (orbite, articulation). Les mousemove arrivent plus vite
+// que l'écran ne se rafraîchit (souvent deux ou trois par image) ; chacun relançait un rendu 3D
+// complet, dont seul le dernier se voyait. Sans requestAnimationFrame (tests sous Node), on dessine
+// tout de suite, comme avant.
+let _dessinPrevu = 0;
+function dessinerALaProchaineImage(){
+  const raf = globalThis.requestAnimationFrame;
+  if (typeof raf !== 'function') { drawPersonaEditor(); return; }
+  if (_dessinPrevu) return;
+  _dessinPrevu = raf(() => { _dessinPrevu = 0; drawPersonaEditor(); });
+}
+
 export function drawPersonaEditor(){
   const cnv = document.getElementById('personaEditorCanvas');
   if (!cnv || !S.personaEditorOpen) return;
@@ -2102,7 +2114,7 @@ export function wirePersonaEditor(){
         }
         syncPersonaEditorSliders();
         syncPersonaEditorActionButtons();
-        drawPersonaEditor();
+        dessinerALaProchaineImage();
         return;
       }
       if (!orbiting || !S.personaEditorOpen) return;
@@ -2112,7 +2124,7 @@ export function wirePersonaEditor(){
       const k = PERSONA_EDITOR_ORBIT_RAD_PER_PX;
       setPersonaEditorOrbit(orbiting.rotX - (e.clientY - orbiting.y) * k,
                             orbiting.rotY + (e.clientX - orbiting.x) * k);
-      drawPersonaEditor();
+      dessinerALaProchaineImage();
     });
     window.addEventListener('mouseup', () => { orbiting = null; jointDrag = null; });
   }

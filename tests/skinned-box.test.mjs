@@ -196,6 +196,17 @@ describe('boiteDeCadrageModele3D : le cadre contient ce qui est peint ET chaque 
     assert.ok(boite.max.y >= HAUTEUR_OS - 1e-6);
   });
 
+  test('l\'orbite de l\'Éditeur ne recalcule pas la boîte : elle est MÉMORISÉE (fluidité)', () => {
+    // Signalé : orbiter dans l'Éditeur était bien moins fluide que l'aperçu du store. La boîte
+    // déformait chaque sommet à chaque image ; tourner la caméra ne change ni pose ni modèle.
+    const SC = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
+    const f = SC.slice(SC.indexOf('export function boiteDeCadrageModele3D'));
+    assert.match(f.slice(0, 600), /box3FromObjectSkinAwareCached3D\(entry\.figureGroup\)/);
+    const ED = readFileSync(new URL('../src/persona-editor.js', import.meta.url), 'utf8');
+    assert.match(ED, /dessinerALaProchaineImage\(\);\n    \}\);\n    window\.addEventListener\('mouseup'/,
+      'l\'orbite doit dessiner une fois par image, pas à chaque mousemove');
+  });
+
   test('aucun squelette reconnu : le maillage seul', () => {
     // Une chaise importée. L'union avec une boîte absente est sans effet, pas de branche en plus.
     const racine = figureArticulee(ECHELLE);
