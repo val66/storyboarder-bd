@@ -842,7 +842,10 @@ function rendreFiltreTags(){
   // Un tag supprimé ailleurs quitte le filtre.
   tagsFiltre = tagsFiltre.filter(id => tags.some(x => x.id === id));
   zone.hidden = source !== LOCAL;
-  bouton.textContent = (tagsFiltre.length ? t.tagsChoisis(tagsFiltre.length) : t.tousLesTags) + ' ▾';
+  // Une seule ligne de filtres dans « Mes modèles » (style.css, .store-filtres-ligne).
+  $('storeFormulaire')?.classList.toggle('store-filtres-ligne', source === LOCAL);
+  // Le chevron est celui des listes voisines, dessiné par la feuille de style.
+  bouton.textContent = tagsFiltre.length ? t.tagsChoisis(tagsFiltre.length) : t.tousLesTags;
   bouton.classList.toggle('actif', tagsFiltre.length > 0);
   const remplir = (menu) => remplirListeTags(menu, {
     estCoche: (tag) => tagsFiltre.includes(tag.id),

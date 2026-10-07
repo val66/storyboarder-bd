@@ -240,6 +240,18 @@ describe('le câblage', () => {
     assert.equal((UI.match(/remplirListeTags\(menu, \{/g) || []).length, 3);   // la définition, la fiche, le filtre
     assert.doesNotMatch(UI, /texte: '🗑'/);
   });
+  test('retours sur les tags (2) : bouton à l\'allure des listes, une seule ligne, tags en jaune', () => {
+    const css = lire('style.css');
+    const bouton = css.slice(css.indexOf('.store-tags-btn{'), css.indexOf('.store-tags-btn.actif'));
+    assert.match(bouton, /border:1px solid var\(--bord-actif\); border-radius:7px; padding:8px 28px 8px 8px;/);
+    assert.match(bouton, /background-position:right 8px center/);
+    assert.doesNotMatch(UI, /t\.tousLesTags\) \+ ' ▾'/);
+    assert.match(UI, /classList\.toggle\('store-filtres-ligne', source === LOCAL\)/);
+    assert.match(css, /\.store-filtres\.store-filtres-ligne\{ flex-wrap:nowrap; \}/);
+    const chip = css.slice(css.indexOf('.store-chip-tag{'), css.indexOf('}', css.indexOf('.store-chip-tag{')));
+    assert.match(chip, /var\(--warn\)/);
+    assert.doesNotMatch(chip, /var\(--accent\)/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);

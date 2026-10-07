@@ -2059,6 +2059,11 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-filtres .modal-input{ flex:1 1 260px; margin:0; }
 .store-filtres .full-btn{ width:auto; margin:0; padding:8px 18px; }
 .modal-box .store-filtres select{ flex:1 1 180px; max-width:260px; width:auto; margin:0; }
+/* « Mes modèles » tient sur UNE ligne, tags choisis ou non (signalé : la ligne passait de deux à une
+   selon le libellé du bouton des tags). Les champs rétrécissent au lieu de passer à la ligne. */
+.store-filtres.store-filtres-ligne{ flex-wrap:nowrap; }
+.store-filtres.store-filtres-ligne .modal-input{ flex:1 1 180px; min-width:0; }
+.modal-box .store-filtres.store-filtres-ligne select{ flex:1 1 150px; min-width:0; }
 .store-case{ font-size:12.5px; display:flex; align-items:center; gap:6px; }
 .store-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px; }
 /* ⚠️ `hidden` ne l'emporte pas sur un `display` posé par une classe : sans ces règles, la grille
@@ -2180,12 +2185,12 @@ button.store-chip:hover{ border-color:var(--accent); }
 .store-chip-categorie::after{ content:' ▾'; }
 .store-chip-categorie.store-chip-vide{ background:var(--line); color:var(--ink-soft); }
 .store-chip-action{ border-style:dashed; color:var(--ink-soft); }
-/* Les tags en couleur (demandé) : un orange plus clair que la catégorie, pour les distinguer. */
-/* Mêlé à l'encre du thème : plus clair sur fond sombre, plus foncé sur fond clair, lisible dans les deux. */
+/* Les tags en jaune (demandé, l'orange clair se confondait avec la catégorie). Mêlé à l'encre du
+   thème : plus clair sur fond sombre, plus foncé sur fond clair, lisible dans les deux. */
 .store-chip-tag{
-  background:color-mix(in srgb, var(--accent) 12%, transparent);
-  color:color-mix(in srgb, var(--accent) 65%, var(--ink));
-  border-color:color-mix(in srgb, var(--accent) 35%, transparent);
+  background:color-mix(in srgb, var(--warn) 14%, transparent);
+  color:color-mix(in srgb, var(--warn) 75%, var(--ink));
+  border-color:color-mix(in srgb, var(--warn) 40%, transparent);
 }
 /* Les menus flottants de la fiche et du filtre par tags. */
 .store-menu-flottant{
@@ -2197,7 +2202,18 @@ button.store-chip:hover{ border-color:var(--accent); }
 /* Le menu s'ouvre VERS LA DROITE : vers la gauche, il sortait de la fenêtre, qui le rognait (et son
    texte avec, signalé : « je ne vois rien dans la liste des tags »). */
 .store-tags-zone .store-menu-flottant{ left:0; right:auto; }
-.store-tags-btn{ height:100%; padding:7px 12px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); font-family:'Inter',sans-serif; font-size:13px; cursor:pointer; white-space:nowrap; }
+/* Le bouton des tags a l'allure des listes voisines (signalé : il ne s'affichait pas pareil) : mêmes
+   bordure, rayon, police, marges intérieures et chevron que `.modal-box select`. Ce n'est pas un
+   <select> parce que sa liste porte des cases à cocher et la gestion des tags. */
+.store-tags-zone{ flex:1 1 150px; max-width:260px; min-width:0; }
+.store-tags-btn{
+  width:100%; display:block; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-family:'Inter',sans-serif; font-size:13.5px; line-height:normal;
+  border:1px solid var(--bord-actif); border-radius:7px; padding:8px 28px 8px 8px;
+  background:var(--white); color:var(--ink); cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238a8f98' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat; background-position:right 8px center; background-size:10px 6px;
+}
 .store-tags-btn.actif{ border-color:var(--accent); color:var(--accent); }
 .store-tag-ligne{ display:flex; align-items:center; gap:4px; }
 .store-tag-coche{ flex:1 1 auto; display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:5px; cursor:pointer; font-size:13px; color:var(--ink); }
