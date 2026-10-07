@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.10.41**
+**Version 1.10.42**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -21,91 +21,34 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 
 ## ✨ Features
 
-### Narrative structure
-- 📖 **Volume → Page → Panel** organization with automatic numbering
-- 📄 Page duplication, drag-and-drop reordering
+### Storyboard
+- 📖 **Volume → Page → Panel** organization with automatic numbering, duplication and drag-and-drop reordering
 - 📝 Per-panel summaries and descriptions
-- 💬 **Speech bubbles**: eight shapes, five tails, photographed textures (paper, ice, lava, starry night), text outline, **saved styles** reapplied in one click, and **merging** two bubbles into one, one text box per lobe, separable at any time
-- 🎨 **Layout styling**: background colour per page, adjustable panel and bubble borders (display, thickness, colour), panel side lengths shown in millimetres
+- 💬 **Speech bubbles**: eight shapes, five tails, photographed textures, saved styles, and merging two bubbles into one
+- 🖼️ **Panel images** (PNG, JPG, WebP), with adjustable framing and zoom
+- 🎨 Page background colour, adjustable panel and bubble borders
 
-### 3D Scenes
-- 🎬 **Reusable scenes**: compose a 3D scene once, load it into any panel
-- 🎥 **Free camera** in every panel: rotation, pan and zoom, with no height restriction
-- 🗺️ **Top-down view** for placing elements
-- ↩️ **Cancelling** the dialog of a just-added Element removes it
-
-### Light
-- ☀️ **Three modes** per panel and per scene: Day, Night and Custom
-- 🔒 Day is the **default** and reproduces the original lighting exactly
-- 🕹️ **Orientation dome** in Custom mode, with colour and intensity, from full black to full day
-- 🌤️ **A computed sky follows the mode**: clouds by day, stars and moon by night, sun and moon
-  drawn where the light comes from
-- 🎬 **A scene hands its light** to the panel that loads it, then the two live independently
-- 💡 **Placed light sources**: a glowing sphere lighting the panel on top of the sun, moved like any
-  Element
-- 🌑 **Cast shadows** per panel, off by default: the sun always casts, a placed source only if asked
-
-### Panel images
-- 🖼️ **Insert an image** into a panel (PNG, JPG, WebP), cropped and centred to fill it
-- 🚫 A panel holding an image is **no longer a 3D scene**: no Elements, no Scene, no model import
-- ✋ **Move and zoom the framing** inside the panel, up to 4×
-- 🗂️ **Images section**: your files grouped by whether the open project uses them, renaming and
-  deletion kept in step
-
-### Available elements
-- 👤 **Characters** with poses, emotions, orientation and joints
-- 🐾 **Animals** (bird, lizard, wolf, griffin, monkey), posed like characters
-- 🪑 **Furniture** (tables, chairs, sofas, staircases…)
-- 🚗 **Vehicles** (cars, motorcycles, trucks…)
-- 🌳 **Vegetation** (trees, shrubs, flowers…)
-- 🏠 **Buildings** with rooms, walls, doors and windows
-- 🛤️ **Paths & walls**: roads, trails, low walls, hedges, fences, barriers, photographed textures
-  tinted by their colour
-- 🌿 **Terrain zones** with custom colors
-- 🏞️ **Photographed grounds**: grass, lawn, dirt, sand, gravel, asphalt, concrete, snow, tiles,
-  floorboards, marble, carpet, and a computed water
-- 📏 **Size to the centimetre**: an Element's real height is typed in metres
+### 3D scenes
+- 🎬 **Reusable scenes**: compose a 3D setting once, load it into any panel
+- 🎥 **Free camera** in every panel, and a top-down view for placing elements
+- 👤 **Ready-made elements**: characters with poses and emotions, animals, furniture, vehicles, vegetation, buildings with rooms and openings, roads and walls, photographed grounds
+- ☀️ **Light**: Day, Night or Custom mode with a computed sky, placed light sources, cast shadows
 
 ### Imported 3D models
-- 📦 **glTF import** (`.glb` / `.gltf`) at real size, into a panel or into a Scene
-- 🗂️ **My models**: your files as thumbnails in the model library, searchable, by category and by use
-  in the open project, one click to where a model is used
-- ✏️ **Rename or delete** an imported file, projects that use it kept in step
-- 🦴 **Articulated models** are posed in the [Model editor](#model-editor), like characters
-- 🐉 **Morphology** proposed on import (humanoid, quadruped, winged biped, centaur, arachnid, radial
-  or serpentine) and correctable
-- 🔗 **Mapping screen**: which bone plays which role, correctable limb by limb
-- 📋 **Reuse a mapping** already made for the same skeleton
-- 🧩 **Change figure**: an articulated Element can wear another imported file and keep its pose
-- 👻 **Detached parts** of a file are hidden, and brought back with a checkbox
-- 🔎 **Online models**: search the free models of Sketchfab and Poly Haven by keyword, category (shared by both), license and size, with author, license and a 3D preview; one-click download from Poly Haven (1k, 2k or 4k textures), models you already have are marked (Sketchfab downloads are coming)
-
-> **Not covered yet:** a file holding several objects is imported as a single Element.
+- 📦 **glTF import** (`.glb` / `.gltf`) at real size, into a panel or a scene
+- 🗂️ **Model library**: your models as thumbnails, with search, categories, tags and where each one is used
+- 🔎 **Online models**: search Sketchfab and Poly Haven with a 3D preview; one-click download from Poly Haven, credits added to exports
+- 🦴 **Articulated models**: morphology and bone mapping proposed on import, correctable and reusable
 
 ### Model editor
-- 🎯 **Pose any figure**: a character, an animal, or an articulated imported model
-- 🖐️ **Pose by dragging** a joint point, or with a slider per axis for exact values
-- 🔦 **Hover a limb** to light up its whole chain
-- 📚 **Pose library shared across every project**: apply, save, rename, delete
-- 🗂️ **Poses filed by archetype**: a quadruped is only offered quadruped poses
-- ✅ **Apply changes** sends the pose back to the Element's dialog; nothing is written until you save
+- 🎯 **Pose any figure** (character, animal or articulated model) by dragging a joint or with exact sliders
+- 📚 **Pose library** shared across every project, filed by archetype
 
-### Project & saving
-- 📁 Projects kept in **Documents\Storyboarder BD\Projets** by default, out of reach of updates and uninstalls
-- 💾 **JSON** project format, human-readable and versionable
-- ⏱️ Configurable auto-save
-- 🗑️ **Delete a project**, confirmed by typing the word
-- 🖼️ Export pages as **PNG** or **PDF**, with the credits of the downloaded 3D models they use
-- ↩️ Undo, over the last 50 actions
-- 🔎 **Missing files explained**: when an opened project uses models or images the Projects folder does not contain, a window says where the application looked and how to fix it
-
-### Application
-- ⬆️ **Built-in updates**: an "Update" button appears when a newer version is published, with what's new and the download size; a required update opens the application on a full screen until it is installed
-- 🔌 **Works offline** for up to 14 days in a row, fonts included: pages look the same with or without a connection
-- 🪟 The window **reopens where you left it**, size, position and maximised state
-- 🌗 **Dark and light themes**, plus an **increased-contrast** option that combines with either
-- 📐 **Interface size** in four steps, from Compact to Extra large. The Page keeps its own zoom
-- 🧠 **Pages kept in memory**, adjustable from 0 to 900 MB: pages you have just visited come back instantly instead of being redrawn
+### Project & application
+- 💾 Readable **JSON** projects in **Documents\Storyboarder BD\Projets**, auto-save, undo over 50 actions
+- 🖼️ Export pages as **PNG** or **PDF**
+- ⬆️ **Built-in updates**, and **works offline** for up to 14 days
+- 🌗 **Dark and light themes**, increased contrast, four interface sizes
 
 ---
 

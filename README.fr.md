@@ -2,7 +2,7 @@
 
 > 🇬🇧 [English version](README.md)
 
-**Version 1.10.41**
+**Version 1.10.42**
 
 **Application de découpage de Bandes Dessinées** : outil de storyboard pour créer, organiser et visualiser des planches de BD avec rendu 3D des scènes.
 
@@ -21,97 +21,34 @@ Versions précédentes et notes de version : [toutes les releases](https://githu
 
 ## ✨ Fonctionnalités
 
-### Structure narrative
-- 📖 Organisation **Tomes → Planches → Cases** avec numérotation automatique
-- 📄 Duplication de planches, réorganisation par glisser-déposer
+### Storyboard
+- 📖 Organisation **Tomes → Planches → Cases** avec numérotation automatique, duplication et réorganisation par glisser-déposer
 - 📝 Résumés et descriptions par Case
-- 💬 **Bulles de dialogue** : huit formes, cinq pointes, textures photographiées (papier, glace, lave, nuit étoilée), contour de texte, **styles enregistrés** réappliqués en un clic, et **fusion** de deux Bulles en une seule, un texte par lobe, séparables à tout moment
-- 🎨 **Mise en forme** : couleur d'arrière-plan par Planche, bordure de Case et de Bulle réglables (affichage, épaisseur, couleur), dimensions d'une Case affichées en millimètres
+- 💬 **Bulles de dialogue** : huit formes, cinq pointes, textures photographiées, styles enregistrés, et fusion de deux Bulles en une
+- 🖼️ **Images de Case** (PNG, JPG, WebP), au cadrage et au zoom réglables
+- 🎨 Couleur d'arrière-plan par Planche, bordures de Case et de Bulle réglables
 
 ### Scènes 3D
 - 🎬 **Scènes réutilisables** : composez un décor 3D une fois, chargez-le dans n'importe quelle Case
-- 🎥 **Caméra libre** dans chaque Case : rotation, panoramique et zoom, sans restriction de hauteur
-- 🗺️ **Vue de dessus** pour le placement des Éléments
-- ↩️ **Annuler** la modale d'un Élément qu'on vient d'ajouter le supprime
-
-### Lumière
-- ☀️ **Trois modes** par Case et par Scène : Jour, Nuit et Personnalisé
-- 🔒 Jour est le **réglage par défaut** et reproduit exactement l'éclairage d'origine
-- 🕹️ **Dôme d'orientation** en mode Personnalisé, avec couleur et intensité, du noir complet au
-  plein jour
-- 🌤️ **Un ciel calculé suit le mode** : nuages de jour, étoiles et lune la nuit, soleil et lune
-  dessinés là d'où vient la lumière
-- 🎬 **Une Scène transmet sa lumière** à la Case qui la charge, puis les deux vies sont indépendantes
-- 💡 **Sources de lumière posées** : une sphère lumineuse qui éclaire la Case en plus du soleil,
-  déplacée comme un Élément
-- 🌑 **Ombres portées** par Case, éteintes par défaut : le soleil projette toujours, une source
-  posée seulement si on le lui demande
-
-### Images de Case
-- 🖼️ **Insérer une image** dans une Case (PNG, JPG, WebP), recadrée et centrée pour la remplir
-- 🚫 Une Case qui porte une image **n'est plus une scène 3D** : pas d'Éléments, pas de Scène, pas
-  d'import de modèle
-- ✋ **Déplacer et zoomer le cadrage** dans la Case, jusqu'à 4×
-- 🗂️ **Section Images** : vos fichiers groupés selon l'usage qu'en fait le Projet ouvert, renommage
-  et suppression suivis
-
-### Éléments disponibles
-- 👤 **Personnages** avec poses, émotions, orientation et articulations
-- 🐾 **Animaux** (oiseau, lézard, loup, griffon, singe), qui se posent comme les Personnages
-- 🪑 **Mobilier** (tables, chaises, canapés, escaliers…)
-- 🚗 **Véhicules** (voitures, motos, camions…)
-- 🌳 **Végétation** (arbres, arbustes, fleurs…)
-- 🏠 **Bâtiments** avec pièces, murs, portes et fenêtres
-- 🛤️ **Tracés** : chemins, routes, murets, haies, barrières, clôtures, en textures photographiées
-  teintées par leur couleur
-- 🌿 **Zones de terrain** colorées
-- 🏞️ **Sols photographiés** : herbe, gazon, terre, sable, gravier, bitume, béton, neige, carrelage,
-  plancher, marbre, moquette, et une eau calculée
-- 📏 **Taille au centimètre** : la hauteur réelle d'un Élément se saisit en mètres
+- 🎥 **Caméra libre** dans chaque Case, et vue de dessus pour placer les Éléments
+- 👤 **Éléments prêts à l'emploi** : Personnages avec poses et émotions, Animaux, mobilier, véhicules, végétation, bâtiments avec pièces et ouvertures, routes et murets, sols photographiés
+- ☀️ **Lumière** : mode Jour, Nuit ou Personnalisé avec ciel calculé, sources de lumière posées, ombres portées
 
 ### Modèles 3D importés
-- 📦 **Import glTF** (`.glb` / `.gltf`) à leur taille réelle, dans une Case ou dans une Scène
-- 🗂️ **Mes modèles** : vos fichiers en vignettes dans la bibliothèque de modèles, avec recherche,
-  catégorie et usage dans le Projet ouvert, un clic mène là où un modèle sert
-- ✏️ **Renommer ou supprimer** un fichier importé, les Projets qui s'en servent suivent
-- 🦴 **Les modèles articulés se posent dans l'[Éditeur de modèle](#éditeur-de-modèle)**, comme les
-  Personnages
-- 🐉 **Morphologie** proposée à l'import (humanoïde, quadrupède, bipède ailé, centaure, arachnide,
-  radial ou serpentin) et corrigible
-- 🔗 **Écran de correspondance** : quel os joue quel rôle, corrigible membre par membre
-- 📋 **Reprendre une correspondance** déjà faite pour le même squelette
-- 🧩 **Changer de figure** : un Élément articulé peut porter un autre fichier en gardant sa pose
-- 👻 **Morceaux détachés** d'un fichier masqués, réaffichables d'une case à cocher
-- 🔎 **Modèles en ligne** : les modèles gratuits de Sketchfab et de Poly Haven, par mots-clés, catégorie (commune aux deux), licence et taille, avec auteur, licence et aperçu 3D ; téléchargement en un clic depuis Poly Haven (textures 1k, 2k ou 4k), les modèles déjà téléchargés sont signalés (Sketchfab arrive)
-
-> **Non couvert :** un fichier contenant plusieurs objets est importé comme un seul Élément.
+- 📦 **Import glTF** (`.glb` / `.gltf`) à taille réelle, dans une Case ou une Scène
+- 🗂️ **Bibliothèque de modèles** : vos modèles en vignettes, avec recherche, catégories, tags et endroits où chacun sert
+- 🔎 **Modèles en ligne** : recherche dans Sketchfab et Poly Haven avec aperçu 3D ; téléchargement en un clic depuis Poly Haven, crédits ajoutés aux exports
+- 🦴 **Modèles articulés** : morphologie et correspondance des os proposées à l'import, corrigibles et réutilisables
 
 ### Éditeur de modèle
-- 🎯 **Poser n'importe quelle figure** : un Personnage, un Animal, ou un Modèle importé articulé
-- 🖐️ **Poser au glisser** d'un point d'articulation, ou au curseur par axe pour les valeurs exactes
-- 🔦 **Survoler un membre** allume toute sa chaîne
-- 📚 **Bibliothèque de poses partagée par tous vos Projets** : appliquer, enregistrer, renommer,
-  supprimer
-- 🗂️ **Poses rangées par archétype** : un quadrupède ne se voit proposer que des poses de quadrupède
-- ✅ **Appliquer les modifications** renvoie la pose vers la fiche de l'Élément ; rien n'est écrit
-  tant que vous n'enregistrez pas
+- 🎯 **Poser n'importe quelle figure** (Personnage, Animal ou modèle articulé) au glisser d'une articulation ou au curseur exact
+- 📚 **Bibliothèque de poses** partagée par tous vos Projets, rangée par archétype
 
-### Projet & sauvegarde
-- 📁 Projets rangés par défaut dans **Documents\Storyboarder BD\Projets**, hors de portée des mises à jour et des désinstallations
-- 💾 Format de projet **JSON**, lisible et versionnable
-- ⏱️ Sauvegarde automatique configurable
-- 🗑️ **Supprimer un Projet**, confirmé en écrivant le mot
-- 🖼️ Export des planches en **PNG** ou **PDF**, avec les crédits des modèles 3D téléchargés qu'elles utilisent
-- ↩️ Annulation sur les 50 dernières actions
-- 🔎 **Fichiers introuvables expliqués** : quand un Projet ouvert cite des modèles ou images absents du dossier des Projets, une fenêtre dit où l'application a cherché et comment corriger
-
-### Application
-- ⬆️ **Mises à jour intégrées** : un bouton « Mise à jour » apparaît quand une version plus récente est publiée, avec les nouveautés et le poids du téléchargement ; une mise à jour obligatoire ouvre l'application sur un écran plein tant qu'elle n'est pas installée
-- 🔌 **Fonctionne hors ligne** jusqu'à 14 jours d'affilée, polices comprises : vos Planches ont le même aspect avec ou sans connexion
-- 🪟 La fenêtre **rouvre où vous l'avez laissée** : taille, position et plein écran
-- 🌗 **Thèmes sombre et clair**, plus une option **contraste renforcé** qui se combine aux deux
-- 📐 **Taille de l'interface** en quatre crans, de Compacte à Très grande. La Planche garde son propre zoom
-- 🧠 **Planches en mémoire**, réglable de 0 à 900 Mo : celles que vous venez de consulter reviennent instantanément au lieu d'être redessinées
+### Projet & application
+- 💾 Projets **JSON** lisibles dans **Documents\Storyboarder BD\Projets**, sauvegarde automatique, annulation sur 50 actions
+- 🖼️ Export des planches en **PNG** ou **PDF**
+- ⬆️ **Mises à jour intégrées**, et **fonctionne hors ligne** jusqu'à 14 jours
+- 🌗 **Thèmes sombre et clair**, contraste renforcé, quatre tailles d'interface
 
 ---
 
