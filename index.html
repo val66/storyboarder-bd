@@ -1447,17 +1447,9 @@
              régler au même endroit. Choisir une pose REMPLACE les réglages fins de la section
              Aperçu 3D — c'est le comportement du Personnage, conservé volontairement.
              Une chaise importée n'a pas d'articulations : le champ reste masqué. -->
-        <!-- Le FICHIER que porte cet Élément, en lecture seule : on ne change plus de modèle depuis
-             la fiche (demandé). « Type » (chaise, voiture…) ne s'applique qu'aux objets intégrés
-             et reste masqué ici. -->
-        <div id="objectFigureField" style="display:none">
-          <label class="modal-field-label" id="objectFigureLabel">Modèle</label>
-          <div id="objectFigureValue" class="modal-field-lecture"></div>
-          <!-- L'état du fichier — et SEULEMENT quand il n'est pas prêt. Un « ✓ » permanent serait
-               une décoration ; un message qui n'apparaît que si le fichier manque ou charge encore
-               se lit comme ce qu'il est : quelque chose à savoir. -->
-          <div id="objectFigureHint" class="modal-field-hint" style="display:none"></div>
-        </div>
+        <!-- Le champ « Modèle » a été RETIRÉ (demandé) : on ne change pas le modèle d'un Élément, et
+             l'aperçu montre déjà lequel il porte. « Type » (chaise, voiture…) ne s'applique qu'aux
+             objets intégrés et reste masqué pour un modèle importé. -->
         <div id="objectPoseField" style="display:none">
           <label class="modal-field-label" id="objectPoseLabel">Position</label>
           <select id="objectPositionSelect"></select>

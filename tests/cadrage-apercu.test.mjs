@@ -52,12 +52,15 @@ describe('Le zoom correctif', () => {
 describe('Le branchement', () => {
   const DRAW = readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8');
   const SC = readFileSync(new URL('../src/scene3d.js', import.meta.url), 'utf8');
-  test('le correctif s\'applique SOUS le zoom de la molette et la taille réelle, au modèle importé seulement', () => {
-    assert.match(DRAW, /const ajust = tempObj\.objType === 'modele' \? ajustementDeLApercu\(tempObj, style, scale\) : null;/);
-    assert.match(DRAW, /S\.objectPreviewZoom \* sizeFactor \* \(ajust \? ajust\.k : 1\)/);
-    assert.match(DRAW, /const brut = renderObjectToCanvas3D\(o, 1, style, undefined, scale\);/);
+  test('l\'aperçu d\'un modèle importé demande le cadrage ajusté ; zoom et taille réelle restent par-dessus', () => {
+    assert.match(DRAW, /renderObjectToCanvas3D\(tempObj, S\.objectPreviewZoom \* sizeFactor, style, undefined, scale,\n    tempObj\.objType === 'modele'\);/);
+    assert.match(SC, /const d = cadre\.distance \/ \(zoom \|\| 1\);/);
   });
-  test('le recentrage passe par frameCameraToBox, dans la branche des modèles importés', () => {
-    assert.match(SC, /frameCameraToBox\(personaCamera3D, boîte, zoom, recentrage \? panDeRecentrage3D\(boîte, recentrage\) : undefined\);/);
+  test('le cadrage RÈGLE LA DISTANCE au point visé (pas un zoom de frameCameraToBox), en plusieurs passes', () => {
+    // Le premier essai multipliait le zoom : une boîte profonde gardait la caméra loin (signalé).
+    const f = SC.slice(SC.indexOf('function cadrageAjusteModele3D'), SC.indexOf('// `ajusterAuDessin`'));
+    assert.match(f, /for \(let passe = 0; passe < 3; passe\+\+\)/);
+    assert.match(f, /distance \/= a\.k;\n      cam\.position\.set\(cible\.x, cible\.y, cible\.z \+ distance\);/);
+    assert.match(f, /if \(a\.k === 1\) break;/);
   });
 });

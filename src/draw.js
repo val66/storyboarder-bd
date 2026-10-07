@@ -58,8 +58,6 @@ import {
 } from './rig3d.js';
 import { noDescriptionLabel } from './i18n.js';
 import { creditsDeLaPage, lignesCredit, replierLigne, titreCredits } from './export-credits.js';
-import { boiteOpaque, ajustementDuCadrage } from './cadrage-apercu.js';
-import { modelState } from './model-cache.js';
 // L'image d'une Case : ce qu'elle porte (image-store) et ce qui est décodé (image-cache). Les deux
 // lectures sont SYNCHRONES, seule condition pour vivre dans le chemin de dessin.
 import {
@@ -2358,39 +2356,11 @@ export function drawObjectPreview(targetCanvas, spec){
   const scale = syncPreviewCanvasRes(targetCanvas, OBJECT_PREVIEW_BASE_W, OBJECT_PREVIEW_BASE_H);
   // Un modèle importé est recadré sur ce qui est réellement dessiné (cf. cadrage-apercu.js), au
   // cadrage de base ; le zoom de la molette et « Taille réelle » s'appliquent ensuite, comme avant.
-  const ajust = tempObj.objType === 'modele' ? ajustementDeLApercu(tempObj, style, scale) : null;
-  const cnv = renderObjectToCanvas3D(tempObj, S.objectPreviewZoom * sizeFactor * (ajust ? ajust.k : 1),
-    style, undefined, scale, ajust && ajust.k !== 1 ? ajust : null);
+  const cnv = renderObjectToCanvas3D(tempObj, S.objectPreviewZoom * sizeFactor, style, undefined, scale,
+    tempObj.objType === 'modele');
   const pctx = targetCanvas.getContext('2d');
   pctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
   pctx.drawImage(cnv, 0, 0, cnv.width, cnv.height, 0, 0, targetCanvas.width, targetCanvas.height);
-}
-
-// Le recadrage de l'aperçu d'un modèle importé, mémorisé par ce qui le détermine (modèle, pose,
-// orientation, morceaux détachés) : il coûte un rendu de plus, à ne refaire que si l'image change.
-const _ajustementsApercu = new Map();
-const AJUSTEMENTS_APERCU_MAX = 24;
-function ajustementDeLApercu(o, style, scale){
-  const cle = JSON.stringify([o.modelFile, o.rotX, o.rotY, o.rotZ, o.skeletonPose3d, o.joints3d, o.position, !!o.afficherMaillagesEgares, scale]);
-  if (_ajustementsApercu.has(cle)) return _ajustementsApercu.get(cle);
-  let ajust = { k: 1, ndcX: 0, ndcY: 0 };
-  try {
-    const brut = renderObjectToCanvas3D(o, 1, style, undefined, scale);
-    // Relevé sur une copie réduite : la boîte des pixels opaques n'a pas besoin de la pleine résolution.
-    const f = Math.min(1, 160 / Math.max(brut.width, brut.height));
-    const w = Math.max(1, Math.round(brut.width * f)), h = Math.max(1, Math.round(brut.height * f));
-    const petit = document.createElement('canvas');
-    petit.width = w; petit.height = h;
-    const c = petit.getContext('2d');
-    c.drawImage(brut, 0, 0, w, h);
-    ajust = ajustementDuCadrage(boiteOpaque(c.getImageData(0, 0, w, h).data, w, h), w, h);
-  } catch { /* dans le doute, le cadrage d'origine */ }
-  // Un modèle pas encore chargé (rien de dessiné) n'est pas mémorisé : il le sera une fois là.
-  if (ajust.k !== 1 || modelState(o.modelFile) === 'prêt') {
-    _ajustementsApercu.set(cle, ajust);
-    if (_ajustementsApercu.size > AJUSTEMENTS_APERCU_MAX) _ajustementsApercu.delete(_ajustementsApercu.keys().next().value);
-  }
-  return ajust;
 }
 
 // [STATE→S] let S.objectPreviewZoom = 1;

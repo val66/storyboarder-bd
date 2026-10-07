@@ -35,7 +35,7 @@ import {
   groupesDeCurseurs3D,
 } from '../src/rig3d.js';
 import {
-  buildFigureFieldUI, buildSkeletonPoseFieldUI, remplirSelecteurDePose,
+  buildSkeletonPoseFieldUI, remplirSelecteurDePose,
   buildStrayMeshFieldUI, ecrireChoixEgares,
 } from '../src/modals.js';
 import { ecrireAngleDeg, groupesPosables, lireAngleDeg, chainesAPlat3D, poigneesParDefaut3D }
@@ -646,26 +646,6 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
       'un fichier sans squelette reconnu ne doit pas être proposé : rien ne pourrait le poser');
   });
 
-  test('le champ n\'apparaît que s\'il y a un choix à faire', () => {
-    const champ = document.getElementById('objectFigureField');
-    buildFigureFieldUI(modele());
-    assert.equal(champ.style.display, '');
-    buildFigureFieldUI({ type: 'objet3d', objType: 'chaise' });
-    assert.equal(champ.style.display, 'none', 'une chaise ne porte aucune figure');
-  });
-
-  test('la fiche ne propose PLUS de changer de modèle : elle le nomme, en lecture seule', () => {
-    // Demandé par Valentin : pour un autre modèle, on pose un autre Élément. Le sélecteur de #343
-    // a disparu de la fiche ; le champ nomme le fichier et ne touche à aucun brouillon.
-    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-    assert.doesNotMatch(html, /id="objectFigureSelect"/);
-    assert.match(html, /<div id="objectFigureValue" class="modal-field-lecture"><\/div>/);
-    S.modalDraftModelFile = null;
-    buildFigureFieldUI(modele());
-    assert.equal(document.getElementById('objectFigureValue').textContent, FICHIER);
-    assert.equal(S.modalDraftModelFile, null, 'lire le modèle ne doit rien écrire');
-  });
-
   test('la section « Modèle » de l\'éditeur : présente selon la cible', () => {
     const section = document.getElementById('personaEditorModelSection');
     const o = modele();
@@ -674,7 +654,9 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
 
     openPersonaEditor(o, 'objectModal');
     buildPersonaEditorModelUI();
-    assert.equal(section.style.display, '', 'devant un modèle importé, on peut changer de figure');
+    // Demandé par Valentin : ouvert depuis la fiche d'un modèle, l'Éditeur ne change pas son modèle,
+    // pas plus que la fiche (qui n'a plus de champ « Modèle »).
+    assert.equal(section.style.display, 'none', 'devant un modèle importé, on ne change plus de figure');
     closePersonaEditor();
 
     // Mode autonome : rien à perdre, on regarde ce qu'on veut.
@@ -716,35 +698,14 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     closePersonaEditor();
   });
 
-  test('revenir au Personnage intégré est toujours possible', () => {
-    const o = modele();
-    S.tomes = [{ pages: [{ objects: [o] }] }];
-    S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
-    openPersonaEditor(o, 'objectModal');
+  test('revenir au Personnage intégré est toujours possible (Éditeur autonome)', () => {
+    openPersonaEditor(null);
     buildPersonaEditorModelUI();
     const sel = document.getElementById('personaEditorModelSelect');
     assert.ok(sel.children.some(o2 => o2.value === ''), 'le repli doit être offert');
     assert.equal(choisirFigureDeLEditeur(''), null,
       'la chaîne vide n\'est pas un nom de fichier : c\'est le Personnage intégré');
     closePersonaEditor();
-  });
-
-  test('le champ est là pour TOUT modèle importé, même seul, et nomme son fichier', () => {
-    clearModelCache();
-    _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
-    const champ = document.getElementById('objectFigureField');
-    buildFigureFieldUI(modele());
-    assert.notEqual(champ.style.display, 'none', 'le fichier ne se lit nulle part ailleurs dans la fiche');
-    assert.equal(document.getElementById('objectFigureValue').textContent, FICHIER);
-  });
-
-  test('RÉGRESSION : un fichier ABSENT (introuvable, pas chargé) est quand même nommé', () => {
-    // Le défaut trouvé en #343 vivait dans un <select> dont la valeur retombait sur un autre
-    // fichier ; en lecture seule, le nom vient de l'Élément lui-même, et il le reste.
-    clearModelCache();
-    _setModelCacheEntry('autre.glb', { scene: corrigerNomsCuisses(squeletteMixamo()) });
-    buildFigureFieldUI(Object.assign(modele(), { modelFile: 'disparu.glb' }));
-    assert.equal(document.getElementById('objectFigureValue').textContent, 'disparu.glb');
   });
 
   test('RÉGRESSION : le sens est unique, corps → os et jamais l\'inverse', () => {
@@ -1508,13 +1469,14 @@ describe('l\'Éditeur transmet l\'intention à la figure qu\'il affiche', () => 
     // choisir une araignée laissait en place les dix-huit articulations humaines. Le retour au
     // Personnage compte autant : sans lui, on garderait des curseurs d'os d'araignée pour poser un
     // corps humain.
+    // Le sélecteur n'existe plus qu'en Éditeur AUTONOME (demandé : devant un Élément, on ne change
+    // pas son modèle). Le Personnage intégré tient lieu d'humanoïde de départ.
     _setModelCacheEntry('creature-sel.glb', { scene: squeletteSansBras() });
-    const o = modele();   // humanoïde
-    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.tomes = [{ pages: [{ objects: [] }] }];
     S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
-    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    sansDessiner(() => showPersonaEditor(null));
     assert.ok(GROUPES_PERSO.every(nom => textesDuPanneau().includes(nom)),
-      'préalable : un humanoïde montre bien les six groupes du Personnage');
+      'préalable : le Personnage montre bien ses six groupes');
 
     const sel = document.getElementById('personaEditorModelSelect');
     sel.value = 'creature-sel.glb';
@@ -2631,27 +2593,24 @@ describe('#396 : le titre suit la FIGURE affichée, pas la cible', () => {
   };
 
   test('⚠️ changer de figure change le titre', () => {
-    // L'Éditeur peut changer de modèle en cours de route par son sélecteur. Un titre lu sur la
-    // CIBLE annoncerait alors le modèle précédent pendant qu'on en pose un autre — c'est la règle
-    // de tout cet écran, ce qui est affiché se lit sur la figure affichée.
+    // L'Éditeur AUTONOME peut changer de modèle en cours de route par son sélecteur (ouvert depuis
+    // une fiche, il ne le peut plus, demandé). Le titre doit suivre la figure affichée.
     _setModelCacheEntry('creature-titre.glb', { scene: squeletteSansBras() });
-    const o = { type: 'objet3d', objType: 'modele', modelFile: 'creature-titre.glb',
-      id: 'm1', name: 'Aldo' };
-    S.tomes = [{ pages: [{ objects: [o] }] }];
+    S.tomes = [{ pages: [{ objects: [] }] }];
     S.currentTomeIndex = 0; S.currentPageIndex = 0; S.editingSceneId = null;
-    sansDessiner(() => showPersonaEditor(o, 'objectModal'));
+    sansDessiner(() => showPersonaEditor(null));
 
     const titre = () => document.getElementById('personaEditorTitle').textContent;
+    buildPersonaEditorModelUI();
+    const sel = document.getElementById('personaEditorModelSelect');
+    sel.value = 'creature-titre.glb';
+    sansDessiner(() => sel.onchange());
     const surLeModele = titre();
     assert.match(titre(), /creature-titre/, 'le titre ne nomme pas le fichier posé');
     assert.ok(!titre().includes('.glb'), 'l\'extension appartient au disque, pas au titre');
-    assert.ok(!titre().includes('Aldo'),
-      'le titre porte le nom de l\'Élément : il annoncerait un réglage individuel');
 
     // Retour au Personnage intégré PAR LE VRAI CHEMIN, le sélecteur de figure : c'est lui qui
     // resynchronise l'écran, et le titre en fait partie.
-    buildPersonaEditorModelUI();
-    const sel = document.getElementById('personaEditorModelSelect');
     sel.value = '';
     sansDessiner(() => sel.onchange());
     // ⚠️ AUCUN LIBELLÉ EN DUR : la suite tourne en anglais, et une première version de ce test

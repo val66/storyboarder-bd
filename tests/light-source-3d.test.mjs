@@ -1110,7 +1110,7 @@ describe('Ce que la fiche d’une Lumière montre, et ce qu’elle masque', () =
     // « elle y réglerait un type, une taille et une matière, dont aucun ne veut dire quoi que ce
     // soit ici ».
     const c = dispositionFicheLumiere3D().champs;
-    for (const mort of ['objectTypeSelect', 'objectFigureField', 'objectPoseField',
+    for (const mort of ['objectTypeSelect', 'objectPoseField',
                         'objectStrayMeshField', 'objectMagnetWallField', 'objectWallFaceField',
                         'objectWallSideField', 'objectWallSizeField', 'objectDoorField',
                         'objectDoorAngleField', 'objectWindowField', 'objectWindowAngleField',

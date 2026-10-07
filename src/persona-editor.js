@@ -750,7 +750,10 @@ export function buildPersonaEditorModelUI(){
   if (!section || !sel) return;
   const cible = personaEditorTarget();
   const figures = figuresDeLaBibliotheque3D();
-  const utile = S.personaEditorOpen && figures.length > 0 && (!cible || isImportedModel(cible));
+  // Seulement en mode AUTONOME (sans cible) : ouvert depuis la fiche d'un Élément, on ne change pas
+  // son modèle (demandé, comme la fiche qui n'a plus de champ « Modèle »), ni devant un Personnage,
+  // qui ne sait pas porter un fichier importé.
+  const utile = S.personaEditorOpen && figures.length > 0 && !cible;
   section.style.display = utile ? '' : 'none';
   if (!utile) return;
 

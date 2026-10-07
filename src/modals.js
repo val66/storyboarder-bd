@@ -22,7 +22,7 @@ import { sectionDuManuel } from './help-content.js';
 
 import { S, currentPage, tr } from './state.js';
 import { isImportedModel } from './model-store.js';
-import { modelState, getLoadedModel } from './model-cache.js';
+import { getLoadedModel } from './model-cache.js';
 import {
   ANIMAL_JOINT_DEFS, ANIMAL_TYPES, BUILD_WALL_DEFAULT_HEIGHT,
   WALL_OPENING_MAGNET_TYPES, PERSONA_PREVIEW_PAN_SENS, ROOM_FLOOR_TYPE_IDS,
@@ -1020,41 +1020,6 @@ export function construireCurseursDeSquelette3D({
 }
 
 /**
- * Le champ « Modèle » : le fichier que porte cet Élément, EN LECTURE SEULE.
- *
- * C'était un sélecteur (« changer de figure », #343) ; il n'est plus possible de changer le modèle
- * d'un Élément depuis sa fiche (demandé par Valentin). On le lit, on ne le choisit plus : pour un
- * autre modèle, on pose un autre Élément. Le champ reste là pour TOUT modèle importé, c'est le seul
- * endroit de la fiche qui nomme le fichier.
- *
- * L'ÉTAT, ET SEULEMENT S'IL N'EST PAS « PRÊT » : un fichier introuvable ou en chargement le dit sous
- * le nom ; un « ✓ » permanent serait une décoration.
- */
-export function buildFigureFieldUI(obj){
-  const champ = document.getElementById('objectFigureField');
-  const valeur = document.getElementById('objectFigureValue');
-  if (!champ || !valeur) return;
-  const utile = isImportedModel(obj);
-  champ.style.display = utile ? '' : 'none';
-  if (!utile) return;
-
-  const etiquette = document.getElementById('objectFigureLabel');
-  if (etiquette) etiquette.textContent = tr('Model', 'Modèle');
-  const courant = obj.modelFile || '';
-  valeur.textContent = courant;
-
-  const indice = document.getElementById('objectFigureHint');
-  if (indice) {
-    const état = courant ? modelState(courant) : 'absent';
-    const texte = état === 'introuvable' ? tr('⚠ File not found', '⚠ Fichier introuvable')
-      : état === 'prêt' ? ''
-        : tr('Loading…', 'Chargement…');
-    indice.textContent = texte;
-    indice.style.display = texte ? '' : 'none';
-  }
-}
-
-/**
  * Le sélecteur de pose de la fiche d'un modèle importé.
  *
  * MÊME BIBLIOTHÈQUE, MÊME PLACE QUE POUR UN PERSONNAGE. Deux corps qui se posent de la même façon
@@ -1098,7 +1063,6 @@ export function buildSkeletonPoseFieldUI(obj){
   if (etiquette) etiquette.textContent = tr('Pose', 'Position');
   // La ligne « Enregistrer » qui vivait ici est partie avec le pont (#393) : la fiche APPLIQUE des
   // poses, l'Éditeur les CRÉE. Un seul point d'écriture de la bibliothèque.
-  buildFigureFieldUI(obj);
   // La MÊME fonction que pour un Personnage : même bibliothèque, même option de repli pour une pose
   // disparue, même valeur d'ouverture. Deux remplissages séparés auraient divergé.
   remplirSelecteurDePose(sel, obj);

@@ -34,7 +34,7 @@ import { estUneLumiere3D, planLumieresPosees3D, reglagesLumierePosee3D } from '.
 // inclure l'état du cache (sinon un modèle qui finit d'arriver ne redéclenche aucun rendu), et le
 // changement de Projet doit le VIDER (sinon les géométries du Projet précédent restent sur la
 // carte graphique, invisibles et cumulatives).
-import { clearModelCache, collectModelFiles, modelCacheSignature } from './model-cache.js';
+import { clearModelCache, collectModelFiles, modelCacheSignature, modelState } from './model-cache.js';
 import { clearImageCache } from './image-cache.js';
 // cf. son en-tête : la boîte englobante d'un modèle importé articulé doit tenir compte du
 // squelette, pas seulement de la géométrie brute, sinon l'échelle réelle et la boîte de sélection
@@ -44,6 +44,7 @@ import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 // Le champ visible d'une Case : il sert de plan éloigné à l'ombre d'une source SANS portée (#422d).
 import { champVisibleDeCase3D } from './shadows-3d.js';
 import { cadreDeMesure, mesurerVisibilites3D, estNonVisible } from './visibilite-3d.js';
+import { boiteOpaque, ajustementDuCadrage } from './cadrage-apercu.js';
 import {
   applyGroundType,
   applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D, appliquerOmbreSourcePosee3D,
@@ -3582,22 +3583,6 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  * (cf. hauteurNaturelleModele3D). Cadrer et dimensionner sont deux questions distinctes, c'est
  * précisément leur confusion qui avait produit les défauts des tâches #333 et #334.
  */
-/**
- * Le recentrage normalisé (cf. cadrage-apercu.js) traduit en décalage MONDE du point visé, pour la
- * caméra de face de l'aperçu (sans orbite : l'écran est le plan x/y). Le demi-champ visible au plan
- * visé est celui du cadrage de base, la même formule que frameCameraToBox à zoom 1.
- */
-function panDeRecentrage3D(boite, { ndcX, ndcY }){
-  if (boite.isEmpty()) return undefined;
-  const size = new THREE.Vector3(); boite.getSize(size);
-  const cam = personaCamera3D;
-  const vFovHalf = (cam.fov / 2) * Math.PI / 180;
-  const hFovHalf = Math.atan(Math.tan(vFovHalf) * cam.aspect);
-  const dist = Math.max((size.y / 2 * 1.22) / Math.tan(vFovHalf), (size.x / 2 * 1.22) / Math.tan(hFovHalf), 0.8);
-  const demiH = dist * Math.tan(vFovHalf), demiL = dist * Math.tan(hFovHalf);
-  return { x: (ndcX || 0) * demiL, y: (ndcY || 0) * demiH };
-}
-
 export function boiteDeCadrageModele3D(entry){
   const boite = box3FromObjectSkinAware3D(entry && entry.figureGroup);
   const os = boiteDesOsMappes3D(entry && entry.skeletonBones);
@@ -3607,9 +3592,70 @@ export function boiteDeCadrageModele3D(entry){
   return boite;
 }
 
-// `recentrage` (aperçu d'un modèle importé seulement, cf. cadrage-apercu.js) : un décalage du point
-// visé, en coordonnées normalisées du cadrage de BASE, pour centrer ce qui est réellement dessiné.
-export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1, recentrage = null){
+/**
+ * LE CADRAGE AJUSTÉ AU DESSIN de l'aperçu d'un modèle importé (cf. cadrage-apercu.js pour le
+ * pourquoi). On part du cadrage de la boîte, puis, jusqu'à trois fois : rendre, relever le rectangle
+ * des pixels opaques, déplacer le point visé sur son centre et rapprocher la caméra dans la
+ * proportion voulue.
+ *
+ * ⚠️ POURQUOI PLUSIEURS PASSES, ET POURQUOI LA CAMÉRA PLUTÔT QU'UN ZOOM. La première version
+ * multipliait le zoom de `frameCameraToBox` : sans effet suffisant (signalé, hulk à 60 % au lieu de
+ * 82 %), parce que cette fonction place la caméra à `distance + profondeur/2` de la boîte. Une boîte
+ * PROFONDE (un os loin derrière le corps) garde la caméra loin quel que soit le zoom, et c'est très
+ * probablement la cause du défaut lui-même. Ici on règle directement la distance au point visé ;
+ * le modèle n'étant pas forcément à la profondeur de ce point, une passe de plus corrige le reste.
+ *
+ * Le résultat (point visé, distance) est mémorisé par ce qui détermine l'image : modèle, pose,
+ * orientation, morceaux détachés, format du rendu. Un modèle pas encore chargé n'est pas mémorisé.
+ */
+const _cadragesAjustes3D = new Map();
+const CADRAGES_AJUSTES_MAX = 24;
+function cadrageAjusteModele3D(o, boite){
+  if (boite.isEmpty()) return null;
+  const dom = personaRenderer3D.domElement;
+  const cle = JSON.stringify([o.modelFile, o.rotX, o.rotY, o.rotZ, o.skeletonPose3d, o.joints3d, o.position,
+    !!o.afficherMaillagesEgares, dom.width, dom.height]);
+  if (_cadragesAjustes3D.has(cle)) return _cadragesAjustes3D.get(cle);
+  const cam = personaCamera3D;
+  frameCameraToBox(cam, boite, 1);
+  const centre = new THREE.Vector3(); boite.getCenter(centre);
+  const cible = { x: centre.x, y: centre.y, z: centre.z };
+  let distance = cam.position.distanceTo(centre);
+  const petit = document.createElement('canvas');
+  let ajuste = false;
+  try {
+    for (let passe = 0; passe < 3; passe++) {
+      personaRenderer3D.render(personaScene3D, cam);
+      const f = Math.min(1, 160 / Math.max(dom.width, dom.height));
+      const w = Math.max(1, Math.round(dom.width * f)), h = Math.max(1, Math.round(dom.height * f));
+      petit.width = w; petit.height = h;
+      const c = petit.getContext('2d');
+      c.clearRect(0, 0, w, h);
+      c.drawImage(dom, 0, 0, w, h);
+      const a = ajustementDuCadrage(boiteOpaque(c.getImageData(0, 0, w, h).data, w, h), w, h);
+      if (a.k === 1) break;
+      // Le décalage relevé, traduit dans le plan du point visé (caméra de face : l'écran est x/y).
+      const demiH = distance * Math.tan((cam.fov / 2) * Math.PI / 180), demiL = demiH * cam.aspect;
+      cible.x += a.ndcX * demiL; cible.y += a.ndcY * demiH;
+      distance /= a.k;
+      cam.position.set(cible.x, cible.y, cible.z + distance);
+      cam.lookAt(cible.x, cible.y, cible.z);
+      cam.near = Math.max(0.01, distance / 1000);
+      cam.updateProjectionMatrix();
+      ajuste = true;
+    }
+  } catch { return null; }
+  const cadre = { cible, distance };
+  if (ajuste || modelState(o.modelFile) === 'prêt') {
+    _cadragesAjustes3D.set(cle, cadre);
+    if (_cadragesAjustes3D.size > CADRAGES_AJUSTES_MAX) _cadragesAjustes3D.delete(_cadragesAjustes3D.keys().next().value);
+  }
+  return cadre;
+}
+
+// `ajusterAuDessin` (aperçu de la fiche d'un modèle importé seulement) : cadrer sur ce qui est
+// RÉELLEMENT dessiné plutôt que sur la boîte calculée, cf. cadrageAjusteModele3D.
+export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1, ajusterAuDessin = false){
   if (o.w && o.h) useObjectBoxFormat3D(o, resScale);
   else useObjectFormat3D(resScale);
   let entry;
@@ -3649,7 +3695,19 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1, re
   if (o.objType === 'modele') {
     entry.figureGroup.updateMatrixWorld(true);
     const boîte = boiteDeCadrageModele3D(entry);
-    frameCameraToBox(personaCamera3D, boîte, zoom, recentrage ? panDeRecentrage3D(boîte, recentrage) : undefined);
+    const cadre = ajusterAuDessin ? cadrageAjusteModele3D(o, boîte) : null;
+    if (cadre) {
+      // Le zoom de la molette et « Taille réelle » s'appliquent PAR-DESSUS le cadrage ajusté, comme
+      // ils s'appliquaient au cadrage de la boîte : la distance est divisée d'autant.
+      frameCameraToBox(personaCamera3D, boîte, 1);
+      const d = cadre.distance / (zoom || 1);
+      personaCamera3D.position.set(cadre.cible.x, cadre.cible.y, cadre.cible.z + d);
+      personaCamera3D.lookAt(cadre.cible.x, cadre.cible.y, cadre.cible.z);
+      personaCamera3D.near = Math.max(0.01, d / 1000);
+      personaCamera3D.updateProjectionMatrix();
+    } else {
+      frameCameraToBox(personaCamera3D, boîte, zoom);
+    }
   } else {
     frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom);
   }

@@ -468,15 +468,11 @@ describe('Le câblage de l\'import', () => {
       'le sélecteur de Type reste proposé sur un modèle importé');
   });
 
-  test('RÉGRESSION : UN SEUL champ nomme le fichier, plus deux', () => {
-    // « Fichier » (lecture seule) et « Modèle » (sélecteur) disaient la même chose, mais pas dans
-    // les mêmes cas : le second n'apparaissait qu'à partir de deux figures posables. Fusionnés dans
-    // « Modèle », toujours présent. Ce test garde la disparition, un champ mort qu'on réintroduit
-    // par copier-coller est le genre de retour en arrière que personne ne remarque.
-    assert.doesNotMatch(HTML, /objectModelFileField|objectModelFileValue/);
-    assert.doesNotMatch(MODALS, /objectModelFileField|objectModelFileValue/);
-    assert.match(HTML, /id="objectFigureField"/);
-    assert.match(HTML, /id="objectFigureHint"/, 'l\'état du fichier a besoin d\'un support');
+  test('RÉGRESSION : la fiche n\'a PLUS de champ « Modèle » (retiré à la demande de Valentin)', () => {
+    // Il y en eut deux (« Fichier », puis « Modèle » sélecteur, #343), fusionnés, puis passés en
+    // lecture seule, puis retirés : on ne change pas le modèle d'un Élément, et l'aperçu le montre.
+    assert.doesNotMatch(HTML, /objectModelFileField|objectModelFileValue|objectFigureField|objectFigureSelect/);
+    assert.doesNotMatch(MODALS, /objectFigureField|buildFigureFieldUI\(/);
   });
 
   test('le panneau latéral dit l\'état d\'un modèle qui manque', () => {

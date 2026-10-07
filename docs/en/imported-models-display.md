@@ -43,9 +43,13 @@ something other than the panel.
 8. **The dialog's preview, sometimes zoomed out too far** (hulk at a quarter of the height,
    reported). Framing uses a computed box, which a mapped bone far from the body is enough to
    enlarge. Rather than guess the cause, the preview is rendered once at the base framing, the
-   rectangle of its opaque pixels is measured, and the camera is brought closer and re-centred on it
-   (`src/cadrage-apercu.js`, pure). Never zooming out; the wheel zoom and "Real size" apply on top as
-   before. The correction is remembered per model, pose and orientation.
+   rectangle of its opaque pixels is measured, and the camera is re-centred on it and brought closer,
+   up to three passes (`src/cadrage-apercu.js` for the maths, pure; `cadrageAjusteModele3D` in
+   scene3d.js). The DISTANCE to the aimed point is set, not `frameCameraToBox`'s zoom: a first attempt
+   showed that this function places the camera at "distance + depth/2" from the box, and a deep box
+   (very likely the cause of the defect) kept it far whatever the zoom. Never zooming out; the wheel
+   zoom and "Real size" apply on top as before. The result is remembered per model, pose,
+   orientation and render format.
 
 ## What remains, knowingly
 

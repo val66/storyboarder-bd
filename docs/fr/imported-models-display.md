@@ -41,9 +41,13 @@ store y passe aussi : un seul chemin, sinon l'aperçu finirait par montrer autre
 8. **L'aperçu de la fiche, parfois trop dézoomé** (hulk au quart de la hauteur, signalé). Le
    cadrage se fait sur une boîte calculée, qu'un os mappé loin du corps suffit à agrandir. Plutôt
    que de deviner la cause, l'aperçu est rendu une fois au cadrage de base, le rectangle de ses
-   pixels opaques est relevé, et la caméra est rapprochée et recentrée sur lui
-   (`src/cadrage-apercu.js`, pur). Jamais de dézoom ; le zoom de la molette et « Taille réelle »
-   s'appliquent par-dessus comme avant. Le correctif est mémorisé par modèle, pose et orientation.
+   pixels opaques est relevé, et la caméra est recentrée sur lui et rapprochée, jusqu'à trois
+   passes (`src/cadrage-apercu.js` pour le calcul, pur ; `cadrageAjusteModele3D` dans scene3d.js).
+   On règle la DISTANCE au point visé et non le zoom de `frameCameraToBox` : un premier essai l'a
+   montré, celle-ci place la caméra à « distance + profondeur/2 » de la boîte, et une boîte profonde
+   (très probablement la cause du défaut) la gardait loin quel que soit le zoom. Jamais de dézoom ;
+   le zoom de la molette et « Taille réelle » s'appliquent par-dessus comme avant. Le résultat est
+   mémorisé par modèle, pose, orientation et format du rendu.
 
 ## Ce qui reste, en connaissance de cause
 
