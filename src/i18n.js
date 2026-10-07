@@ -703,7 +703,7 @@ export function applyI18nModalSectionTitles(lang){
     position:    ['Position', 'Position'],
     orientation: ['Orientation', 'Orientation'],
     modele:      ['3D model', 'Modèle 3D'],
-    apercu:      ['3D preview', 'Aperçu 3D'],
+    apercu:      ['Preview', 'Aperçu'],
     // Propre aux Lumières (#421b) : la section n'existe dans la modale que pour une source, mais
     // son titre se traduit comme les autres — la table des titres ne sait pas qui est affiché.
     luminosite:  ['Brightness', 'Luminosité'],

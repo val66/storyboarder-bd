@@ -36,7 +36,7 @@ import {
   figureRenderSize3D,
   personaEditorPoseList3D, poseJointsByKey3D, poseCompatible3D,
 
-  optionsDeFigure3D, hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D, libelleTypeObjet3D,
+  hauteurBase3D, hauteurDepuisPourcentage3D, bornesHauteur3D, libelleTypeObjet3D,
   libelleAnimal3D, libelleTable3D,
 } from './utils.js';
 import {
@@ -45,7 +45,7 @@ import {
   getCamOrbitWorld, mergedBuildWallRigCache3D, panelCamBasis3D, panelSceneCache3D, slabMeshCache3D,
 } from './scene3d.js';
 import {
-  cloneJoints, figuresPosables, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
+  cloneJoints, getEffectiveJoints, groupesDeCurseurs3D, objectRigCache3D,
   personaScene3D, poseOsPourModeleImporte, wallRenderRigCache3D,
   modeleImportePosable3D, squelettePourPose3D,
 } from './rig3d.js';
@@ -1020,55 +1020,29 @@ export function construireCurseursDeSquelette3D({
 }
 
 /**
- * Le sélecteur de FIGURE, quel fichier cet Élément porte.
+ * Le champ « Modèle » : le fichier que porte cet Élément, EN LECTURE SEULE.
  *
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * DEUX CHAMPS, UN SENS UNIQUE
- * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * C'était un sélecteur (« changer de figure », #343) ; il n'est plus possible de changer le modèle
+ * d'un Élément depuis sa fiche (demandé par Valentin). On le lit, on ne le choisit plus : pour un
+ * autre modèle, on pose un autre Élément. Le champ reste là pour TOUT modèle importé, c'est le seul
+ * endroit de la fiche qui nomme le fichier.
  *
- * Depuis cette étape, un Élément posable retient DEUX choses :
- *
- *   • `joints3d`, l'INTENTION : la pose du corps, ce que produisent l'éditeur et la bibliothèque;
- *   • `skeletonPose3d`, le RÉSULTAT : les angles appliqués aux os de la figure courante.
- *
- * ⚠️ LE SENS EST UNIQUE : corps → os, JAMAIS l'inverse. Les curseurs d'os écrivent le résultat et
- * n'y touchent pas ; rien ne sait retraduire des angles d'os en pose de corps, et prétendre le
- * contraire ferait diverger les deux, le défaut le plus fréquent de ce dépôt.
- *
- * D'où le comportement, décidé explicitement : CHANGER DE FIGURE RECALCULE le résultat depuis
- * l'intention. La pose est conservée, les retouches faites aux curseurs sont perdues, elles sont
- * exprimées dans les axes des os de l'ANCIENNE figure et ne veulent rien dire sur la nouvelle.
+ * L'ÉTAT, ET SEULEMENT S'IL N'EST PAS « PRÊT » : un fichier introuvable ou en chargement le dit sous
+ * le nom ; un « ✓ » permanent serait une décoration.
  */
 export function buildFigureFieldUI(obj){
   const champ = document.getElementById('objectFigureField');
-  const sel = document.getElementById('objectFigureSelect');
-  if (!champ || !sel) return;
-  // ⚠️ PRÉSENT POUR TOUT MODÈLE IMPORTÉ, y compris quand il n'y a rien à choisir. Il l'était
-  // autrefois seulement à partir de deux figures posables, un champ « Fichier » distinct portant le
-  // nom le reste du temps. Deux champs pour une même chose, dont un seulement parfois : la fiche
-  // d'une chaise importée n'affichait alors AUCUN nom de fichier. Un seul champ, toujours là.
+  const valeur = document.getElementById('objectFigureValue');
+  if (!champ || !valeur) return;
   const utile = isImportedModel(obj);
   champ.style.display = utile ? '' : 'none';
   if (!utile) return;
 
   const etiquette = document.getElementById('objectFigureLabel');
   if (etiquette) etiquette.textContent = tr('Model', 'Modèle');
-  const courant = S.modalDraftModelFile || obj.modelFile || '';
-  const noms = optionsDeFigure3D(figuresPosables(), courant);
-  sel.innerHTML = '';
-  noms.forEach(nom => {
-    const opt = document.createElement('option');
-    opt.value = nom; opt.textContent = nom;
-    sel.appendChild(opt);
-  });
-  sel.value = courant || noms[0] || '';
-  // Rien à choisir : on montre, on n'invite pas. Un menu déroulant à une entrée promet un choix
-  // qui n'existe pas.
-  sel.disabled = noms.length <= 1;
+  const courant = obj.modelFile || '';
+  valeur.textContent = courant;
 
-  // L'ÉTAT, ET SEULEMENT S'IL N'EST PAS « PRÊT ». C'est la seule information que portait l'ancien
-  // champ « Fichier » et que le sélecteur ne dit pas de lui-même, un fichier introuvable n'est pas
-  // dans `loadedModelNames()`, donc son absence serait muette sans ce message.
   const indice = document.getElementById('objectFigureHint');
   if (indice) {
     const état = courant ? modelState(courant) : 'absent';
@@ -1078,14 +1052,6 @@ export function buildFigureFieldUI(obj){
     indice.textContent = texte;
     indice.style.display = texte ? '' : 'none';
   }
-
-  sel.onchange = () => {
-    S.modalDraftModelFile = sel.value;
-    // Le résultat est RECALCULÉ depuis l'intention, pour la nouvelle figure. `null`, figure
-    // illisible, laisse la pose vide plutôt qu'un reste d'angles appartenant à l'ancienne.
-    S.modalDraftSkeletonPose = poseOsPourModeleImporte(sel.value, S.modalDraftJoints) || {};
-    refreshObjectPreview();
-  };
 }
 
 /**

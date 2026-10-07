@@ -3582,6 +3582,22 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  * (cf. hauteurNaturelleModele3D). Cadrer et dimensionner sont deux questions distinctes, c'est
  * précisément leur confusion qui avait produit les défauts des tâches #333 et #334.
  */
+/**
+ * Le recentrage normalisé (cf. cadrage-apercu.js) traduit en décalage MONDE du point visé, pour la
+ * caméra de face de l'aperçu (sans orbite : l'écran est le plan x/y). Le demi-champ visible au plan
+ * visé est celui du cadrage de base, la même formule que frameCameraToBox à zoom 1.
+ */
+function panDeRecentrage3D(boite, { ndcX, ndcY }){
+  if (boite.isEmpty()) return undefined;
+  const size = new THREE.Vector3(); boite.getSize(size);
+  const cam = personaCamera3D;
+  const vFovHalf = (cam.fov / 2) * Math.PI / 180;
+  const hFovHalf = Math.atan(Math.tan(vFovHalf) * cam.aspect);
+  const dist = Math.max((size.y / 2 * 1.22) / Math.tan(vFovHalf), (size.x / 2 * 1.22) / Math.tan(hFovHalf), 0.8);
+  const demiH = dist * Math.tan(vFovHalf), demiL = dist * Math.tan(hFovHalf);
+  return { x: (ndcX || 0) * demiL, y: (ndcY || 0) * demiH };
+}
+
 export function boiteDeCadrageModele3D(entry){
   const boite = box3FromObjectSkinAware3D(entry && entry.figureGroup);
   const os = boiteDesOsMappes3D(entry && entry.skeletonBones);
@@ -3591,7 +3607,9 @@ export function boiteDeCadrageModele3D(entry){
   return boite;
 }
 
-export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
+// `recentrage` (aperçu d'un modèle importé seulement, cf. cadrage-apercu.js) : un décalage du point
+// visé, en coordonnées normalisées du cadrage de BASE, pour centrer ce qui est réellement dessiné.
+export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1, recentrage = null){
   if (o.w && o.h) useObjectBoxFormat3D(o, resScale);
   else useObjectFormat3D(resScale);
   let entry;
@@ -3631,7 +3649,7 @@ export function renderObjectToCanvas3D(o, zoom, styleKey, page, resScale = 1){
   if (o.objType === 'modele') {
     entry.figureGroup.updateMatrixWorld(true);
     const boîte = boiteDeCadrageModele3D(entry);
-    frameCameraToBox(personaCamera3D, boîte, zoom);
+    frameCameraToBox(personaCamera3D, boîte, zoom, recentrage ? panDeRecentrage3D(boîte, recentrage) : undefined);
   } else {
     frameCameraToFigure(personaCamera3D, entry.figureGroup, zoom);
   }

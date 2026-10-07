@@ -654,31 +654,16 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     assert.equal(champ.style.display, 'none', 'une chaise ne porte aucune figure');
   });
 
-  test('changer de figure RECALCULE les angles depuis la pose du corps', () => {
-    // La décision de conception, épinglée : l'intention survit, le résultat est refait. Sans le
-    // recalcul, les angles de l'ancienne figure resteraient appliqués à la nouvelle, mêmes
-    // nombres, autres os, posture fausse et rien pour le signaler.
-    const obj = modele();
-    S.modalDraftJoints = { rShoulder: { x: 0, z: -1.2 }, headRotY: 0.3 };
-    S.modalDraftSkeletonPose = poseOsPourModeleImporte(FICHIER, S.modalDraftJoints);
-    const avant = S.modalDraftSkeletonPose;
-
-    buildFigureFieldUI(obj);
-    const sel = document.getElementById('objectFigureSelect');
-    sel.value = AUTRE;
-    sel.onchange();
-
-    assert.equal(S.modalDraftModelFile, AUTRE);
-    assert.notEqual(S.modalDraftSkeletonPose, avant, 'les angles doivent être refaits, pas gardés');
-    const t = S.modalDraftSkeletonPose.bras_d;
-    assert.ok(t, 'la pose doit avoir survécu au changement');
-    // L'AMPLITUDE est conservée : c'est le même geste, mais l'AXE change, parce qu'il est
-    // maintenant exprimé dans les os de la nouvelle figure. Les deux assertions comptent : la
-    // première dit que le geste a survécu, la seconde qu'il a bien été retraduit.
-    assert.ok(Math.abs(Math.hypot(t.x, t.y, t.z) - 1.2) < 1e-6, 'le geste doit valoir 1,2 rad');
-    const ancien = avant.bras_d;
-    assert.ok(Math.hypot(t.x - ancien.x, t.y - ancien.y, t.z - ancien.z) > 1e-3,
-      'axe inchangé : le recalcul a été fait sur l\'ANCIENNE figure');
+  test('la fiche ne propose PLUS de changer de modèle : elle le nomme, en lecture seule', () => {
+    // Demandé par Valentin : pour un autre modèle, on pose un autre Élément. Le sélecteur de #343
+    // a disparu de la fiche ; le champ nomme le fichier et ne touche à aucun brouillon.
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    assert.doesNotMatch(html, /id="objectFigureSelect"/);
+    assert.match(html, /<div id="objectFigureValue" class="modal-field-lecture"><\/div>/);
+    S.modalDraftModelFile = null;
+    buildFigureFieldUI(modele());
+    assert.equal(document.getElementById('objectFigureValue').textContent, FICHIER);
+    assert.equal(S.modalDraftModelFile, null, 'lire le modèle ne doit rien écrire');
   });
 
   test('la section « Modèle » de l\'éditeur : présente selon la cible', () => {
@@ -744,31 +729,22 @@ describe('Le champ « Modèle » : changer de figure sans perdre la pose', () =>
     closePersonaEditor();
   });
 
-  test('une seule figure disponible : le champ RESTE, mais n\'invite pas', () => {
-    // CHANGÉ EN #343, et le changement est le sujet du test. Le champ disparaissait quand il n'y
-    // avait rien à choisir, un champ « Fichier » distinct portant le nom le reste du temps. Les deux
-    // ont fusionné : « Modèle » est désormais le seul endroit où lire le fichier d'un Élément, donc
-    // il doit être là même sans choix, désactivé, pour ne pas promettre un choix inexistant.
+  test('le champ est là pour TOUT modèle importé, même seul, et nomme son fichier', () => {
     clearModelCache();
     _setModelCacheEntry(FICHIER, { scene: corrigerNomsCuisses(squeletteMixamo()) });
     const champ = document.getElementById('objectFigureField');
-    const sel = document.getElementById('objectFigureSelect');
     buildFigureFieldUI(modele());
-    assert.notEqual(champ.style.display, 'none', 'le fichier ne se lit plus nulle part ailleurs');
-    assert.equal(sel.disabled, true, 'un menu à une entrée promet un choix qui n\'existe pas');
-    assert.equal(sel.value, FICHIER, 'et il nomme bien le fichier de cet Élément');
+    assert.notEqual(champ.style.display, 'none', 'le fichier ne se lit nulle part ailleurs dans la fiche');
+    assert.equal(document.getElementById('objectFigureValue').textContent, FICHIER);
   });
 
-  test('RÉGRESSION : un fichier ABSENT des figures posables est quand même nommé', () => {
-    // Le défaut trouvé en #343. Les options viennent de figuresPosables(), qui filtre les modèles
-    // CHARGÉS : un fichier introuvable n'y est pas. `select.value = <absent>` ne lève rien, la
-    // valeur devient vide et la fiche nomme un AUTRE modèle. Sans bruit, et sur la seule ligne qui
-    // dit à l'utilisateur ce que son Élément porte.
+  test('RÉGRESSION : un fichier ABSENT (introuvable, pas chargé) est quand même nommé', () => {
+    // Le défaut trouvé en #343 vivait dans un <select> dont la valeur retombait sur un autre
+    // fichier ; en lecture seule, le nom vient de l'Élément lui-même, et il le reste.
     clearModelCache();
     _setModelCacheEntry('autre.glb', { scene: corrigerNomsCuisses(squeletteMixamo()) });
-    const sel = document.getElementById('objectFigureSelect');
     buildFigureFieldUI(Object.assign(modele(), { modelFile: 'disparu.glb' }));
-    assert.equal(sel.value, 'disparu.glb', 'la fiche nomme un fichier qui n\'est pas le sien');
+    assert.equal(document.getElementById('objectFigureValue').textContent, 'disparu.glb');
   });
 
   test('RÉGRESSION : le sens est unique, corps → os et jamais l\'inverse', () => {

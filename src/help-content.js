@@ -150,7 +150,7 @@ export const HELP_MANUAL_EN = [
   { id: 'sources', title: 'Light sources', paragraphs: [
     'Right-click a Panel → "Add" → "Light" places a source in the Scene. A glowing sphere appears and lights the Panel, on top of the sun. You move it like any Element: the mouse for height and width, the wheel for depth.',
     'Unlike other Elements, a source is not snapped to the ground: it floats at whatever height you want, without going below it. It sits at the top of the Elements list, in a block of its own.',
-    'Double-click a source to open its dialog, where the "Brightness" section sets its colour, intensity and range. A range of 0 means "unlimited"; beyond a finite range, the light no longer carries at all. In the 3D preview, "Invisible in the 3D scene" turns the source off, whereas "Show the sphere" only hides the marker and leaves the light shining.',
+    'Double-click a source to open its dialog, where the "Brightness" section sets its colour, intensity and range. A range of 0 means "unlimited"; beyond a finite range, the light no longer carries at all. In the Preview, "Invisible in the 3D scene" turns the source off, whereas "Show the sphere" only hides the marker and leaves the light shining.',
   ]},
   { id: 'ombres', title: 'Cast shadows', paragraphs: [
     'The "Cast shadows" box, in the Light section of the right-hand menu, makes a Panel\u2019s Elements cast shadows on the ground and on each other.',
@@ -208,7 +208,7 @@ export const HELP_MANUAL_EN = [
     'In the editor, click a joint point to unfold its sliders, and the other way round. Axes are the bone\'s own, so which one bends an elbow depends on the file. A creature has its own points, one per drivable bone, and drags like a character.',
     'A creature opens in the editor with ITS own joints: every figure is posed in its own language. Poses are CREATED there and nowhere else: set the sliders, name the pose, and "Save" adds it to its archetype\'s library. The card applies poses, it no longer makes them.',
     'Poses are filed BY ARCHETYPE: a quadruped only sees quadruped poses. A pose REPLACES the sliders; the resulting angles appear in them and stay adjustable. Applied to another model of the same archetype, it says what did not land.',
-    'The "Model" field makes this Element wear another imported file: the pose is kept and recomputed, the slider tweaks are lost. It also names the file this Element comes from, and warns you if that file is missing.',
+    'The "Model" field names the file this Element comes from, and warns you if that file is missing. It cannot be changed: for another model, place another Element.',
     '"Height (m)" and the "Actual size" slider are two views of the same thing and follow each other. It is the height that gets saved: type it to the centimetre, the slider is only a rounded display.',
     'Some files place a mesh far away from the body, touching no other part: a prop that would float across your Panel. Those are hidden on import, and named in the message that tells you so.',
     '"Show detached parts", in the model\'s card, brings them back. Your file is never modified: the fix belongs in the 3D software it came from.',
@@ -356,7 +356,7 @@ export const HELP_MANUAL_FR = [
   { id: 'sources', title: 'Sources de lumière', paragraphs: [
     "Clic droit sur une Case → « Ajouter » → « Lumière » pose une source dans la Scène. Une sphère lumineuse apparaît et éclaire la Case, en plus du soleil. On la déplace comme un Élément : la souris pour la hauteur et la largeur, la molette pour la profondeur.",
     "Contrairement aux autres Éléments, une source n'est pas aimantée au sol : elle flotte à la hauteur voulue, sans passer dessous. Elle figure en tête de la liste des Éléments, dans un bloc à elle.",
-    "Double-cliquer sur une source ouvre sa fiche, où la section « Luminosité » règle sa couleur, son intensité et sa portée. Une portée de 0 vaut « sans limite » ; au-delà d'une portée finie, la lumière ne porte plus du tout. Dans l'Aperçu 3D, « Invisible dans la scène 3D » éteint la source, tandis qu'« Afficher la sphère » ne masque que la bille et laisse la lumière éclairer.",
+    "Double-cliquer sur une source ouvre sa fiche, où la section « Luminosité » règle sa couleur, son intensité et sa portée. Une portée de 0 vaut « sans limite » ; au-delà d'une portée finie, la lumière ne porte plus du tout. Dans l'Aperçu, « Invisible dans la scène 3D » éteint la source, tandis qu'« Afficher la sphère » ne masque que la bille et laisse la lumière éclairer.",
   ]},
   { id: 'ombres', title: 'Ombres portées', paragraphs: [
     "La case « Ombres portées », dans la section Lumière du menu de droite, fait projeter des ombres aux Éléments d'une Case, sur le sol et les uns sur les autres.",
@@ -414,7 +414,7 @@ export const HELP_MANUAL_FR = [
     'Dans l\'Éditeur, cliquez un point d\'articulation pour déplier ses curseurs, et l\'inverse. Les axes sont ceux de l\'os. Une créature a les siens, un par os pilotable, et se glisse comme un Personnage.',
     'Une créature s\'ouvre dans l\'Éditeur avec SES articulations : chaque figure s\'y pose dans sa propre langue. C\'est LÀ que les poses se créent, et nulle part ailleurs : réglez les curseurs, nommez la pose, « Enregistrer » l\'ajoute à sa bibliothèque. La fiche applique les poses, elle n\'en fabrique pas.',
     'Les poses se rangent PAR ARCHÉTYPE : un quadrupède ne voit que des poses de quadrupède. Une pose REMPLACE les curseurs ; les angles obtenus s\'y affichent et restent retouchables. Appliquée à un autre modèle du même archétype, elle dit ce qui n\'a pas atterri.',
-    'Le champ « Modèle » fait porter un autre fichier à cet Élément : la pose est conservée et recalculée, les retouches des curseurs sont perdues. Il nomme aussi le fichier de cet Élément, et vous prévient s\'il manque.',
+    'Le champ « Modèle » nomme le fichier de cet Élément, et vous prévient s\'il manque. Il ne se change pas : pour un autre modèle, posez un autre Élément.',
     '« Hauteur (m) » et le curseur « Taille réelle » sont deux vues d\'une même chose et se suivent. C\'est la hauteur qui est enregistrée : saisissez-la au centimètre, le curseur n\'en est qu\'un affichage arrondi.',
     'Certains fichiers placent un maillage loin du corps : un accessoire qui flotterait au travers de votre Case. Ceux-là sont masqués à l\'import, et nommés dans le message qui vous en avertit.',
     '« Afficher les morceaux détachés », dans la fiche du modèle, les rend. Votre fichier n\'est jamais modifié : la correction se fait dans le logiciel 3D d\'origine.',

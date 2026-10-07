@@ -1447,13 +1447,12 @@
              régler au même endroit. Choisir une pose REMPLACE les réglages fins de la section
              Aperçu 3D — c'est le comportement du Personnage, conservé volontairement.
              Une chaise importée n'a pas d'articulations : le champ reste masqué. -->
-        <!-- La FIGURE que porte cet Élément. « Type » (chaise, voiture…) ne s'applique qu'aux
-             objets intégrés et reste masqué ici : on ne transforme pas un fichier importé en
-             voiture. « Modèle » prend sa place, et suit la même condition que Position et que le
-             crayon de l'aperçu — présent dès qu'un corps peut être posé. -->
+        <!-- Le FICHIER que porte cet Élément, en lecture seule : on ne change plus de modèle depuis
+             la fiche (demandé). « Type » (chaise, voiture…) ne s'applique qu'aux objets intégrés
+             et reste masqué ici. -->
         <div id="objectFigureField" style="display:none">
           <label class="modal-field-label" id="objectFigureLabel">Modèle</label>
-          <select id="objectFigureSelect"></select>
+          <div id="objectFigureValue" class="modal-field-lecture"></div>
           <!-- L'état du fichier — et SEULEMENT quand il n'est pas prêt. Un « ✓ » permanent serait
                une décoration ; un message qui n'apparaît que si le fichier manque ou charge encore
                se lit comme ce qu'il est : quelque chose à savoir. -->
@@ -1661,7 +1660,7 @@
     <div class="modal-col">
     <div class="modal-section" data-section="apercu">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
-        <span class="modal-section-title">Aperçu 3D</span>
+        <span class="modal-section-title">Aperçu</span>
         <span class="modal-section-caret">▾</span>
       </div>
       <div class="modal-section-body">
@@ -1838,7 +1837,7 @@
     <div class="modal-col">
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
-        <span class="modal-section-title">Aperçu 3D</span>
+        <span class="modal-section-title">Aperçu</span>
         <span class="modal-section-caret">▾</span>
       </div>
       <div class="modal-section-body">
@@ -1924,7 +1923,7 @@
     <div class="modal-col">
     <div class="modal-section">
       <div class="modal-section-header" onclick="toggleModalSection(this)">
-        <span class="modal-section-title">Aperçu 3D</span>
+        <span class="modal-section-title">Aperçu</span>
         <span class="modal-section-caret">▾</span>
       </div>
       <div class="modal-section-body">

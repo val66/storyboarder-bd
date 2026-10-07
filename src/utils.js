@@ -1132,26 +1132,6 @@ export function getHandles(o){
  * mètres à côté aurait donné deux vérités pour une seule limite, le défaut qui revient le plus
  * souvent dans ce dépôt. Elles sont donc DÉRIVÉES, jamais ressaisies.
  */
-/**
- * Les options du champ « Modèle » : les figures posables, plus CELLE DE L'ÉLÉMENT si elle n'y est
- * pas. Fonction pure.
- *
- * POURQUOI LE REPLI EST NÉCESSAIRE, et pas de la prudence décorative. Les options viennent de
- * `figuresPosables()`, qui filtre `loadedModelNames()` : un fichier INTROUVABLE, ou pas encore
- * décodé, ou sans os reconnu, n'y figure pas. Or `select.value = <valeur absente des options>` ne
- * lève rien, la valeur devient vide et le champ affiche autre chose. La fiche nommait donc un
- * fichier qui n'est pas celui de l'Élément, en silence. Ajouter l'entrée courante garantit que le
- * champ dit toujours ce que l'Élément porte réellement.
- *
- * L'ORDRE EST CELUI DES FIGURES, l'entrée de repli passant en tête : elle est déjà sélectionnée,
- * et une liste qui commence par ce qu'on regarde se lit mieux qu'une liste où il faut le chercher.
- */
-export function optionsDeFigure3D(figures, courant){
-  const liste = (Array.isArray(figures) ? figures : []).filter(n => typeof n === 'string' && n);
-  if (typeof courant !== 'string' || !courant) return liste;
-  return liste.includes(courant) ? liste : [courant, ...liste];
-}
-
 export const ELEMENT_SIZE_PCT_MIN = 10;
 export const ELEMENT_SIZE_PCT_MAX = 400;
 

@@ -27,7 +27,7 @@ import {
   makePose3D, renamePose3D, deletePose3D, nextDefaultPoseName3D, 
   seedPoseLibrary3D, mergePoseLibrary3D, posesUsedByProject3D, poseUsageCount3D,
   rememberDismissedPose3D, missingBuiltinPoses3D, forgetDismissedPoses3D, nameOfPose3D,
-  hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D, optionsDeFigure3D,
+  hauteurDepuisPourcentage3D, pourcentageDepuisHauteur3D, bornesHauteur3D, hauteurBase3D,
   orbiteDeFace3D, estHorsChamp3D,
   pageVoisine3D, positionInfobulle3D,
 } from '../src/utils.js';
@@ -2105,32 +2105,6 @@ describe('hauteur réelle ↔ pourcentage', () => {
     // pas la refaire en douce : ce serait une seconde vérité sur ce qu'est la taille de référence.
     assert.equal(hauteurBase3D({ baseH: 0, h: 200 }), null);
     assert.equal(hauteurBase3D({ h: 200 }), null);
-  });
-});
-
-describe('optionsDeFigure3D : le champ « Modèle » nomme toujours le bon fichier', () => {
-  test('la figure courante ABSENTE des posables est ajoutée, en tête', () => {
-    // LE cas qui compte : un fichier introuvable n'est pas dans loadedModelNames(), donc pas dans
-    // les options. Sans ce repli, `select.value = 'perdu.glb'` échoue en silence et la fiche
-    // affiche le nom d'un AUTRE modèle, celui qui se trouve en première position.
-    assert.deepEqual(optionsDeFigure3D(['a.glb', 'b.glb'], 'perdu.glb'),
-      ['perdu.glb', 'a.glb', 'b.glb']);
-  });
-
-  test('une figure déjà présente n\'est pas dupliquée, et l\'ordre ne bouge pas', () => {
-    assert.deepEqual(optionsDeFigure3D(['a.glb', 'b.glb'], 'b.glb'), ['a.glb', 'b.glb']);
-  });
-
-  test('sans figure courante, la liste passe telle quelle', () => {
-    assert.deepEqual(optionsDeFigure3D(['a.glb'], ''), ['a.glb']);
-    assert.deepEqual(optionsDeFigure3D(['a.glb'], null), ['a.glb']);
-  });
-
-  test('entrées vides ou absentes : jamais d\'option sans nom', () => {
-    // Une <option> vide serait sélectionnable et nommerait le vide.
-    assert.deepEqual(optionsDeFigure3D(['a.glb', '', null, 42], 'a.glb'), ['a.glb']);
-    assert.deepEqual(optionsDeFigure3D(null, 'seul.glb'), ['seul.glb']);
-    assert.deepEqual(optionsDeFigure3D(null, null), []);
   });
 });
 

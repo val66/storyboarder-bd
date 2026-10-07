@@ -40,6 +40,12 @@ something other than the panel.
    refused.
 7. **Compressions with no decoder** (Draco, Meshopt, KTX2) required by a file: refused at import,
    by name, instead of a saved file that would show as a "not found" box.
+8. **The dialog's preview, sometimes zoomed out too far** (hulk at a quarter of the height,
+   reported). Framing uses a computed box, which a mapped bone far from the body is enough to
+   enlarge. Rather than guess the cause, the preview is rendered once at the base framing, the
+   rectangle of its opaque pixels is measured, and the camera is brought closer and re-centred on it
+   (`src/cadrage-apercu.js`, pure). Never zooming out; the wheel zoom and "Real size" apply on top as
+   before. The correction is remembered per model, pose and orientation.
 
 ## What remains, knowingly
 

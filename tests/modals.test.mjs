@@ -285,8 +285,7 @@ describe('Un seul nom pour l\'écran de correspondance', () => {
  * JOURNAL DE MUTATION : la fiche d'un Élément 3D : « Modèle » fusionné, « Hauteur » maîtresse
  * (tâches #343 et #344).
  *
- *   H1 optionsDeFigure3D n'ajoute plus la figure courante absente        ROUGE
- *   H2 elle l'ajoute même quand elle est déjà là (doublon)               ROUGE
+ *   H1, H2 (optionsDeFigure3D) : retirées avec la fonction, le champ « Modèle » ne se choisit plus
  *   H3 pourcentageDepuisHauteur3D arrondit dans le CALCUL                ROUGE
  *   H4 les bornes en mètres sont ressaisies à la main (0,2× au lieu de 0,1×)  ROUGE
  *   H5 une base nulle est acceptée (division par zéro → NaN)             ROUGE

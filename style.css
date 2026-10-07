@@ -1401,6 +1401,9 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
    Une bague de focus dépasse elle aussi, par construction : elle se dessine EN DEHORS du champ.
    Tant que ce découpage existait, aucun style de focus ne pouvait s'afficher entièrement. */
 .modal-section-body{}
+/* Une valeur qu'on LIT dans une fiche, sans pouvoir la changer (le fichier d'un modèle importé) :
+   pas de cadre de champ, qui promettrait une saisie, mais la même marge basse que les champs. */
+.modal-field-lecture{ font-size:13.5px; color:var(--ink); margin:0 0 14px; overflow-wrap:anywhere; }
 .modal-section.collapsed .modal-section-body{ display:none; }
 /* Repliée, la section n'a plus de contenu sous l'en-tête : sans ce filet, l'espace réservé au-dessus
    de l'en-tête (padding du haut de .modal-section + marge du haut de l'en-tête) reste plus grand que

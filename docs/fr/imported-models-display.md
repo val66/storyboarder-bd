@@ -38,6 +38,12 @@ store y passe aussi : un seul chemin, sinon l'aperçu finirait par montrer autre
    (`gltf-glb.js`, le même que pour Poly Haven). Un voisin hors du dossier du `.gltf` est refusé.
 7. **Compressions sans décodeur** (Draco, Meshopt, KTX2) exigées par un fichier : refusées à
    l'import, avec leur nom, au lieu d'un fichier rangé qui s'afficherait en boîte « introuvable ».
+8. **L'aperçu de la fiche, parfois trop dézoomé** (hulk au quart de la hauteur, signalé). Le
+   cadrage se fait sur une boîte calculée, qu'un os mappé loin du corps suffit à agrandir. Plutôt
+   que de deviner la cause, l'aperçu est rendu une fois au cadrage de base, le rectangle de ses
+   pixels opaques est relevé, et la caméra est rapprochée et recentrée sur lui
+   (`src/cadrage-apercu.js`, pur). Jamais de dézoom ; le zoom de la molette et « Taille réelle »
+   s'appliquent par-dessus comme avant. Le correctif est mémorisé par modèle, pose et orientation.
 
 ## Ce qui reste, en connaissance de cause
 
