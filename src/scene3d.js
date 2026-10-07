@@ -3583,9 +3583,57 @@ export { useObjectFormat3D, useObjectBoxFormat3D };
  * (cf. hauteurNaturelleModele3D). Cadrer et dimensionner sont deux questions distinctes, c'est
  * précisément leur confusion qui avait produit les défauts des tâches #333 et #334.
  */
+/**
+ * LES OS QUI DÉFORMENT QUELQUE CHOSE, ou null si on ne peut pas le dire (aucun maillage articulé).
+ *
+ * ⚠️ HULK, MESURÉ SUR SON FICHIER (signalé à l'usage : aperçu trop dézoomé, et dans l'Éditeur il ne
+ * tournait pas sur lui-même). Son squelette porte, à côté du corps, des os d'EFFETS et de points
+ * d'attache d'un jeu vidéo : `FX_Throw` à 2,3 m devant lui, `FX_Smoke_05` à 1,3 m sur le côté,
+ * `Fx_Trail_*`, `rootSocket`… Aucun sommet ne leur est lié. Récoltés avec les autres, ils
+ * étiraient la boîte de cadrage jusqu'à x −2 m et z +2,7 m : la caméra reculait (aperçu minuscule)
+ * et l'orbite de l'Éditeur tournait autour d'un point devant et à côté du corps.
+ *
+ * Un os qui ne déforme rien n'a pas de poignée utile à montrer : le cadre l'ignore. Un maillage
+ * RIGIDE accroché à un os (pas de skinning) compte comme une influence de cet os. Le relevé des os
+ * influents d'une géométrie est mémorisé : il parcourt les sommets une fois.
+ */
+const _osInfluentsParGeometrie = new WeakMap();
+function osInfluents3D(racine){
+  if (!racine) return null;
+  const influents = new Set();
+  let articule = false;
+  racine.traverse(n => {
+    if (n.isSkinnedMesh && n.skeleton && n.geometry && n.geometry.attributes.skinIndex && n.geometry.attributes.skinWeight) {
+      articule = true;
+      let indices = _osInfluentsParGeometrie.get(n.geometry);
+      if (!indices) {
+        indices = new Set();
+        const si = n.geometry.attributes.skinIndex, sw = n.geometry.attributes.skinWeight;
+        for (let i = 0; i < si.count; i++) {
+          if (sw.getX(i) > 0) indices.add(si.getX(i));
+          if (sw.getY(i) > 0) indices.add(si.getY(i));
+          if (sw.getZ(i) > 0) indices.add(si.getZ(i));
+          if (sw.getW(i) > 0) indices.add(si.getW(i));
+        }
+        _osInfluentsParGeometrie.set(n.geometry, indices);
+      }
+      indices.forEach(i => { if (n.skeleton.bones[i]) influents.add(n.skeleton.bones[i]); });
+    } else if (n.isMesh) {
+      let p = n.parent;
+      while (p && !p.isBone) p = p.parent;
+      if (p) influents.add(p);
+    }
+  });
+  return articule ? influents : null;
+}
+
 export function boiteDeCadrageModele3D(entry){
   const boite = box3FromObjectSkinAware3D(entry && entry.figureGroup);
-  const os = boiteDesOsMappes3D(entry && entry.skeletonBones);
+  const influents = osInfluents3D(entry && entry.figureGroup);
+  const osMappes = influents && entry && entry.skeletonBones
+    ? Object.fromEntries(Object.entries(entry.skeletonBones).filter(([, e]) => e && e.os && influents.has(e.os)))
+    : entry && entry.skeletonBones;
+  const os = boiteDesOsMappes3D(osMappes);
   // `union` avec une boîte VIDE est sans effet : les deux cas dégénérés (modèle sans os reconnus,
   // ou sans maillage visible) se replient donc l'un sur l'autre sans branche supplémentaire.
   if (os) boite.union(os);

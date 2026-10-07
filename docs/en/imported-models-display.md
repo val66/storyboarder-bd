@@ -51,6 +51,14 @@ something other than the panel.
    zoom and "Real size" apply on top as before. The result is remembered per model, pose,
    orientation and render format.
 
+   **The cause, found afterwards in the file** (hulk also turned off-axis in the Editor): its
+   skeleton carries video-game effect and socket bones (`FX_Throw` 2.3 m in front of it,
+   `FX_Smoke_05` 1.3 m to the side, `Fx_Trail_*`, `rootSocket`) that no vertex uses. They were
+   harvested with the others and stretched the framing box to x −2 m and z +2.7 m.
+   `boiteDeCadrageModele3D` now only joins bones that DEFORM something (non-zero weight, or a rigid
+   mesh attached); the Editor's orbit, which turns around this box's centre, is back on the body.
+   The fit-to-drawing reframing stays, as a safety net.
+
 ## What remains, knowingly
 
 - **`KHR_materials_specular` and `KHR_materials_ior`** are ignored by three 0.128: the reflection

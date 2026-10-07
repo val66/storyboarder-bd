@@ -178,6 +178,24 @@ describe('boiteDeCadrageModele3D : le cadre contient ce qui est peint ET chaque 
       `le cadre monte à ${boite.max.y.toFixed(2)} : il suit un maillage masqué`);
   });
 
+  test('RÉGRESSION (hulk) : un os qui ne déforme RIEN n\'étire pas le cadre', () => {
+    // Les os d'effets de hulk (FX_Throw à 2,3 m devant lui, aucun sommet lié) reculaient la caméra
+    // de l'aperçu et décentraient l'orbite de l'Éditeur. Ici, un os loin du corps, sans poids.
+    const racine = figureArticulee(1);
+    const skeletonBones = {};
+    let i = 0;
+    racine.traverse(n => { if (n.isBone) skeletonBones['os' + (i++)] = { os: n }; });
+    const fx = new THREE.Bone();
+    fx.position.set(0, 10, 200);
+    racine.add(fx);
+    racine.updateMatrixWorld(true);
+    skeletonBones.fx = { os: fx };
+    const boite = boiteDeCadrageModele3D({ figureGroup: racine, skeletonBones });
+    assert.ok(boite.max.z < 50, `le cadre va jusqu'à z ${boite.max.z.toFixed(1)} : il suit un os d'effet`);
+    // Et les os qui déforment restent tous dedans (les poignées du corps).
+    assert.ok(boite.max.y >= HAUTEUR_OS - 1e-6);
+  });
+
   test('aucun squelette reconnu : le maillage seul', () => {
     // Une chaise importée. L'union avec une boîte absente est sans effet, pas de branche en plus.
     const racine = figureArticulee(ECHELLE);

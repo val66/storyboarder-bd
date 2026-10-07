@@ -49,6 +49,14 @@ store y passe aussi : un seul chemin, sinon l'aperçu finirait par montrer autre
    le zoom de la molette et « Taille réelle » s'appliquent par-dessus comme avant. Le résultat est
    mémorisé par modèle, pose, orientation et format du rendu.
 
+   **La cause, trouvée ensuite sur le fichier** (hulk tournait aussi de travers dans l'Éditeur) :
+   son squelette porte des os d'effets et d'attache de jeu vidéo (`FX_Throw` à 2,3 m devant lui,
+   `FX_Smoke_05` à 1,3 m sur le côté, `Fx_Trail_*`, `rootSocket`), qu'aucun sommet n'utilise. Ils
+   étaient récoltés avec les autres et étiraient la boîte de cadrage jusqu'à x −2 m et z +2,7 m.
+   `boiteDeCadrageModele3D` n'unit désormais que les os qui DÉFORMENT quelque chose (poids non nul,
+   ou maillage rigide accroché) ; l'orbite de l'Éditeur, qui tourne autour du centre de cette
+   boîte, revient sur le corps. Le recadrage au dessin reste, en filet.
+
 ## Ce qui reste, en connaissance de cause
 
 - **`KHR_materials_specular` et `KHR_materials_ior`** sont ignorés par three 0.128 : le reflet
