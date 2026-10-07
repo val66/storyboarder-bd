@@ -2253,14 +2253,22 @@ button.store-chip:hover{ border-color:var(--accent); }
 .store-apercu-chargement{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; padding:16px; text-align:center; font-size:13px; color:var(--ink-soft); }
 .store-apercu-chargement.erreur{ color:var(--danger); }
 .store-fiche-boutons{ display:flex; gap:8px; margin-top:8px; }
-.store-fiche-section{ margin:18px 0 0; }
+/* CHAQUE SECTION DANS SA CARTE, À L'IMAGE DES FICHES D'ÉLÉMENTS (demandé, pour un rendu homogène) :
+   mêmes fond creusé, bordure, rayon et marges intérieures que `.modal-section`, et un titre comme
+   `.modal-section-title`. Vaut pour les fiches des trois onglets. */
+.store-fiche-section{
+  margin:14px 0 0; padding:4px 14px 12px; border:1px solid var(--line); border-radius:8px;
+  background:var(--creux);
+}
 /* ⚠️ LE MÊME ÉCART AU-DESSUS DE CHAQUE SECTION (demandé) : un paragraphe garde sinon sa marge basse
    par défaut (1em), qui s'ajoutait au-dessus de la première section et pas au-dessus des suivantes,
    précédées d'une liste ou d'une zone sans marge. Les paragraphes de la colonne n'ont donc pas de
    marge basse : seule la section décide de l'écart. */
 .store-fiche-droite > p{ margin:4px 0 0; }
 .store-fiche-section > ul{ margin:0; }
-.store-fiche-section h5{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); }
+/* Moins d'écart SOUS le titre que dans une fiche d'Élément (demandé) : ici le titre est suivi d'une
+   sous-section ou d'une liste, pas d'un libellé de champ qui porte déjà son propre espace. */
+.store-fiche-section h5{ margin:10px 0 2px; padding:4px 0; font-family:'Inter',sans-serif; font-weight:700; font-size:15px; color:var(--ink); }
 .store-fiche-actions{ display:flex; gap:8px; align-items:stretch; margin-top:12px; }
 .store-fiche-actions > *{ flex:1 1 0; width:auto; margin:0; }   /* parts égales (demandé) */
 .store-lien-bouton{ text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }

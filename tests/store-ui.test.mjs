@@ -252,6 +252,18 @@ describe('le câblage', () => {
     assert.match(chip, /var\(--warn\)/);
     assert.doesNotMatch(chip, /var\(--accent\)/);
   });
+  test('fiche : chaque section dans sa carte, comme les fiches d\'Éléments', () => {
+    const css = lire('style.css');
+    const corps = (sel) => css.slice(css.indexOf(sel + '{'), css.indexOf('}', css.indexOf(sel + '{')));
+    const carte = corps('.store-fiche-section'), reference = corps('.modal-section');
+    for (const decl of ['background:var(--creux)', 'border:1px solid var(--line)', 'border-radius:8px', 'padding:4px 14px 12px']) {
+      assert.ok(reference.includes(decl), 'référence : ' + decl);
+      assert.ok(carte.includes(decl), 'fiche du store : ' + decl);
+    }
+    assert.match(css, /\.store-fiche-section h5\{[^}]*font-weight:700; font-size:15px; color:var\(--ink\);/);
+    // Peu d'écart entre le titre et la première sous-section (demandé).
+    assert.match(css, /\.store-fiche-section h5\{ margin:10px 0 2px; padding:4px 0;/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);
