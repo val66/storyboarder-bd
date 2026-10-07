@@ -17,7 +17,7 @@
  */
 import { S } from './state.js';
 import { rangerModele, remplacerModele, readModel } from './model-store.js';
-import { entreesLocales, filtrerEntrees, NON_CLASSE, USAGES, TRIS_LOCAUX } from './local-library.js';
+import { entreesLocales, filtrerEntrees, NON_CLASSE, USAGES, SQUELETTES, TRIS_LOCAUX } from './local-library.js';
 import { preparerVignettes, vignetteLocale, metasLocales, imageDeFiche } from './model-thumbnails.js';
 import { usageLabel } from './model-usages.js';
 import { groupeReplie, memoriserGroupe } from './section-memory.js';
@@ -89,9 +89,12 @@ export function rafraichirTextesStore(){
   garder('storeCategorie', () => options($('storeCategorie'), [['', t.toutesCategories], ...infos.categories.map(c => [c.slug, c[langue()]]),
     ...(local ? [[NON_CLASSE, t.nonClasse]] : [])]));
   garder('storeUsage', () => options($('storeUsage'), USAGES.map(u => [u, t.usages[u]])));
+  garder('storeSquelette', () => options($('storeSquelette'), SQUELETTES.map(u => [u, t.squelettes[u]])));
   // Ce qui n'a de sens que d'un côté : l'usage pour ses modèles, la taille pour une source en ligne
   // (un modèle local n'a pas son nombre de faces sans être décodé).
   $('storeUsage').hidden = !local;
+  // Articulé ou statique : seul un modèle sur le disque a son squelette mesuré (au rendu de sa vignette).
+  $('storeSquelette').hidden = !local;
   rendreFiltreTags();
   $('storeFaces').hidden = local;
   garder('storeLicence', () => options($('storeLicence'), [['', t.toutesLicences], ...infos.licences.map(l => [l.code, l.libelle])]));
@@ -143,6 +146,7 @@ function parametres(curseur){
     commercialSeulement: $('storeCommercial').checked,
     facesMax: Number($('storeFaces').value) || null,
     usage: $('storeUsage').value || 'tous',
+    squelette: $('storeSquelette').value || 'tous',
     tri: $('storeTri').value || undefined,
     curseur: curseur || null,
   };
@@ -166,6 +170,35 @@ export async function rafraichirPossedes(){
  * une icône plutôt qu'un libellé ; la fiche dit le reste). Construite en SVG par le DOM, pas en
  * innerHTML. Le libellé reste en infobulle et pour les lecteurs d'écran.
  */
+/**
+ * La pastille « articulé » : une chaîne de trois articulations, dans un rond, en haut à gauche de la
+ * vignette. Même construction que la coche (SVG par le DOM). L'infobulle dit seulement « Articulé »
+ * (demandé) : le nombre d'os est dans la fiche.
+ */
+function pastilleArticule(t){
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  const trait = document.createElementNS(NS, 'path');
+  trait.setAttribute('d', 'M3.5 12.5L7 8l5.5-3.5');
+  trait.setAttribute('fill', 'none');
+  trait.setAttribute('stroke', 'currentColor');
+  trait.setAttribute('stroke-width', '1.8');
+  trait.setAttribute('stroke-linecap', 'round');
+  trait.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(trait);
+  for (const [cx, cy] of [[3.5, 12.5], [7, 8], [12.5, 4.5]]) {
+    const rond = document.createElementNS(NS, 'circle');
+    rond.setAttribute('cx', String(cx));
+    rond.setAttribute('cy', String(cy));
+    rond.setAttribute('r', '2');
+    rond.setAttribute('fill', 'currentColor');
+    svg.appendChild(rond);
+  }
+  return el('span', { classe: 'store-articule', attrs: { title: t.articule, role: 'img', 'aria-label': t.articule } }, [svg]);
+}
+
 function pastillePossede(t, fichier){
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
@@ -610,7 +643,7 @@ async function chercherLocal(moi){
   const afficher = () => {
     const toutes = toutesLesEntrees();
     const p = derniereRecherche || {};
-    entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom', tags: tagsFiltre });
+    entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, squelette: p.squelette, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom', tags: tagsFiltre });
     cartesLocales.clear();
     affiches = entreesAffichees.map(e => ({ ...e, local: true }));
     $('storeGrille').replaceChildren(...affiches.map(carte));
@@ -885,6 +918,9 @@ function carteLocale(e){
   const url = vignetteLocale(e.fichier);
   const c = el('button', { classe: 'store-carte store-carte-locale' + (e.introuvable ? ' store-carte-introuvable' : ''), attrs: { type: 'button', title: e.fichier } }, [
     url ? el('img', { attrs: { src: url, alt: '' } }) : el('div', { classe: 'store-sans-vignette' }),
+    // Articulé : une ICÔNE en haut à gauche de la vignette (demandé : un libellé prenait trop de
+    // place). Rien pour un modèle statique, ni tant que le squelette n'est pas mesuré.
+    e.os > 0 ? pastilleArticule(t) : null,
     el('span', { texte: e.titre, classe: 'store-carte-nom' }),
     el('span', { texte: e.introuvable ? '⚠ ' + t.introuvableFiche.split(' :')[0] : t.resumeUsages(e.scenes.length, e.cases.length), classe: 'store-carte-auteur' }),
     el('span', { classe: 'store-carte-infos' }, [
@@ -976,6 +1012,7 @@ function ficheLocale(e){
       t.ligneFichier(e.fichier),
       e.dimensions ? t.dimensions(e.dimensions) : null,
       e.taille ? t.ligneTaille(poidsLisible(e.taille, langue())) : null,
+      Number.isInteger(e.os) ? t.ligneSquelette(e.os) : null,
       a && a.resolution ? t.ligneResolution(a.resolution) : null,
       a ? t.depuisSource(nomSource) : null,
     ])]),
@@ -1034,7 +1071,7 @@ function ficheLocale(e){
 let ficheCourante = null;      // le résultat dont la fiche est ouverte
 let aRouvrir = null;           // { fiche, position } à la fermeture
 const CLE_ETAT = 'store:etat';
-const CHAMPS_ETAT = { texte: 'storeTexte', categorie: 'storeCategorie', licence: 'storeLicence', faces: 'storeFaces', tri: 'storeTri', usage: 'storeUsage' };
+const CHAMPS_ETAT = { texte: 'storeTexte', categorie: 'storeCategorie', licence: 'storeLicence', faces: 'storeFaces', tri: 'storeTri', usage: 'storeUsage', squelette: 'storeSquelette' };
 
 function memoriserEtat(){
   const etat = { source, commercial: !!$('storeCommercial').checked, tags: tagsFiltre.slice() };
@@ -1134,7 +1171,7 @@ export function cablerStore(rappels = {}){
     minuterie = setTimeout(() => chercher(), PAUSE_SAISIE_MS);
   });
   $('storeFormulaire').addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(minuterie); chercher(); });
-  for (const id of ['storeCategorie', 'storeLicence', 'storeFaces', 'storeTri', 'storeCommercial', 'storeUsage']) {
+  for (const id of ['storeCategorie', 'storeLicence', 'storeFaces', 'storeTri', 'storeCommercial', 'storeUsage', 'storeSquelette']) {
     $(id).addEventListener('change', () => chercher());
   }
   $('storePlusBtn').onclick = () => chercher(true);

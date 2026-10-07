@@ -20,6 +20,12 @@ import { isImportedModel } from './model-store.js';
 export const NON_CLASSE = 'non-classe';
 /** Les filtres d'usage, dans l'ordre du menu. */
 export const USAGES = ['tous', 'scenes', 'cases', 'inutilises'];
+/**
+ * Le filtre par squelette (demandé) : articulés (au moins un os) ou statiques (aucun). Un modèle dont
+ * on ne connaît pas encore le nombre d'os (vignette pas encore rendue) n'apparaît que dans « tous » :
+ * le ranger d'un côté serait affirmer ce qu'on n'a pas mesuré.
+ */
+export const SQUELETTES = ['tous', 'articules', 'statiques'];
 /** Les tris proposés. */
 export const TRIS_LOCAUX = ['nom', 'recents'];
 
@@ -94,7 +100,7 @@ function modelesCites({ tomes = [], scenes = [] } = {}){
  *   - « Non classé » est une catégorie comme une autre ;
  *   - le tri « récents » met en tête les fichiers modifiés le plus récemment, les absents à la fin.
  */
-export function filtrerEntrees(entrees, { texte = '', categorie = null, usage = 'tous', tri = 'nom', tags = [] } = {}){
+export function filtrerEntrees(entrees, { texte = '', categorie = null, usage = 'tous', tri = 'nom', tags = [], squelette = 'tous' } = {}){
   const mots = texteComparable(texte).split(' ').filter(Boolean);
   const voulus = Array.isArray(tags) ? tags : [];
   let liste = (entrees || []).filter(e => {
@@ -104,6 +110,8 @@ export function filtrerEntrees(entrees, { texte = '', categorie = null, usage = 
     if (usage === 'scenes' && !e.scenes.length) return false;
     if (usage === 'cases' && !e.cases.length) return false;
     if (usage === 'inutilises' && (e.scenes.length || e.cases.length)) return false;
+    if (squelette === 'articules' && !(e.os > 0)) return false;
+    if (squelette === 'statiques' && e.os !== 0) return false;
     if (!mots.length) return true;
     const tout = texteComparable([e.titre, e.fichier, e.attribution && e.attribution.auteur && e.attribution.auteur.nom,
       ...e.scenes.map(s => s.sceneName), ...(e.nomsTags || [])].filter(Boolean).join(' '));

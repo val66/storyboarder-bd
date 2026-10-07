@@ -66,7 +66,14 @@ First tab of the same window, opened by the "Model library" button of the left m
 long list). The entries (`src/local-library.js`, pure): the file, a title (the source's one if it
 came from the store), the common category ("Uncategorised" for a hand import), the full attribution,
 and the uses in the open project (`modelUsageLocations`). A file that is referred to but missing
-shows up, flagged. Filters: text (title, file, author, Scenes), category, use; sorted by name or date.
+shows up, flagged. Filters: text (title, file, author, Scenes), category, use, skeleton; sorted by name
+or date.
+
+**Rigged or static.** The number of bones is measured when the thumbnail is rendered (`os` in the
+thumbnail metadata). A rigged model carries a joint icon on its thumbnail; the details say
+"Skeleton: n bones" or "No skeleton". The "Rigged / Static" filter leaves out a model not measured
+yet, which only shows under "Rigged and static". Nothing similar in the online tabs: Poly Haven does
+not say, and Sketchfab will be looked at with the API (#444c).
 
 Thumbnails (`src/model-thumbnails.js`): decoded apart from the panels' cache, prepared like a panel,
 photographed at three quarters, released; kept in `Vignettes-modeles/` with the file's signature

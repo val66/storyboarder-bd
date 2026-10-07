@@ -6,7 +6,7 @@ import './helpers/dom-stub.mjs';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { entreesLocales, filtrerEntrees, NON_CLASSE } = await import('../src/local-library.js');
+const { entreesLocales, filtrerEntrees, NON_CLASSE, SQUELETTES } = await import('../src/local-library.js');
 
 const modele = (modelFile, homePanelId) => ({ id: 'e' + Math.random(), type: 'objet3d', objType: 'modele', modelFile, homePanelId });
 const panel = (id, caseNumber) => ({ id, type: 'panel', caseNumber });
@@ -77,6 +77,19 @@ describe('Le filtre et le tri', () => {
   test('tri par nom (sans la casse), ou les plus récents d\'abord, les absents à la fin', () => {
     assert.deepEqual(filtrerEntrees(entrees(), { tri: 'nom' }).map(e => e.titre), ['Arm Chair 01', 'canape', 'chaise', 'disparu']);
     assert.deepEqual(filtrerEntrees(entrees(), { tri: 'recents' }).map(e => e.fichier), ['chaise.glb', 'Arm Chair 01.glb', 'canape.glb', 'disparu.glb']);
+  });
+});
+
+describe('Articulés ou statiques', () => {
+  const metas = { 'perso.glb': { os: 54 }, 'chaise.glb': { os: 0 } };
+  const e = entreesLocales({ fichiers: [{ nom: 'perso.glb' }, { nom: 'chaise.glb' }, { nom: 'pas-mesure.glb' }], metas });
+  const noms = (squelette) => filtrerEntrees(e, { squelette }).map(x => x.fichier).sort();
+  test('le filtre suit le nombre d\'os mesuré ; un modèle pas encore mesuré n\'est rangé nulle part', () => {
+    assert.deepEqual(SQUELETTES, ['tous', 'articules', 'statiques']);
+    assert.deepEqual(noms('articules'), ['perso.glb']);
+    assert.deepEqual(noms('statiques'), ['chaise.glb']);
+    assert.deepEqual(noms('tous'), ['chaise.glb', 'pas-mesure.glb', 'perso.glb']);
+    assert.equal(e.find(x => x.fichier === 'pas-mesure.glb').os, null);
   });
 });
 

@@ -281,6 +281,18 @@ describe('le câblage', () => {
     assert.match(UI, /\(\) => \{ if \(!reconstruction\) menuTags = false; \}, ajouter\);/);
     assert.match(UI, /menuFlottant\(zone, remplir, 'store-menu-tags', null, bouton\)/);
   });
+  test('articulé ou statique dans « Mes modèles » : icône, ligne de la fiche, filtre, tri étroit', () => {
+    assert.match(UI, /e\.os > 0 \? pastilleArticule\(t\) : null,/);
+    assert.match(UI, /attrs: \{ title: t\.articule, role: 'img', 'aria-label': t\.articule \}/);
+    assert.doesNotMatch(UI, /texte: t\.articule/, 'une icône, plus un libellé');
+    assert.match(lire('style.css'), /select#storeTri\{ flex:0 0 110px; \}/);
+    assert.match(UI, /Number\.isInteger\(e\.os\) \? t\.ligneSquelette\(e\.os\) : null,/);
+    assert.match(UI, /\$\('storeSquelette'\)\.hidden = !local;/);
+    assert.match(UI, /squelette: \$\('storeSquelette'\)\.value \|\| 'tous',/);
+    assert.match(UI, /squelette: p\.squelette,/);
+    assert.match(UI, /squelette: 'storeSquelette' \};/);
+    assert.match(lire('index.html'), /<select id="storeSquelette"><\/select>/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);

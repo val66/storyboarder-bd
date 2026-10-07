@@ -66,8 +66,14 @@ Premier onglet de la même fenêtre, ouvert par le bouton « Bibliothèque de mo
 (qui a perdu sa longue liste). Les entrées (`src/local-library.js`, pur) : le fichier, un titre (celui
 de la source s'il vient du store), la catégorie commune (« Non classé » pour un import à la main),
 l'attribution complète, et les usages dans le Projet ouvert (`modelUsageLocations`). Un fichier cité
-mais absent apparaît, marqué. Filtres : texte (titre, fichier, auteur, Scènes), catégorie, usage ; tri
-par nom ou par date.
+mais absent apparaît, marqué. Filtres : texte (titre, fichier, auteur, Scènes), catégorie, usage,
+squelette ; tri par nom ou par date.
+
+**Articulé ou statique.** Le nombre d'os est mesuré au rendu de la vignette (`os` dans les métadonnées
+des vignettes). Un modèle articulé porte une icône d'articulation sur sa vignette ; la fiche dit
+« Squelette : n os » ou « Aucun squelette ». Le filtre « Articulés / Statiques » laisse de côté un
+modèle pas encore mesuré, qui n'apparaît que dans « Articulés et statiques ». Rien de tel pour les
+onglets en ligne : Poly Haven ne le dit pas, et pour Sketchfab on verra avec l'API (#444c).
 
 Les vignettes (`src/model-thumbnails.js`) : décodées à part du cache des Cases, préparées comme une
 Case, photographiées de trois quarts, libérées ; gardées dans `Vignettes-modeles/` avec la signature

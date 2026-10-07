@@ -2064,6 +2064,9 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-filtres.store-filtres-ligne{ flex-wrap:nowrap; }
 .store-filtres.store-filtres-ligne .modal-input{ flex:1 1 180px; min-width:0; }
 .modal-box .store-filtres.store-filtres-ligne select{ flex:1 1 150px; min-width:0; }
+/* Le tri (« Nom » / « Récents ») n'a que des libellés courts : une largeur fixe, étroite, rend sa
+   place aux autres filtres (demandé, la ligne devenait serrée). */
+.modal-box .store-filtres.store-filtres-ligne select#storeTri{ flex:0 0 110px; }
 .store-case{ font-size:12.5px; display:flex; align-items:center; gap:6px; }
 .store-grille{ display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:12px; }
 /* ⚠️ `hidden` ne l'emporte pas sur un `display` posé par une classe : sans ces règles, la grille
@@ -2105,6 +2108,14 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
   background:var(--accent); color:var(--sur-accent); box-shadow:0 1px 3px rgba(0,0,0,.35);
 }
 .store-possede svg{ width:14px; height:14px; display:block; }
+/* « Articulé » : une icône en haut à GAUCHE de la vignette (la droite est à la coche « déjà
+   téléchargé »), au même gabarit que la coche. */
+.store-articule{
+  position:absolute; top:6px; left:6px; width:24px; height:24px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent); color:var(--sur-accent); box-shadow:0 1px 3px rgba(0,0,0,.35);
+}
+.store-articule svg{ width:15px; height:15px; display:block; }
 .store-carte-possedee img, .store-carte-possedee .store-sans-vignette{ opacity:.7; }
 .store-plus{ display:block; margin:12px auto 0; }
 .store-fiche{ font-size:13px; line-height:1.45; }
