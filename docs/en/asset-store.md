@@ -79,7 +79,8 @@ other modals in the document: the ones it opens come in front of it.
 ## Chosen category and tags
 
 In the details of a model in "My models", under the source: the **category** (one, from the common
-list; it replaces the source's or the guessed one, "Automatic" hands it back) and the user's
+list; it replaces the source's or "Uncategorised", "Automatic" hands it back; no
+category is guessed from the name) and the user's
 **tags** (several per model, created, renamed and deleted from the "+ Tags" menu, or from the "Tags" filter, next to the categories). The filter
 keeps the models that have ALL the ticked tags. It all lives in `bibliotheque-modeles.json`,
 next to the Modeles folder, and follows model renames and deletions. What decides is in

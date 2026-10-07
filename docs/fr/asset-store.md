@@ -80,8 +80,8 @@ placée AVANT les autres modales dans le document : celles qu'elle ouvre passent
 ## Catégorie choisie et tags
 
 Dans la fiche d'un modèle de « Mes modèles », sous la source : la **catégorie** (une seule, prise
-dans la liste commune ; elle remplace celle de la source ou la devinette, « Automatique » rend la
-main) et les **tags** de l'utilisateur (plusieurs par modèle, créés, renommés et supprimés depuis le
+dans la liste commune ; elle remplace celle de la source ou « Non classé », « Automatique » rend
+la main ; aucune catégorie n'est devinée d'après le nom) et les **tags** de l'utilisateur (plusieurs par modèle, créés, renommés et supprimés depuis le
 menu « + Tags », ou depuis le filtre « Tags », placé à côté des catégories). Le filtre garde les modèles qui portent TOUS les tags cochés. Le tout vit
 dans `bibliotheque-modeles.json`, à côté du dossier Modeles, et suit les renommages et suppressions
 de modèles. Ce qui décide est dans `bibliotheque-modeles.js` (pur) ; l'interface demande une

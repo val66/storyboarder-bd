@@ -90,11 +90,10 @@ describe('« Mes modèles » : catégorie choisie et filtre par tags', () => {
   s = b.choisirCategorie(s, 'chaise.glb', 'patrimoine');
   const entrees = entreesLocales({ fichiers: [{ nom: 'chaise.glb' }, { nom: 'table.glb' }, { nom: 'scene.glb' }], bibliotheque: s });
   const par = (f) => entrees.find(e => e.fichier === f);
-  test('la catégorie CHOISIE l\'emporte sur la devinette, et ne se dit pas devinée', () => {
+  test('la catégorie CHOISIE l\'emporte ; sans choix ni source, Non classé', () => {
     assert.equal(par('chaise.glb').categorie, 'patrimoine');
     assert.equal(par('chaise.glb').categorieChoisie, true);
-    assert.equal(par('chaise.glb').categorieDevinee, false);
-    assert.equal(par('table.glb').categorie, 'mobilier', 'sans choix, la devinette reste');
+    assert.equal(par('table.glb').categorie, NON_CLASSE, 'pas de devinette d\'après le nom');
     assert.equal(par('scene.glb').categorie, NON_CLASSE);
   });
   test('les tags d\'un modèle, par nom, triés', () => {

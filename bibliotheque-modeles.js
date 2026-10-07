@@ -3,7 +3,7 @@
  * des TAGS libres (demandé).
  *
  * Une seule CATÉGORIE par modèle, prise dans la liste commune (store-categories.js) : elle remplace
- * celle de la source ou celle devinée d'après le nom. Les TAGS, eux, sont créés par l'utilisateur,
+ * celle de la source, ou « Non classé ». Les TAGS, eux, sont créés par l'utilisateur,
  * plusieurs par modèle, renommables et supprimables : c'est là que vivent les classements personnels
  * (« Médiéval », « Décor de la scène 3 »…), pas dans de nouvelles catégories.
  *
@@ -52,7 +52,7 @@ function normaliser(b){
   return s;
 }
 
-/** La catégorie CHOISIE d'un modèle (null : on retombe sur la source ou la devinette). */
+/** La catégorie CHOISIE d'un modèle (null : on retombe sur la source, ou Non classé). */
 function choisirCategorie(b, fichier, slug){
   const s = normaliser(b);
   if (slug && /^[a-z-]+$/.test(slug)) s.categories[fichier] = slug;

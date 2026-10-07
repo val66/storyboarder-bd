@@ -620,8 +620,8 @@ async function chercherLocal(moi){
   afficher();
   afficherLocal = afficher;
   // Les vignettes manquantes se rendent en arrière-plan ; chaque carte se met à jour à son tour.
-  // Le rendu MESURE aussi chaque modèle (dimensions, noms des nœuds, d'où une catégorie mieux
-  // devinée) : la grille est refaite une fois à la fin, si l'on est toujours sur la liste.
+  // Le rendu MESURE aussi chaque modèle (dimensions, os) : la grille est refaite une fois à la fin,
+  // si l'on est toujours sur la liste.
   preparerVignettes((fait, total, nom) => {
     if (source !== LOCAL) return;
     if (nom && cartesLocales.has(nom)) poserVignette(cartesLocales.get(nom), nom);
@@ -705,7 +705,7 @@ function blocClassement(fichier){
     const e = entreeDe(fichier);
     if (!e) return;
     const chipCat = el('button', {
-      texte: nomCategorie(e.categorie) + (e.categorieDevinee ? ` · ${t.devineeCourt}` : ''),
+      texte: nomCategorie(e.categorie),
       classe: 'store-chip store-chip-categorie' + (e.categorie === NON_CLASSE ? ' store-chip-vide' : ''),
       attrs: { type: 'button', title: t.changerCategorie, 'aria-haspopup': 'menu' },
     });
@@ -715,8 +715,9 @@ function blocClassement(fichier){
         b.onclick = async () => { fermer(); await operer('categorie', { fichier, categorie: slug }); majBloc(); };
         return b;
       };
-      // « Automatique » rend la main à la source ou à la devinette : seulement si l'on avait choisi.
-      if (e.categorieChoisie) menu.appendChild(choix(null, t.categorieAuto, false));
+      // « Automatique » rend la main à la SOURCE : seulement si l'on avait choisi et qu'il y a une
+      // source qui en donne une. Sans elle, « Automatique » ne serait qu'un second « Non classé ».
+      if (e.categorieChoisie && e.attribution && e.attribution.categorie) menu.appendChild(choix(null, t.categorieAuto, false));
       (infos && infos.categories || []).forEach(c => menu.appendChild(choix(c.slug, c[langue()], e.categorie === c.slug)));
       menu.appendChild(choix(NON_CLASSE, t.nonClasse, e.categorie === NON_CLASSE));
     }, 'store-menu-categories'); };

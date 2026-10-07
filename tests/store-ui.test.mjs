@@ -264,6 +264,15 @@ describe('le câblage', () => {
     // Peu d'écart entre le titre et la première sous-section (demandé).
     assert.match(css, /\.store-fiche-section h5\{ margin:10px 0 2px; padding:4px 0;/);
   });
+  test('la catégorie de la fiche : plus de « devinée », un chevron dessiné et centré', () => {
+    assert.doesNotMatch(UI, /devineeCourt|categorieDevinee/);
+    assert.match(UI, /if \(e\.categorieChoisie && e\.attribution && e\.attribution\.categorie\) menu\.appendChild/);
+    const css = lire('style.css');
+    const apres = css.slice(css.indexOf('.store-chip-categorie::after{'), css.indexOf('}', css.indexOf('.store-chip-categorie::after{')));
+    assert.match(apres, /content:''/);
+    assert.match(apres, /margin-left:8px/);
+    assert.match(apres, /background:currentColor/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);
