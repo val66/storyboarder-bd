@@ -78,9 +78,16 @@ describe('Le branchement dans l’export', () => {
     assert.match(corps, /if \(credits\.length\) \{\n    const y0 = pageH \+ infoHeight;/);
     assert.doesNotMatch(corps.slice(corps.indexOf('const credits')), /exportShowPanelDescriptions/);
   });
-  test('visible = dans une Case ET dans son cadre ; une projection qui échoue crédite quand même', () => {
+  test('#449 : la Planche est dessinée AVANT les crédits, toutes ses Cases mesurées, et la mesure s\'éteint ensuite', () => {
+    const i = corps.indexOf('mesurerToutesLesCases3D(true);');
+    assert.ok(i > 0 && i < corps.indexOf('const credits'), 'la mesure doit précéder les crédits');
+    assert.match(corps, /mesurerToutesLesCases3D\(true\);\n  try \{\n    drawContent\(planche\.getContext\('2d'\)[^\n]*\n  \} finally \{\n    mesurerToutesLesCases3D\(false\);\n  \}/);
+    assert.match(corps, /octx\.drawImage\(planche, 0, 0\);/);
+    assert.equal((corps.match(/drawContent\(/g) || []).length, 1, 'la Planche n\'est dessinée qu\'une fois');
+  });
+  test('visible = dans une Case ET ni hors du cadre ni caché ; une mesure qui échoue crédite quand même', () => {
     const f = corps.slice(corps.indexOf('const visibleDansSaCase'), corps.indexOf('const credits'));
-    assert.match(f, /const panel = findOwningPanel\(o, page\);\n      return !!panel && !elementHorsChamp3D\(o, panel, page\);/);
+    assert.match(f, /const panel = findOwningPanel\(o, page\);\n      return !!panel && !elementNonVisible3D\(o, panel, page, false\);/);
     assert.match(f, /\} catch \{ return true; \}/);
   });
 });

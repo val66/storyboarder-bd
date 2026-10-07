@@ -52,6 +52,7 @@ régression difficile à retrouver.
 | [ui-scale-coordinates.md](ui-scale-coordinates.md) | Pixels d'écran contre pixels zoomés : pourquoi `zoom` coupe l'application en deux repères, les 137 px mesurés, pourquoi un recadrage expulsait les menus de l'écran, et la règle qui en découle (tâche #417). |
 | [imported-models-display.md](imported-models-display.md) | L'affichage des modèles importés : l'audit qui a suivi le canard orange, les sept corrections (couleurs, métaux, émission, lumières du fichier, import d'un `.gltf`, compressions), et ce qui reste ignoré en connaissance de cause. |
 | [asset-store.md](asset-store.md) | Le store de ressources : périmètre, ce que l'API Sketchfab permet (relevé le 5 octobre 2026), le contrat commun des sources, l'attribution, le découpage (tâches #444 à #446). |
+| [non-visible.md](non-visible.md) | « Non visible » : le rendu d'identifiants qui dit si un Élément est hors du cadre ou caché, ce qu'il ne voit pas exprès, le doute qui profite à la visibilité, et quand il a lieu (tâche #449). |
 
 ---
 

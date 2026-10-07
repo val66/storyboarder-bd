@@ -121,7 +121,7 @@ They come from an explicit exchange, and each will have its test:
 4. **It leaves the free-Elements list** (#420e). A source has neither size nor material: it lights
    what the others show. Mixed in with them it lengthens the list without ever answering the
    question that list is asked — "what is in this Panel?". So it gets its own block, like Paths.
-   **And as a consequence it never goes into "Off-frame"**: that sub-section holds what relates to
+   **And as a consequence it never goes into "Not visible"** (formerly "Off-frame", #449): that sub-section holds what relates to
    no pixel of the image, whereas a light outside the frame explains a good part of it. Its block sits **at the top of the list**, in a fixed position: asked for
    from use, a source is what one looks for first, and letting it drift down with the number of
    Elements made it unfindable.

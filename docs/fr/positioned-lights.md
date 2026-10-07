@@ -121,7 +121,7 @@ Elles viennent d'un échange explicite, et chacune aura son test :
 4. **Elle sort de la liste des Éléments libres** (#420e). Une source n'a ni taille ni matière : elle
    éclaire ce que les autres montrent. Mêlée à eux, elle allonge la liste sans répondre à la
    question qu'on lui pose — « qu'y a-t-il dans cette Case ? ». Elle a donc son bloc, comme les
-   Tracés. **Et par voie de conséquence elle ne va jamais dans « hors champ »** : cette sous-section
+   Tracés. **Et par voie de conséquence elle ne va jamais dans « non visible »** (ex-« hors champ », #449) : cette sous-section
    range ce qui ne se rapporte à aucun pixel de l'image, or une lumière hors cadre en explique une
    bonne part. Son bloc est **en tête de liste**, position fixe : demandé à l'usage, une
    source est ce qu'on cherche en premier, et la faire descendre au gré du nombre d'Éléments la

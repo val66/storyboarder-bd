@@ -58,7 +58,7 @@ export const HELP_MANUAL_EN = [
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
     '"New volume" and "Add a page" in the left-hand menu.',
     'Right-click a volume or a page to export it as PNG or delete it.',
-    'An exported page lists under its image the credits of the 3D models downloaded from the library that are visible in its panels: title, author, license, source and links. The licenses require it, so it is always there.',
+    'An exported page lists under its image the credits of the 3D models downloaded from the library that can be seen in its panels: title, author, license, source and links. The licenses require it, so it is always there.',
     'Expand a volume in the left-hand menu to change its format: Franco-Belge, US comics, vertical webtoon, or custom.',
     'Select a page to set its "Background" on the right: "Page color" is the colour of the paper under the panels. It belongs to the page, not to the volume, so each page can have its own.',
   ]},
@@ -84,7 +84,7 @@ export const HELP_MANUAL_EN = [
   ]},
   { id: 'cases', title: 'Panels', paragraphs: [
     'Right-click an empty area of the page, then "Create a panel".',
-    'Select a panel to view/edit its description and the list of its Elements on the right. Those showing nothing of themselves in the panel are grouped at the bottom, under "Off-frame", where they stay selectable.',
+    'Select a panel to view/edit its description and the list of its Elements on the right. Those not visible in the panel, out of frame or hidden behind something else, are grouped at the bottom, under "Not visible", where they stay selectable.',
     'Drag a corner to give it an oblique shape, or a side to move it while keeping it straight (automatic right-angle snapping).',
     'Right-click a panel → "Bring forward"/"Send backward" to change its stacking order relative to the other panels on the page: when panels overlap, the one in front is drawn on top of the others. Its rank is shown in the "Stacking order" section on the right when several panels are present.',
     'Clicking outside the page canvas (in an empty area with no panel or bubble) deselects the active panel.',
@@ -309,7 +309,7 @@ export const HELP_MANUAL_FR = [
   ]},
   { id: 'cases', title: 'Cases', paragraphs: [
     'Clic droit sur un espace vide de la planche, puis « Créer une case ».',
-    'Sélectionnez une case pour voir/modifier sa description et la liste de ses Éléments à droite. Ceux qui ne montrent rien d\'eux-mêmes dans la Case sont regroupés en bas de la liste, sous « Hors champ » : ils restent sélectionnables.',
+    'Sélectionnez une case pour voir/modifier sa description et la liste de ses Éléments à droite. Ceux qui ne se voient pas dans la Case, hors du cadre ou cachés derrière autre chose, sont regroupés en bas de la liste, sous « Non visible » : ils restent sélectionnables.',
     "Faites glisser un coin pour lui donner une forme oblique, ou un côté pour le déplacer tout en le gardant droit (accrochage automatique à angle droit).",
     "Clic droit sur une case → « Avancer »/« Reculer » pour changer son ordre d'empilement par rapport aux autres Cases de la planche : en cas de chevauchement, la Case la plus avancée s'affiche par-dessus les autres. Son rang s'affiche dans la section « Niveau d'avancement » à droite quand plusieurs Cases sont présentes.",
     "Cliquer en dehors de la Planche (dans une zone sans Case ni Bulle) désélectionne la Case active.",

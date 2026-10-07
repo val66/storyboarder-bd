@@ -143,9 +143,10 @@ ouvre la bibliothèque : c'est donc la fiche qui porte l'attribution.
 
 **Dans les exports (#444f).** Une Planche exportée, en PNG comme en PDF, porte sous son image (et
 sous la liste des Cases si elle est affichée) une section « Crédits des modèles 3D » : pour chaque
-modèle VISIBLE de la Planche qui a une attribution (dans une Case et dans son cadre : une Case qui a
-reçu une grande Scène n'en crédite que ce qu'elle montre ; l'occultation par un autre objet n'est
-pas calculée, et une projection qui échoue crédite dans le doute), son titre, son auteur, sa licence, sa source, puis
+modèle VISIBLE de la Planche qui a une attribution (dans une Case, ni hors de son cadre ni caché derrière
+autre chose : une Case qui a reçu une grande Scène n'en crédite que ce qu'elle montre ; la décision
+est celle de la liste « Non visible », cf. [non-visible.md](non-visible.md), et une mesure qui
+échoue crédite dans le doute), son titre, son auteur, sa licence, sa source, puis
 l'adresse du modèle et celle de la licence. Les crédits sont écrits DANS l'image, pas dans un
 `.txt` posé à côté qui se perdrait au premier envoi, et toujours, quel que soit le réglage des
 descriptions de Cases : c'est une obligation des licences. Les modèles CC0 sont crédités aussi ;

@@ -40,7 +40,7 @@ import {
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS , nomNumeroteLibre3D} from './utils.js';
 import {
-  findOwningPanel, elementHorsChamp3D, groundMagnetEligible, applyGroundMagnetY,
+  findOwningPanel, elementNonVisible3D, mesurerToutesLesCases3D, groundMagnetEligible, applyGroundMagnetY,
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
   drawPanelScene3D, drawObject3D,
   projectElementCenterToCanvas3D, getElementProjectedHalfExtents3D,
@@ -3260,15 +3260,25 @@ export async function exportPage(volumeIdx, pageIdx, format = 'png'){
   // #444f : LES CRÉDITS DES MODÈLES 3D, sous la Planche (et sous les Cases s'il y en a), TOUJOURS,
   // quel que soit le réglage des descriptions : c'est une obligation des licences, pas un choix de
   // mise en page. Seuls les modèles venus d'une source ont une attribution (export-credits.js).
-  // Seuls les modèles VISIBLES dans leur Case (demandé) : la même décision que la liste « hors
-  // champ » de la barre latérale, à la boîte projetée du modèle. Un modèle caché DERRIÈRE un autre
-  // objet compte encore (on ne calcule pas l'occultation). Un modèle qui n'appartient à aucune Case
-  // n'est pas dessiné du tout (cf. drawContent) : pas de crédit. Dans le doute, une projection qui
-  // échoue, on crédite : un crédit de trop ne coûte rien, un crédit manquant enfreint une licence.
+  //
+  // #449 : SEULS LES MODÈLES VISIBLES, hors du cadre ET cachés derrière autre chose exclus. C'est la
+  // même décision que la liste « Non visible » de la barre latérale (elementNonVisible3D), mesurée
+  // sur le rendu même de l'export : la Planche est donc DESSINÉE D'ABORD, toutes ses Cases mesurées,
+  // et les crédits calculés ensuite. Un modèle qui n'appartient à aucune Case n'est pas dessiné du
+  // tout (cf. drawContent) : pas de crédit. Dans le doute (mesure impossible), on crédite : un
+  // crédit de trop ne coûte rien, un crédit manquant enfreint une licence.
+  const planche = document.createElement('canvas');
+  planche.width = pageW; planche.height = pageH;
+  mesurerToutesLesCases3D(true);
+  try {
+    drawContent(planche.getContext('2d'), page, exportScale, false, S.exportShowPanelBadges);
+  } finally {
+    mesurerToutesLesCases3D(false);
+  }
   const visibleDansSaCase = (o) => {
     try {
       const panel = findOwningPanel(o, page);
-      return !!panel && !elementHorsChamp3D(o, panel, page);
+      return !!panel && !elementNonVisible3D(o, panel, page, false);
     } catch { return true; }
   };
   const credits = creditsDeLaPage(page, attributions, visibleDansSaCase);
@@ -3285,7 +3295,7 @@ export async function exportPage(volumeIdx, pageIdx, format = 'png'){
   const off = document.createElement('canvas');
   off.width = pageW; off.height = pageH + infoHeight + creditsHeight;
   const octx = off.getContext('2d');
-  drawContent(octx, page, exportScale, false, S.exportShowPanelBadges);
+  octx.drawImage(planche, 0, 0);
 
   if (panels.length) {
     octx.save();

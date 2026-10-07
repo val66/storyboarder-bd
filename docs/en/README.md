@@ -52,6 +52,7 @@ down.
 | [ui-scale-coordinates.md](ui-scale-coordinates.md) | Screen pixels against zoomed pixels: why `zoom` splits the application in two coordinate systems, the 137 px measured, why a clamping function pushed menus off screen, and the rule that follows (task #417). |
 | [imported-models-display.md](imported-models-display.md) | How imported models are displayed: the audit that followed the orange duck, the seven fixes (colours, metals, emission, the file's lights, importing a `.gltf`, compressions), and what stays ignored knowingly. |
 | [asset-store.md](asset-store.md) | The asset store: scope, what the Sketchfab API allows (checked on 5 October 2026), the common source contract, attribution, breakdown (tasks #444 to #446). |
+| [non-visible.md](non-visible.md) | "Not visible": the ID render that tells whether an Element is out of frame or hidden, what it deliberately does not see, the doubt that favours visibility, and when it runs (task #449). |
 
 ---
 

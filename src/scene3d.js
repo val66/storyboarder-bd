@@ -43,6 +43,7 @@ import { box3FromObjectSkinAware3D, box3FromObjectSkinAwareCached3D } from './sk
 import { boiteDesOsMappes3D, applySkeletonPose } from './rig3d.js';
 // Le champ visible d'une Case : il sert de plan éloigné à l'ombre d'une source SANS portée (#422d).
 import { champVisibleDeCase3D } from './shadows-3d.js';
+import { cadreDeMesure, mesurerVisibilites3D, estNonVisible } from './visibilite-3d.js';
 import {
   applyGroundType,
   applyStyle3DLighting, appliquerEclairageDeCase3D, appliquerOmbresDeCase3D, appliquerOmbreSourcePosee3D,
@@ -2087,7 +2088,10 @@ function renderPanelScene3D(panel, page, styleKey, scale = 1){
   const sig = computePanelSceneSignature3D(panel, page, styleKey) + '||scale:' + scale;
   sondeFin('signature de Case', _tSig);
   const cached = panelSceneCache3D.get(panel.id);
-  if (cached && cached.sig === sig) { sondeCompter('Case servie par le cache'); return cached; }
+  // #449 : une image en cache SANS la mesure de visibilité qu'on attend d'elle ne suffit pas ; la
+  // Case est rendue de nouveau, une fois, pour l'obtenir.
+  const _mesureManquante = _mesurerCase3D(panel.id) && !(cached && cached.visibilites && cached.visibilites.sig === sig);
+  if (cached && cached.sig === sig && !_mesureManquante) { sondeCompter('Case servie par le cache'); return cached; }
   // Budget épuisé : on REMET À PLUS TARD plutôt que de bloquer. La Case garde son image précédente
   // si elle en a une — périmée d'une frame, ce qui ne se voit pas — et n'affiche rien si elle est
   // froide, ce qui la laisse à son fond blanc et à sa bordure, exactement comme avant l'arrivée de
@@ -2416,6 +2420,9 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   // par diverger (cf. le saut de 116 px de #420d, né de cette faute).
   const _posLumieres3D = new Map();
   jalon('  1. caméra, éclairage, ombres, murs fusionnés, Sol');
+  // #449 : le groupe de chaque Élément qui peut être « non visible » (Personnages, objets, modèles ;
+  // les murs et le sol ne font que cacher), pour le rendu d'identifiants.
+  const _groupesVisibilite = new Map();
   const _placerElement3D = (o, idx) => {
     if (o.objType === 'dalle') return; // rendered separately below (THREE.ShapeGeometry)
     if (mergedWallCovered.has(o.id)) return; // rendered via a merged group (below)
@@ -2435,6 +2442,7 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
     } else {
       entry = ensureObjectRigEntry3D(o);
     }
+    if (o.type === 'perso' || (o.type === 'objet3d' && !WALL_TYPES.includes(o.objType))) _groupesVisibilite.set(o.id, entry.figureGroup);
     // For S.buildTool walls, use the stored world coords directly (more precise than
     // re-deriving them from the 2D box, which is now computed differently).
     const unitsH = (o.realHeightFloor !== undefined) ? o.realHeightFloor : ensureElementUnits3D(o).h;
@@ -3135,7 +3143,76 @@ function renderPanelSceneUncached3D(panel, page, styleKey, scale, sig){
   ctx2d.drawImage(personaRenderer3D.domElement, 0, 0, rw, rh);
   sondeFin('  dont copie vers la Planche', _tCopie);
   entryCache.sig = sig; entryCache.rw = rw; entryCache.rh = rh;
+  // #449 : la mesure de visibilité, sur la scène telle qu'elle vient d'être rendue, pour les Cases
+  // qui l'ont demandée (liste latérale) ou toutes pendant un export (crédits). Un échec est NOTÉ,
+  // pas réessayé : réessayer redemanderait un rendu à chaque image.
+  entryCache.visibilites = null;
+  if (_mesurerCase3D(panel.id)) {
+    const _restaurer = sansLesEnfantsMasques3D(personaScene3D);
+    try {
+      entryCache.visibilites = { sig, ...mesurerVisibilites3D({
+        renderer: personaRenderer3D, scene: personaScene3D, camera: personaCamera3D,
+        groupes: _groupesVisibilite, cadre: cadreDeMesure(rw, rh, panel, page),
+      }) };
+    } catch (e) {
+      entryCache.visibilites = { sig, echec: true };
+      if (!_alerteVisibilite) { _alerteVisibilite = true; console.warn('[non visible] mesure impossible, les Éléments restent visibles :', e); }
+    } finally {
+      _restaurer();
+    }
+  }
   return entryCache;
+}
+
+// ════════════════════════════════════════════════════════════
+// #449 : « NON VISIBLE » (hors du cadre, ou caché derrière autre chose)
+// ════════════════════════════════════════════════════════════
+// Les Cases à mesurer : celles que la liste latérale a demandées (les dernières seulement, la
+// mesure a un coût), ou toutes pendant un export.
+const _casesAMesurer = new Set();
+const CASES_A_MESURER_MAX = 8;
+let _mesurerToutes = false;
+let _redessinDemande = false;
+let _alerteVisibilite = false;
+function _mesurerCase3D(id){ return _mesurerToutes || _casesAMesurer.has(id); }
+
+/** Pendant un export, toutes les Cases rendues sont mesurées (les crédits en dépendent). */
+export function mesurerToutesLesCases3D(actif){ _mesurerToutes = !!actif; }
+
+function _demanderMesure3D(panel){
+  if (_casesAMesurer.has(panel.id)) return;
+  _casesAMesurer.add(panel.id);
+  while (_casesAMesurer.size > CASES_A_MESURER_MAX) _casesAMesurer.delete(_casesAMesurer.values().next().value);
+  // Un dessin de plus, hors de la pile en cours : c'est lui qui fera la mesure (renderPanelScene3D
+  // ne sert plus le cache tant qu'elle manque), puis reconstruira la liste.
+  if (!_redessinDemande && _drawCurrentPage) {
+    _redessinDemande = true;
+    setTimeout(() => { _redessinDemande = false; if (_drawCurrentPage) _drawCurrentPage(); }, 0);
+  }
+}
+
+/**
+ * Les pixels visibles de cet Élément dans le dernier rendu de sa Case, ou null s'il n'a pas été
+ * mesuré (rien demandé encore, rig pas chargé, échec). `demander` : en l'absence de mesure, la
+ * réclamer pour la prochaine image.
+ */
+export function pixelsVisibles3D(o, panel, demander = true){
+  const entree = panelSceneCache3D.get(panel.id);
+  const v = entree && entree.visibilites;
+  if (!v || v.sig !== entree.sig) { if (demander) _demanderMesure3D(panel); return null; }
+  if (v.echec || !v.mesurables.has(o.id)) return null;
+  return v.comptes.get(o.id) || 0;
+}
+
+/**
+ * Cet Élément est-il NON VISIBLE dans sa Case : hors du cadre, OU caché ? Le test géométrique
+ * d'abord, qui suffit quand il dit « hors champ » ; sinon la mesure, si elle existe. Sans mesure,
+ * visible (cf. l'en-tête de visibilite-3d.js).
+ */
+export function elementNonVisible3D(o, panel, page, demander = true){
+  if (!o || !panel || !page) return false;
+  if (elementHorsChamp3D(o, panel, page)) return true;
+  return estNonVisible({ horsChamp: false, mesure: pixelsVisibles3D(o, panel, demander) });
 }
 // "Draw onto the page's 2D canvas" variant of renderPanelScene3D, with the same call signature as
 // drawPersona3D/drawObject3D (which it replaces, for Elements owned by a Panel, in

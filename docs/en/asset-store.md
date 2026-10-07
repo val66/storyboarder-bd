@@ -144,8 +144,9 @@ the library: the details view is therefore what carries the attribution.
 
 **In exports (#444f).** An exported Page, PNG or PDF alike, carries under its image (and under the
 list of Panels if shown) a "3D model credits" section: for each VISIBLE model of the Page that has an
-attribution (inside a Panel and within its frame: a Panel that received a large Scene only credits
-what it shows; hiding behind another object is not computed, and a projection that fails credits in
+attribution (inside a Panel, neither out of its frame nor hidden behind
+something else: a Panel that received a large Scene only credits what it shows; the decision is the
+"Not visible" list's, see [non-visible.md](non-visible.md), and a measurement that fails credits in
 doubt), its title, author, license, source, then the model's address and the license's. The
 credits are written INSIDE the image, not in a `.txt` next to it that would be lost at the first
 sending, and always, whatever the Panel descriptions setting: the licenses require it. CC0 models

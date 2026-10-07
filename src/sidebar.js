@@ -36,8 +36,7 @@ import { groupeReplie, memoriserGroupe } from './section-memory.js';
 import {
   findOwningPanel, centerSceneCameraOnElement, centerSceneCameraOnRoom,
   drawAxisGizmoAt, panelSceneCache3D,
-
-  elementHorsChamp3D,
+  elementNonVisible3D,
 } from './scene3d.js';
 import { getPanelPoints, drawCurrentPage, queueEffectiveDeLaBulle } from './draw.js';
 import { stackRankLabel, noDescriptionLabel } from './i18n.js';
@@ -610,7 +609,9 @@ export function getRoomConnectedComponents(panel, page){
  * groupes, le compte dans le titre, la présence des séparateurs. Le défaut par défaut reste le
  * vrai calcul ; seuls les tests passent autre chose.
  */
-export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D){
+// #449 : « Non visible » remplace « Hors champ » : hors du cadre OU caché derrière autre chose
+// (elementNonVisible3D, rendu d'identifiants). Le paramètre garde son nom, il reste injectable.
+export function renderSidePersonas(panel, page, horsChampFn = elementNonVisible3D){
   sidePersonas.innerHTML = '';
   const list = elementsInPanel(panel, page);
   // Tracés (Roads, Paths, Zones) attached to this panel.
@@ -903,7 +904,7 @@ export function renderSidePersonas(panel, page, horsChampFn = elementHorsChamp3D
     titre.className = 'side-hors-champ-titre';
     // Le NOMBRE est dans le titre : sans lui, il faudrait compter les lignes pour savoir combien
     // d'Éléments ont quitté le cadre, c'est la première question qu'on se pose en le lisant.
-    titre.textContent = tr(`Off-frame (${horsChamp.length})`, `Hors champ (${horsChamp.length})`);
+    titre.textContent = tr(`Not visible (${horsChamp.length})`, `Non visible (${horsChamp.length})`);
     sidePersonas.appendChild(titre);
     const bloc = document.createElement('div');
     bloc.className = 'side-hors-champ';
