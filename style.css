@@ -2167,6 +2167,41 @@ body.modale-en-glisser, body.modale-en-glisser *{ cursor:move !important; user-s
 .store-fiche-texte{ margin:4px 0 0; font-size:13px; color:var(--ink); }
 /* Renommer (jaune) et Supprimer (rouge) : texte blanc sur les deux (demandé). */
 .store-fiche-actions .store-action-blanc{ color:#fff; }
+/* Catégorie et tags, sous la source (demandé). Des pastilles ; la catégorie et « + Tags » s'ouvrent. */
+.store-classement{ position:relative; margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+.store-classement-ligne{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.store-chip{
+  display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-family:'Inter',sans-serif;
+  font-size:12px; border:1px solid var(--line); background:var(--white); color:var(--ink);
+}
+button.store-chip{ cursor:pointer; }
+button.store-chip:hover{ border-color:var(--accent); }
+.store-chip-categorie{ background:var(--accent-soft); color:var(--accent); border-color:transparent; font-weight:600; }
+.store-chip-categorie::after{ content:' ▾'; }
+.store-chip-categorie.store-chip-vide{ background:var(--line); color:var(--ink-soft); }
+.store-chip-action{ border-style:dashed; color:var(--ink-soft); }
+/* Les menus flottants de la fiche et du filtre par tags. */
+.store-menu-flottant{
+  position:absolute; left:0; top:100%; margin-top:4px; z-index:6; min-width:240px; max-height:320px; overflow-y:auto; padding:6px;
+  background:var(--white); border:1px solid var(--line); border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+}
+.store-tags-zone{ position:relative; }
+.store-tags-zone[hidden]{ display:none; }
+.store-tags-zone .store-menu-flottant{ left:auto; right:0; }
+.store-tags-btn{ height:100%; padding:7px 12px; border:1px solid var(--line); border-radius:6px; background:var(--white); color:var(--ink); font-family:'Inter',sans-serif; font-size:13px; cursor:pointer; white-space:nowrap; }
+.store-tags-btn.actif{ border-color:var(--accent); color:var(--accent); }
+.store-tag-ligne{ display:flex; align-items:center; gap:4px; }
+.store-tag-coche{ flex:1 1 auto; display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:5px; cursor:pointer; font-size:13px; color:var(--ink); }
+.store-tag-coche:hover{ background:var(--accent-soft); }
+.store-tag-nom{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.store-tag-outil{ flex:none; border:0; background:none; cursor:pointer; padding:3px 5px; border-radius:4px; font-size:12px; opacity:.6; }
+.store-tag-outil:hover{ opacity:1; background:var(--line); }
+/* Un champ de MENU, pas de formulaire : il ne suit pas l'espacement des champs de modale (même
+   spécificité que `.modal-box input[type=text]`, déclarée après : elle l'emporte). */
+.store-menu-flottant input.store-tag-champ{ width:100%; margin:6px 0 0; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--paper-dark); color:var(--ink); font-size:13px; }
+.store-menu-erreur{ margin:4px 0 0; font-size:12px; color:var(--danger); }
+.store-menu-erreur:empty{ display:none; }
+.store-menu-vide{ margin:4px 6px; font-size:12px; color:var(--ink-soft); }
 .store-carte-introuvable .store-carte-auteur{ color:var(--warn); }
 /* Une vignette locale n'est jamais rognée : celles venues d'une source sont carrées, la carte non. */
 .store-carte-locale img{ object-fit:contain; }

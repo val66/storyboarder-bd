@@ -8679,6 +8679,8 @@ cablerStore({
   renommerModele: (fichier) => demanderRenommageModele(fichier),
   supprimerModele: (fichier) => supprimerModeleAvecConfirmation(fichier),
   squeletteModele: (fichier) => openSkeletonMapModal(fichier),
+  // Confirmer la suppression d'un tag : la fenêtre de confirmation habituelle, devant la bibliothèque.
+  confirmer: (message) => confirmAction(message),
 });
 
 enregistrerFermeture('skeletonMapModal', () => fermerSkeletonMap(false));

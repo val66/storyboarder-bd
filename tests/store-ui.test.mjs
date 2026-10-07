@@ -224,6 +224,13 @@ describe('le câblage', () => {
     assert.match(fl, /imageDeFiche\(e\.fichier, visuel\.clientWidth \* ratio, visuel\.clientHeight \* ratio\)/);
     assert.match(lire('style.css'), /justify-content:flex-start; text-align:left;/);
   });
+  test('la fiche locale : catégorie et tags sous la source, plus dans les caractéristiques', () => {
+    const f = UI.slice(UI.indexOf('function ficheLocale'));
+    assert.match(f, /e\.introuvable \? null : blocClassement\(e\.fichier\),/);
+    assert.doesNotMatch(f.slice(0, f.indexOf('const retour')), /t\.ligneCategorie\(/);
+    // Le menu des tags rouvre après un changement, mais pas après une fermeture par l'utilisateur.
+    assert.match(UI, /\(\) => \{ if \(!reconstruction\) menuTags = false; \}/);
+  });
   test('les modules du store voyagent avec l\'application', () => {
     const pkg = JSON.parse(lire('package.json'));
     for (const f of ['store.js', 'store-sources.js', 'store-sketchfab.js', 'store-polyhaven.js', 'gltf-glb.js', 'store-categories.js']) assert.ok(pkg.build.files.includes(f), f);

@@ -79,6 +79,8 @@ interface StoryboarderAPI {
     simulation: boolean;
   }>;
   storeChercher(sourceId: string, params: object): Promise<{ resultats?: object[]; suivant?: string | null; ecartes?: number; erreur?: string }>;
+  bibliothequeLire(): Promise<{ version: number; categories: Record<string, string>; tags: { id: string; nom: string }[]; tagsParModele: Record<string, string[]> }>;
+  bibliothequeOperation(op: string, args: object): Promise<{ bibliotheque?: object; id?: string | null; erreur?: string }>;
   modelesInfos(): Promise<{ nom: string; taille: number | null; modifie: number | null }[]>;
   vignettesEtat(): Promise<{ aFaire: { nom: string; signature: string }[]; aMesurer: { nom: string; signature: string }[]; pretes: string[]; metas: Record<string, { dimensions: number[] | null; noms: string[] }> }>;
   vignettesLire(nom: string): Promise<{ ok: boolean; data?: Uint8Array; type?: string }>;

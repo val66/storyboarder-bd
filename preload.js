@@ -56,6 +56,9 @@ contextBridge.exposeInMainWorld('storyboarderAPI', {
   // Vignettes des modèles locaux : ce qui est à rendre, lire une vignette, en écrire une.
   vignettesEtat: () => ipcRenderer.invoke('vignettes:etat'),
   modelesInfos: () => ipcRenderer.invoke('models:infos'),
+  // La catégorie choisie et les tags des modèles : lire, et une opération à la fois.
+  bibliothequeLire: () => ipcRenderer.invoke('bibliotheque:lire'),
+  bibliothequeOperation: (op, args) => ipcRenderer.invoke('bibliotheque:operation', op, args),
   vignettesLire: (nom) => ipcRenderer.invoke('vignettes:lire', nom),
   vignettesEcrire: (nom, data, meta) => ipcRenderer.invoke('vignettes:ecrire', nom, data, meta),
   vignettesMesures: (nom, meta) => ipcRenderer.invoke('vignettes:mesures', nom, meta),

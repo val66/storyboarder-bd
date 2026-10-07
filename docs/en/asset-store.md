@@ -76,6 +76,16 @@ The details reuse the gestures of the rest of the application, injected by event
 (closes the window), Skeleton…, Rename…, Delete, and right-click on a card. The window sits BEFORE the
 other modals in the document: the ones it opens come in front of it.
 
+## Chosen category and tags
+
+In the details of a model in "My models", under the source: the **category** (one, from the common
+list; it replaces the source's or the guessed one, "Automatic" hands it back) and the user's
+**tags** (several per model, created, renamed and deleted from the "+ Tags" menu). The "Tags"
+filter keeps the models that have ALL the ticked tags. It all lives in `bibliotheque-modeles.json`,
+next to the Modeles folder, and follows model renames and deletions. What decides is in
+`bibliotheque-modeles.js` (pure); the interface asks for an operation (`bibliotheque:operation`) and
+gets the new state back.
+
 ## The source contract
 
 Two modules at the root, in CommonJS, tested under plain Node:

@@ -92,6 +92,7 @@ export function rafraichirTextesStore(){
   // Ce qui n'a de sens que d'un côté : l'usage pour ses modèles, la taille pour une source en ligne
   // (un modèle local n'a pas son nombre de faces sans être décodé).
   $('storeUsage').hidden = !local;
+  rendreFiltreTags();
   $('storeFaces').hidden = local;
   garder('storeLicence', () => options($('storeLicence'), [['', t.toutesLicences], ...infos.licences.map(l => [l.code, l.libelle])]));
   garder('storeFaces', () => options($('storeFaces'), PLAFONDS_FACES.map(n => [n ? String(n) : '', n ? t.facesMax(nombreCourt(n, langue())) : t.facesToutes])));
@@ -531,6 +532,8 @@ function fermerFiche(){
   $('storeGrille').hidden = false;
   $('storePlusBtn').hidden = !suivant;
   $('storeFormulaire').hidden = false;
+  // Une catégorie ou un tag changé dans la fiche : la grille suit (sans relire le disque).
+  if (listePerimee && source === LOCAL && afficherLocal) { listePerimee = false; afficherLocal(); rendreFiltreTags(); }
   if (ouverte) $('storeDefilement').scrollTop = positionListe;   // on retrouve la liste où on l'avait laissée
 }
 
@@ -583,22 +586,31 @@ function infosLocales(){
 }
 
 let entreesAffichees = [];
+let bibliotheque = null;        // catégories choisies et tags (bibliotheque-modeles.js)
+let donneesLocales = { fichiers: [], attributions: [] };
+let afficherLocal = null;       // refait la grille locale sans relire le disque
+let listePerimee = false;       // une catégorie ou un tag a changé depuis la fiche : la grille suit
+let tagsFiltre = [];            // les tags du filtre (le modèle doit les porter TOUS)
 /** Les cartes par fichier, pour poser une vignette dès qu'elle est prête. */
 const cartesLocales = new Map();
 
 async function chercherLocal(moi){
   const t = textesStore(langue());
   const pont = window.storyboarderAPI || {};
-  const [fichiers, attributions] = await Promise.all([
+  const [fichiers, attributions, biblio] = await Promise.all([
     pont.modelesInfos ? pont.modelesInfos() : [],
     pont.storeTelecharges ? pont.storeTelecharges() : [],
+    pont.bibliothequeLire ? pont.bibliothequeLire() : null,
   ]);
   if (moi !== generation) return;
   enCours = false;
+  bibliotheque = biblio;
+  donneesLocales = { fichiers, attributions };
+  rendreFiltreTags();
   const afficher = () => {
-    const toutes = entreesLocales({ fichiers, attributions, projet: { tomes: S.tomes, scenes: S.scenes }, metas: metasLocales() });
+    const toutes = toutesLesEntrees();
     const p = derniereRecherche || {};
-    entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom' });
+    entreesAffichees = filtrerEntrees(toutes, { texte: p.texte, categorie: p.categorie, usage: p.usage, tri: TRIS_LOCAUX.includes(p.tri) ? p.tri : 'nom', tags: tagsFiltre });
     cartesLocales.clear();
     affiches = entreesAffichees.map(e => ({ ...e, local: true }));
     $('storeGrille').replaceChildren(...affiches.map(carte));
@@ -606,6 +618,7 @@ async function chercherLocal(moi){
     message(toutes.length ? (affiches.length ? '' : t.aucunLocal) : t.videLocal);
   };
   afficher();
+  afficherLocal = afficher;
   // Les vignettes manquantes se rendent en arrière-plan ; chaque carte se met à jour à son tour.
   // Le rendu MESURE aussi chaque modèle (dimensions, noms des nœuds, d'où une catégorie mieux
   // devinée) : la grille est refaite une fois à la fin, si l'on est toujours sur la liste.
@@ -619,12 +632,196 @@ async function chercherLocal(moi){
   });
 }
 
+/** Les entrées locales, d'après les dernières données lues (disque, attributions, bibliothèque). */
+function toutesLesEntrees(){
+  return entreesLocales({ ...donneesLocales, projet: { tomes: S.tomes, scenes: S.scenes }, metas: metasLocales(), bibliotheque });
+}
+
 function poserVignette(carteEl, nom){
   const url = vignetteLocale(nom);
   const cadre = carteEl && carteEl.children && carteEl.children[0];
   if (!url || !cadre) return;
   if (cadre.tagName === 'IMG') { if (cadre.getAttribute('src') !== url) cadre.setAttribute('src', url); return; }
   carteEl.replaceChild(el('img', { attrs: { src: url, alt: '' } }), cadre);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Catégorie choisie et tags (demandé) : dans la fiche, et le filtre par tags
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Ce qui décide est dans bibliotheque-modeles.js (processus principal) : l'interface demande une
+// opération et reçoit le nouvel état. Une catégorie par modèle, prise dans la liste commune ; des
+// tags libres, plusieurs par modèle, créés, renommés et supprimés depuis le menu des tags de la fiche.
+
+let menuOuvert = null;   // { fermer } du menu flottant ouvert
+
+/**
+ * Un menu flottant sous `ancre`, dans `conteneur` (en position relative). Se ferme d'un clic
+ * ailleurs ou par Échap ; un seul à la fois. `remplir(menu, fermer)` le construit.
+ */
+function menuFlottant(conteneur, remplir, classe = '', quandFerme = null){
+  if (menuOuvert) menuOuvert.fermer();
+  const menu = el('div', { classe: 'store-menu-flottant ' + classe, attrs: { role: 'menu' } });
+  const ailleurs = (e) => { if (!menu.contains(e.target) && !conteneur.contains(e.target)) fermer(); };
+  const echap = (e) => { if (e.key === 'Escape') { e.stopPropagation(); fermer(); } };
+  function fermer(){
+    menu.remove();
+    document.removeEventListener('mousedown', ailleurs, true);
+    document.removeEventListener('keydown', echap, true);
+    if (menuOuvert && menuOuvert.menu === menu) menuOuvert = null;
+    if (quandFerme) quandFerme();
+  }
+  remplir(menu, fermer);
+  conteneur.appendChild(menu);
+  document.addEventListener('mousedown', ailleurs, true);
+  document.addEventListener('keydown', echap, true);
+  menuOuvert = { menu, fermer };
+  return menuOuvert;
+}
+
+/** Une opération sur la bibliothèque ; rend la réponse, et marque la grille à refaire. */
+async function operer(op, args){
+  const pont = window.storyboarderAPI;
+  if (!pont || !pont.bibliothequeOperation) return { erreur: 'indisponible' };
+  const r = await pont.bibliothequeOperation(op, args);
+  if (r && r.bibliotheque) { bibliotheque = r.bibliotheque; listePerimee = true; }
+  return r || { erreur: 'reponse' };
+}
+
+const tousLesTags = () => ((bibliotheque && bibliotheque.tags) || []).slice().sort((x, y) => x.nom.localeCompare(y.nom, 'fr'));
+const entreeDe = (fichier) => toutesLesEntrees().find(x => x.fichier === fichier) || null;
+
+/**
+ * Le bloc « catégorie + tags » d'une fiche. Se reconstruit lui-même après chaque changement (sans
+ * refaire toute la fiche : l'image ou l'aperçu 3D restent en place).
+ */
+function blocClassement(fichier){
+  const t = textesStore(langue());
+  const bloc = el('div', { classe: 'store-classement' });
+  let menuTags = false;   // rouvrir le menu des tags après un changement fait depuis lui
+  let reconstruction = false;   // le menu est fermé PAR la reconstruction, pas par l'utilisateur
+
+  const majBloc = () => {
+    const e = entreeDe(fichier);
+    if (!e) return;
+    const chipCat = el('button', {
+      texte: nomCategorie(e.categorie) + (e.categorieDevinee ? ` · ${t.devineeCourt}` : ''),
+      classe: 'store-chip store-chip-categorie' + (e.categorie === NON_CLASSE ? ' store-chip-vide' : ''),
+      attrs: { type: 'button', title: t.changerCategorie, 'aria-haspopup': 'menu' },
+    });
+    chipCat.onclick = () => { menuTags = false; menuFlottant(bloc, (menu, fermer) => {
+      const choix = (slug, libelle, actif) => {
+        const b = el('button', { texte: (actif ? '✓ ' : '') + libelle, classe: 'store-menu-resolution' + (actif ? ' actif' : ''), attrs: { type: 'button', role: 'menuitemradio' } });
+        b.onclick = async () => { fermer(); await operer('categorie', { fichier, categorie: slug }); majBloc(); };
+        return b;
+      };
+      // « Automatique » rend la main à la source ou à la devinette : seulement si l'on avait choisi.
+      if (e.categorieChoisie) menu.appendChild(choix(null, t.categorieAuto, false));
+      (infos && infos.categories || []).forEach(c => menu.appendChild(choix(c.slug, c[langue()], e.categorie === c.slug)));
+      menu.appendChild(choix(NON_CLASSE, t.nonClasse, e.categorie === NON_CLASSE));
+    }, 'store-menu-categories'); };
+
+    const chips = e.nomsTags.map(n => el('span', { texte: n, classe: 'store-chip store-chip-tag' }));
+    const ajouter = el('button', { texte: e.tags.length ? t.modifierTags : t.ajouterTags, classe: 'store-chip store-chip-action', attrs: { type: 'button', 'aria-haspopup': 'menu' } });
+    // Le menu se rouvre après un changement fait depuis lui ; fermé par l'utilisateur, il le reste.
+    const ouvrirTags = () => menuFlottant(bloc, (menu) => remplirMenuTags(menu, e), 'store-menu-tags', () => { if (!reconstruction) menuTags = false; });
+    ajouter.onclick = () => { menuTags = true; ouvrirTags(); };
+    reconstruction = true;
+    if (menuOuvert) menuOuvert.fermer();
+    reconstruction = false;
+    bloc.replaceChildren(
+      el('div', { classe: 'store-classement-ligne' }, [chipCat]),
+      el('div', { classe: 'store-classement-ligne' }, [...chips, ajouter]),
+    );
+    if (menuTags) ouvrirTags();
+  };
+
+  /** Le menu des tags : cocher pour ce modèle, renommer, supprimer, créer. */
+  const remplirMenuTags = (menu, e) => {
+    const erreur = el('p', { classe: 'store-menu-erreur' });
+    const refaire = () => { majBloc(); };
+    const ligneTag = (tag) => {
+      const coche = el('input', { attrs: { type: 'checkbox' } });
+      coche.checked = e.tags.includes(tag.id);
+      coche.onchange = async () => { await operer('tagModele', { fichier, id: tag.id, actif: coche.checked }); refaire(); };
+      const nom = el('span', { texte: tag.nom, classe: 'store-tag-nom' });
+      const libelle = el('label', { classe: 'store-tag-coche' }, [coche, nom]);
+      const crayon = el('button', { texte: '✏️', classe: 'store-tag-outil', attrs: { type: 'button', title: t.renommerTag } });
+      const corbeille = el('button', { texte: '🗑', classe: 'store-tag-outil', attrs: { type: 'button', title: t.supprimerTag } });
+      const ligne = el('div', { classe: 'store-tag-ligne' }, [libelle, crayon, corbeille]);
+      crayon.onclick = () => {
+        const champ = el('input', { classe: 'store-tag-champ', attrs: { type: 'text', value: tag.nom, maxlength: '40' } });
+        champ.value = tag.nom;
+        ligne.replaceChildren(champ);
+        champ.focus();
+        champ.select();
+        champ.onkeydown = async (ev) => {
+          if (ev.key === 'Escape') { ev.stopPropagation(); refaire(); return; }
+          if (ev.key !== 'Enter') return;
+          ev.preventDefault();
+          const r = await operer('renommerTag', { id: tag.id, nom: champ.value });
+          if (r.erreur) { erreur.textContent = t.erreursTag[r.erreur] || t.erreursTag.vide; return; }
+          refaire();
+        };
+      };
+      corbeille.onclick = async () => {
+        const n = Object.values((bibliotheque && bibliotheque.tagsParModele) || {}).filter(ids => ids.includes(tag.id)).length;
+        const ok = _rappels.confirmer ? await _rappels.confirmer(t.confirmerSuppressionTag(tag.nom, n)) : true;
+        if (!ok) return;
+        await operer('supprimerTag', { id: tag.id });
+        tagsFiltre = tagsFiltre.filter(x => x !== tag.id);
+        refaire();
+      };
+      return ligne;
+    };
+    const nouveau = el('input', { classe: 'store-tag-champ', attrs: { type: 'text', placeholder: t.nouveauTag, maxlength: '40' } });
+    nouveau.onkeydown = async (ev) => {
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      const r = await operer('creerTag', { nom: nouveau.value });
+      if (!r.id) { erreur.textContent = t.erreursTag.vide; return; }
+      await operer('tagModele', { fichier, id: r.id, actif: true });   // créé depuis ce modèle : il le porte
+      refaire();
+    };
+    const tags = tousLesTags();
+    menu.replaceChildren(
+      ...(tags.length ? tags.map(ligneTag) : [el('p', { texte: t.aucunTag, classe: 'store-menu-vide' })]),
+      nouveau,
+      erreur,
+    );
+    setTimeout(() => nouveau.focus(), 0);
+  };
+
+  majBloc();
+  return bloc;
+}
+
+/** Le filtre par tags de « Mes modèles » : un bouton, et un menu de cases à cocher. */
+function rendreFiltreTags(){
+  const zone = $('storeTagsZone');
+  const bouton = $('storeTagsBtn');
+  if (!zone || !bouton) return;
+  const t = textesStore(langue());
+  const tags = tousLesTags();
+  // Un tag supprimé ailleurs quitte le filtre.
+  tagsFiltre = tagsFiltre.filter(id => tags.some(x => x.id === id));
+  zone.hidden = source !== LOCAL || !tags.length;
+  bouton.textContent = (tagsFiltre.length ? t.tagsChoisis(tagsFiltre.length) : t.tousLesTags) + ' ▾';
+  bouton.classList.toggle('actif', tagsFiltre.length > 0);
+  bouton.onclick = () => menuFlottant(zone, (menu) => {
+    tousLesTags().forEach(tag => {
+        const coche = el('input', { attrs: { type: 'checkbox' } });
+        coche.checked = tagsFiltre.includes(tag.id);
+        coche.onchange = () => {
+          tagsFiltre = coche.checked ? [...tagsFiltre, tag.id] : tagsFiltre.filter(x => x !== tag.id);
+          bouton.textContent = (tagsFiltre.length ? t.tagsChoisis(tagsFiltre.length) : t.tousLesTags) + ' ▾';
+          bouton.classList.toggle('actif', tagsFiltre.length > 0);
+          if (afficherLocal) afficherLocal();
+          memoriserEtat();
+        };
+        menu.appendChild(el('label', { classe: 'store-tag-coche' }, [coche, el('span', { texte: tag.nom, classe: 'store-tag-nom' })]));
+    });
+  }, 'store-menu-tags');
 }
 
 /** Recharge l'onglet local s'il est affiché (après un renommage, une suppression, un import). */
@@ -726,13 +923,14 @@ function ficheLocale(e){
   const droite = [
     el('h4', { texte: e.titre }),
     a ? el('p', {}, [el('span', { texte: t.par + ' ' }), lien(a.auteur && a.auteur.nom, a.auteur && a.auteur.url)]) : el('p', { texte: t.importeLocal }),
+    // La catégorie et les tags, SOUS LA SOURCE (demandé), cliquables pour les changer.
+    e.introuvable ? null : blocClassement(e.fichier),
     e.introuvable ? el('p', { texte: t.introuvableFiche, classe: 'store-avertissement' }) : null,
     section(t.utilisation, usages),
     a && a.licence ? section(t.licence, [el('p', {}, [lien(a.licence.libelle, a.licence.url)]),
       liste([a.licence.attribution ? t.attributionRequise : t.attributionLibre])]) : null,
     section(t.caracteristiques, [liste([
       t.ligneFichier(e.fichier),
-      t.ligneCategorie(nomCategorie(e.categorie) + (e.categorieDevinee ? ` ${t.devinee}` : '')),
       e.dimensions ? t.dimensions(e.dimensions) : null,
       e.taille ? t.ligneTaille(poidsLisible(e.taille, langue())) : null,
       a && a.resolution ? t.ligneResolution(a.resolution) : null,
@@ -796,7 +994,7 @@ const CLE_ETAT = 'store:etat';
 const CHAMPS_ETAT = { texte: 'storeTexte', categorie: 'storeCategorie', licence: 'storeLicence', faces: 'storeFaces', tri: 'storeTri', usage: 'storeUsage' };
 
 function memoriserEtat(){
-  const etat = { source, commercial: !!$('storeCommercial').checked };
+  const etat = { source, commercial: !!$('storeCommercial').checked, tags: tagsFiltre.slice() };
   for (const [cle, id] of Object.entries(CHAMPS_ETAT)) etat[cle] = $(id).value || '';
   try { globalThis.localStorage.setItem(CLE_ETAT, JSON.stringify(etat)); } catch (e) { /* une préférence perdue, rien de plus */ }
 }
@@ -814,6 +1012,7 @@ function restaurerFiltres(etat){
     champ.value = v;
   }
   $('storeCommercial').checked = !!etat.commercial;
+  if (Array.isArray(etat.tags)) tagsFiltre = etat.tags.filter(x => typeof x === 'string');
 }
 
 /** Ouvre la fenêtre si elle est fermée, la ferme sinon (raccourci B). */

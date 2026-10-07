@@ -199,6 +199,7 @@ export const HELP_MANUAL_EN = [
     '"Download" on a Poly Haven model puts it in your models, as a single .glb; it then appears in the Models section.',
     'The arrow on the button picks the texture quality: 1k by default, 2k or 4k for a close-up. Another resolution replaces the file, and its panels follow. From Sketchfab, downloading will require signing in to an account: it is coming in a future version.',
     'A model you already downloaded carries a tick at the top right of its thumbnail, and its details give the file name instead of downloading it twice.',
+    'In "My models", the category under the source opens a list to change it. "+ Tags" adds your own tags (several per model), and renames or deletes them; the "Tags" filter keeps the models that have all the chosen ones.',
   ]},
   { id: 'modeles_articules', title: 'Rigged models', paragraphs: [
     'A model with a skeleton IS POSED IN THE EDITOR, opened with the pencil on its card: three sliders per drivable bone, with the mapping table below them. The card only applies a pose: it describes ONE Element, while the rest holds for the whole file.',
@@ -403,6 +404,7 @@ export const HELP_MANUAL_FR = [
     "« Télécharger », sur un modèle Poly Haven, le range dans vos modèles, en un seul .glb ; il apparaît aussitôt dans la section Modèles.",
     "La flèche du bouton choisit la qualité des textures : 1k par défaut, 2k ou 4k pour un gros plan. Une autre résolution remplace le fichier, et ses Cases suivent. Depuis Sketchfab, le téléchargement demandera de se connecter à un compte : il arrive dans une prochaine version.",
     "Un modèle déjà téléchargé porte une coche en haut à droite de sa vignette, et sa fiche donne le nom du fichier au lieu de le télécharger une seconde fois.",
+    "Dans « Mes modèles », la catégorie sous la source s'ouvre pour la changer. « + Tags » ajoute vos propres tags (plusieurs par modèle), et les renomme ou les supprime ; le filtre « Tags » garde les modèles qui les portent tous.",
   ]},
   { id: 'modeles_articules', title: 'Modèles articulés', paragraphs: [
     'Un modèle porteur d\'un squelette SE POSE DANS L\'ÉDITEUR, ouvert par le crayon de sa fiche : trois curseurs par os pilotable, et le tableau de correspondance en dessous. La fiche ne fait qu\'appliquer une pose : elle décrit UN Élément, le reste vaut pour le fichier entier.',

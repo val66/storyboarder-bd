@@ -584,11 +584,39 @@ async function suivreVignette(ancien, nouveau){
   await modifierIndexVignettes(i => (nouveau ? vignettes.renommer(i, ancien, nouveau) : vignettes.oublier(i, ancien)));
 }
 
+// ─── La catégorie choisie et les tags des modèles (bibliothèque « Mes modèles ») ───
+// Ce qui décide est dans bibliotheque-modeles.js (pur, testé sous Node) ; ici, lire et écrire, une
+// opération à la fois (deux clics rapides liraient le même état et le second effacerait le premier).
+const biblio = require('./bibliotheque-modeles');
+const cheminBiblio = () => path.join(getProjectsDir(), biblio.FICHIER);
+async function lireBiblio(){
+  try { return biblio.normaliser(JSON.parse(await fs.promises.readFile(cheminBiblio(), 'utf8'))); } catch (e) { return biblio.normaliser(null); }
+}
+let _fileBiblio = Promise.resolve();
+function modifierBiblio(modifier){
+  const suite = _fileBiblio.then(async () => {
+    const r = modifier(await lireBiblio());
+    const etat = r && r.bibliotheque ? r.bibliotheque : r;
+    await fs.promises.writeFile(cheminBiblio() + '.tmp', JSON.stringify(etat, null, 2), 'utf8');
+    await fs.promises.rename(cheminBiblio() + '.tmp', cheminBiblio());
+    return r && r.bibliotheque ? r : { bibliotheque: etat };
+  });
+  _fileBiblio = suite.catch(() => {});
+  return suite;
+}
+ipcMain.handle('bibliotheque:lire', async () => lireBiblio());
+ipcMain.handle('bibliotheque:operation', async (event, op, args) => {
+  // Un nom de modèle venu de l'interface est vérifié comme partout ailleurs.
+  if (args && args.fichier !== undefined && !nomDeModeleAcceptable(args.fichier)) return { refus: 'nom' };
+  try { return await modifierBiblio(b => biblio.appliquer(b, op, args || {})); } catch (e) { return { erreur: String(e) }; }
+});
+
 ipcMain.handle('models:delete', async (event, name) => {
   if (!nomDeModeleAcceptable(name)) return { ok: false, error: 'nom de modèle refusé' };
   try {
     await fs.promises.unlink(path.join(getModelsDir(), name));
     await suivreVignette(name, null);
+    await modifierBiblio(b => biblio.oublierModele(b, name)).catch(() => {});
     return { ok: true };
   } catch (err) {
     // Déjà supprimé à la main hors de l'application : le résultat voulu est atteint, ce n'est pas
@@ -624,6 +652,7 @@ ipcMain.handle('models:rename', async (event, ancien, nouveau) => {
     // #444e : un modèle venu du store garde son attribution sous son nouveau nom, et sa vignette.
     await store.renommerAttribution(getProjectsDir(), ancien, nouveau);
     await suivreVignette(ancien, nouveau);
+    await modifierBiblio(b => biblio.renommerModele(b, ancien, nouveau)).catch(() => {});
     return { ok: true, name: nouveau };
   } catch (err) {
     return { ok: false, error: String(err) };

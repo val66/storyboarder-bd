@@ -77,6 +77,16 @@ La fiche reprend les gestes du reste de l'application, injectés par events.js :
 (ferme la fenêtre), Squelette…, Renommer…, Supprimer, et le clic droit sur une carte. La fenêtre est
 placée AVANT les autres modales dans le document : celles qu'elle ouvre passent devant elle.
 
+## Catégorie choisie et tags
+
+Dans la fiche d'un modèle de « Mes modèles », sous la source : la **catégorie** (une seule, prise
+dans la liste commune ; elle remplace celle de la source ou la devinette, « Automatique » rend la
+main) et les **tags** de l'utilisateur (plusieurs par modèle, créés, renommés et supprimés depuis le
+menu « + Tags »). Le filtre « Tags » garde les modèles qui portent TOUS les tags cochés. Le tout vit
+dans `bibliotheque-modeles.json`, à côté du dossier Modeles, et suit les renommages et suppressions
+de modèles. Ce qui décide est dans `bibliotheque-modeles.js` (pur) ; l'interface demande une
+opération (`bibliotheque:operation`) et reçoit le nouvel état.
+
 ## Le contrat des sources
 
 Deux modules à la racine, en CommonJS, testés sous Node nu :

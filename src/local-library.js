@@ -82,7 +82,13 @@ export function devinerCategorie(textes){
  *   projet        { tomes, scenes } ouvert
  *   metas         { [fichier]: { dimensions, noms } } relevés au rendu des vignettes
  */
-export function entreesLocales({ fichiers = [], attributions = [], projet = {}, metas = {} } = {}){
+export function entreesLocales({ fichiers = [], attributions = [], projet = {}, metas = {}, bibliotheque = null } = {}){
+  // Ce que l'utilisateur a dit de ses modèles (bibliotheque-modeles.js) : catégorie choisie, tags.
+  const choisies = (bibliotheque && bibliotheque.categories) || {};
+  const tagsParModele = (bibliotheque && bibliotheque.tagsParModele) || {};
+  const nomsTags = new Map(((bibliotheque && bibliotheque.tags) || []).map(t => [t.id, t.nom]));
+  const choisieDe = (nom) => { const k = Object.keys(choisies).find(f => f.toLowerCase() === nom.toLowerCase()); return k ? choisies[k] : null; };
+  const tagsDe = (nom) => { const k = Object.keys(tagsParModele).find(f => f.toLowerCase() === nom.toLowerCase()); return k ? tagsParModele[k] : []; };
   const parFichier = new Map((attributions || []).filter(a => a && a.fichier).map(a => [String(a.fichier).toLowerCase(), a]));
   const surDisque = new Map((fichiers || []).filter(f => f && f.nom).map(f => [f.nom, f]));
   const noms = new Set(surDisque.keys());
@@ -93,13 +99,20 @@ export function entreesLocales({ fichiers = [], attributions = [], projet = {}, 
     const a = parFichier.get(nom.toLowerCase()) || null;
     const endroits = modelUsageLocations(nom, projet);
     const m = (metas && metas[nom]) || {};
-    // Classée par sa source, sinon DEVINÉE : d'après le nom du fichier d'abord, puis ses nœuds.
-    const devinee = a && a.categorie ? null : (devinerCategorie([nom.replace(/\.glb$/i, '')]) || devinerCategorie(m.noms || []));
+    // La catégorie CHOISIE par l'utilisateur l'emporte ; sinon celle de la source ; sinon DEVINÉE,
+    // d'après le nom du fichier d'abord, puis ses nœuds.
+    const choisie = choisieDe(nom);
+    const devinee = choisie || (a && a.categorie) ? null : (devinerCategorie([nom.replace(/\.glb$/i, '')]) || devinerCategorie(m.noms || []));
+    const tags = tagsDe(nom).filter(id => nomsTags.has(id));
     return {
       fichier: nom,
       titre: a && a.nom ? a.nom : nom.replace(/\.glb$/i, ''),
-      categorie: (a && a.categorie) || devinee || NON_CLASSE,
+      categorie: choisie || (a && a.categorie) || devinee || NON_CLASSE,
       categorieDevinee: !!devinee,
+      categorieChoisie: !!choisie,
+      // Les tags, par identifiant, et leurs noms (triés) pour l'affichage et la recherche.
+      tags,
+      nomsTags: tags.map(id => nomsTags.get(id)).sort((x, y) => x.localeCompare(y, 'fr')),
       // Largeur × profondeur × hauteur, en mètres : la source s'il la donne, sinon la mesure du rendu.
       dimensions: (a && Array.isArray(a.dimensions) ? a.dimensions : null) || (Array.isArray(m.dimensions) ? m.dimensions : null),
       // Le nombre d'os, relevé au rendu ; null tant qu'on ne sait pas. Zéro : pas de « Squelette ».
@@ -129,16 +142,19 @@ function modelesCites({ tomes = [], scenes = [] } = {}){
  *   - « Non classé » est une catégorie comme une autre ;
  *   - le tri « récents » met en tête les fichiers modifiés le plus récemment, les absents à la fin.
  */
-export function filtrerEntrees(entrees, { texte = '', categorie = null, usage = 'tous', tri = 'nom' } = {}){
+export function filtrerEntrees(entrees, { texte = '', categorie = null, usage = 'tous', tri = 'nom', tags = [] } = {}){
   const mots = texteComparable(texte).split(' ').filter(Boolean);
+  const voulus = Array.isArray(tags) ? tags : [];
   let liste = (entrees || []).filter(e => {
     if (categorie && e.categorie !== categorie) return false;
+    // Plusieurs tags : le modèle doit les porter TOUS (choix de Valentin, chaque tag resserre).
+    if (voulus.length && !voulus.every(id => (e.tags || []).includes(id))) return false;
     if (usage === 'scenes' && !e.scenes.length) return false;
     if (usage === 'cases' && !e.cases.length) return false;
     if (usage === 'inutilises' && (e.scenes.length || e.cases.length)) return false;
     if (!mots.length) return true;
     const tout = texteComparable([e.titre, e.fichier, e.attribution && e.attribution.auteur && e.attribution.auteur.nom,
-      ...e.scenes.map(s => s.sceneName)].filter(Boolean).join(' '));
+      ...e.scenes.map(s => s.sceneName), ...(e.nomsTags || [])].filter(Boolean).join(' '));
     return mots.every(m => tout.includes(m));
   });
   liste = liste.slice().sort((a, b) => (tri === 'recents'
