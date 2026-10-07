@@ -465,7 +465,9 @@ export function personaEditorHasChanges(){
 // rotY, lui, n'est pas borné mais RAMENÉ dans ]-π, π] : on doit pouvoir faire des tours complets
 // sans que la valeur parte à l'infini, ni que le curseur (-180..180) se retrouve hors de sa plage.
 export const PERSONA_EDITOR_ROT_X_MAX = 85 * Math.PI / 180;
-export const PERSONA_EDITOR_ORBIT_RAD_PER_PX = 0.008;
+// Deux fois plus lente qu'à l'origine (0,008, demandé) : un glisser d'un tiers de l'écran faisait
+// presque un demi-tour, trop pour ajuster un angle de vue au jugé.
+export const PERSONA_EDITOR_ORBIT_RAD_PER_PX = 0.004;
 
 export function setPersonaEditorOrbit(rotX, rotY){
   S.personaEditorCamRotX = clamp(rotX || 0, -PERSONA_EDITOR_ROT_X_MAX, PERSONA_EDITOR_ROT_X_MAX);
