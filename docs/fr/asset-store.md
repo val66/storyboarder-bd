@@ -128,9 +128,24 @@ licence et sa date (#444e), et la suit dans les renommages et suppressions. Le t
 **Doublons.** À chaque ouverture, le store relit ce fichier (`store:telecharges`) et ne retient que
 les entrées dont le fichier est encore sur le disque (`telechargesPresents`, store-sources.js). Un
 modèle déjà là porte une coche sur sa vignette et sa fiche désactive « Télécharger » en donnant
-le nom du fichier. En simulation, les deux premiers résultats passent pour déjà téléchargés. Les exports PNG et PDF
-listent les ressources attribuables présentes dans les Planches exportées (#444f). La mention
-« Modèles fournis par Sketchfab » figure dans le store.
+le nom du fichier. En simulation, les deux premiers résultats passent pour déjà téléchargés. La mention « Modèles
+fournis par Sketchfab » figure dans le store.
+
+**Où la voir.** La fiche d'un modèle dans « Mes modèles » montre sa source, son auteur et sa licence
+avec leurs liens (#444e). Le menu de gauche n'a plus de liste de modèles, seulement le bouton qui
+ouvre la bibliothèque : c'est donc la fiche qui porte l'attribution.
+
+**Dans les exports (#444f).** Une Planche exportée, en PNG comme en PDF, porte sous son image (et
+sous la liste des Cases si elle est affichée) une section « Crédits des modèles 3D » : pour chaque
+modèle VISIBLE de la Planche qui a une attribution (dans une Case et dans son cadre : une Case qui a
+reçu une grande Scène n'en crédite que ce qu'elle montre ; l'occultation par un autre objet n'est
+pas calculée, et une projection qui échoue crédite dans le doute), son titre, son auteur, sa licence, sa source, puis
+l'adresse du modèle et celle de la licence. Les crédits sont écrits DANS l'image, pas dans un
+`.txt` posé à côté qui se perdrait au premier envoi, et toujours, quel que soit le réglage des
+descriptions de Cases : c'est une obligation des licences. Les modèles CC0 sont crédités aussi ;
+un modèle importé à la main n'a pas d'attribution connue et n'apparaît pas. Pur et testé :
+`src/export-credits.js` ; les attributions sont lues au moment d'exporter (`store:telecharges`),
+et un échec de lecture n'empêche pas l'export.
 
 ## Découpage
 
@@ -141,8 +156,8 @@ listent les ressources attribuables présentes dans les Planches exportées (#44
   (requêtes, processus principal), `src/store-ui.js` et `src/store-texts.js` (interface).
 - **#444c** La connexion Sketchfab.
 - **#444d** Le téléchargement : GLB direct, ou zip glTF converti en GLB, progression, poids.
-- **#444e** Les attributions.
-- **#444f** Les crédits dans les exports.
+- **#444e** Les attributions. Fait.
+- **#444f** Les crédits dans les exports. Fait.
 - **#444g** Placer directement un modèle depuis sa fiche.
 - **#444h** Finitions : filtres mémorisés, manuel, README, traductions.
 - **#445** Poly Haven : recherche et onglets, puis téléchargement. Fait.

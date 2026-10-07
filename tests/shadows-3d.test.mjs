@@ -558,7 +558,7 @@ describe('⚠️ L’EXPORT SUIT, ET CE N’EST PLUS UNE INFÉRENCE (#422c)', ()
     // les Bulles. Vérifié plutôt que cru — et cette fois l'inférence était juste.
     const DRAW = sourceSansCommentaires(
       readFileSync(new URL('../src/draw.js', import.meta.url), 'utf8'));
-    const i = DRAW.indexOf('export function exportPage');
+    const i = DRAW.indexOf('export async function exportPage');
     assert.ok(i > 0, '`exportPage` est introuvable');
     const corps = DRAW.slice(i, DRAW.indexOf('\nexport ', i + 10));
     assert.match(corps, /drawContent\(/,

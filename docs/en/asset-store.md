@@ -128,8 +128,23 @@ Modeles folder (which only holds `.glb` files).
 **Duplicates.** Each time the store opens, it reads that file again (`store:telecharges`) and keeps
 only the entries whose file is still on disk (`telechargesPresents`, store-sources.js). A model
 already there carries a tick on its thumbnail and its details disable "Download", giving the
-file name. In simulation, the first two results count as already downloaded. PNG and PDF exports list the attributable resources
-present in the exported Pages (#444f). The store shows "Models provided by Sketchfab".
+file name. In simulation, the first two results count as already downloaded. The store shows "Models provided by
+Sketchfab".
+
+**Where to see it.** The details of a model in "My models" show its source, author and license
+with their links (#444e). The left menu no longer has a list of models, only the button that opens
+the library: the details view is therefore what carries the attribution.
+
+**In exports (#444f).** An exported Page, PNG or PDF alike, carries under its image (and under the
+list of Panels if shown) a "3D model credits" section: for each VISIBLE model of the Page that has an
+attribution (inside a Panel and within its frame: a Panel that received a large Scene only credits
+what it shows; hiding behind another object is not computed, and a projection that fails credits in
+doubt), its title, author, license, source, then the model's address and the license's. The
+credits are written INSIDE the image, not in a `.txt` next to it that would be lost at the first
+sending, and always, whatever the Panel descriptions setting: the licenses require it. CC0 models
+are credited too; a model imported by hand has no known attribution and does not appear. Pure and
+tested: `src/export-credits.js`; the attributions are read at export time (`store:telecharges`),
+and a failure to read them does not stop the export.
 
 ## Breakdown
 
@@ -140,8 +155,8 @@ present in the exported Pages (#444f). The store shows "Models provided by Sketc
   process), `src/store-ui.js` and `src/store-texts.js` (interface).
 - **#444c** Sketchfab login.
 - **#444d** Downloading: direct GLB, or glTF zip converted to GLB, progress, size.
-- **#444e** Attributions.
-- **#444f** Credits in exports.
+- **#444e** Attributions. Done.
+- **#444f** Credits in exports. Done.
 - **#444g** Placing a model straight from its detail view.
 - **#444h** Finishing touches: remembered filters, manual, README, translations.
 - **#445** Poly Haven: search and tabs, then downloading. Done.

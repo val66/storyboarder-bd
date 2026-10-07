@@ -1770,7 +1770,7 @@ describe('#405d : une frame ne reconstruit qu\'une Case', () => {
     assert.ok(i > 0, 'le dessin interactif ne limite plus rien');
     const corps = DRAW_SRC.slice(i, i + 400);
     assert.match(corps, /terminerFrameLimitee3D\(\)/, 'la frame limitée n\'est jamais refermée');
-    assert.ok(!/commencerFrameLimitee3D/.test(DRAW_SRC.slice(DRAW_SRC.indexOf('export function exportPage'))),
+    assert.ok(!/commencerFrameLimitee3D/.test(DRAW_SRC.slice(DRAW_SRC.indexOf('export async function exportPage'))),
       'l\'export ouvre une frame limitée : il pourrait rendre une Case vide');
   });
 

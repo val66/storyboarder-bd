@@ -40,7 +40,7 @@ import {
 import { clamp, getHandles, pickNearestHandle3D, posePickRadii3D, makeFrameScheduler,
          poseDragHintSegment3D, POSE_DRAG_HINT_LEN, POSE_LIMB_PICK_RADIUS , nomNumeroteLibre3D} from './utils.js';
 import {
-  findOwningPanel, groundMagnetEligible, applyGroundMagnetY,
+  findOwningPanel, elementHorsChamp3D, groundMagnetEligible, applyGroundMagnetY,
   tracéUpdateScreenPts, worldFloorToScreen, worldToPageXY,
   drawPanelScene3D, drawObject3D,
   projectElementCenterToCanvas3D, getElementProjectedHalfExtents3D,
@@ -57,6 +57,7 @@ import {
   drawPersona3D,
 } from './rig3d.js';
 import { noDescriptionLabel } from './i18n.js';
+import { creditsDeLaPage, lignesCredit, replierLigne, titreCredits } from './export-credits.js';
 // L'image d'une Case : ce qu'elle porte (image-store) et ce qui est décodé (image-cache). Les deux
 // lectures sont SYNCHRONES, seule condition pour vivre dans le chemin de dessin.
 import {
@@ -3207,8 +3208,19 @@ export function downloadCanvasAsPdf(canvas, filename){
   setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 }
 
+// #444f : les attributions des modèles téléchargés depuis le store, lues au moment d'exporter (le
+// fichier vit à côté du dossier Modeles, le processus principal le lit). Sans le pont Electron, ou
+// en cas d'échec, aucune : l'export ne doit jamais échouer pour des crédits.
+async function attributionsPourExport(){
+  try {
+    const api = globalThis.window && globalThis.window.storyboarderAPI;
+    return api && api.storeTelecharges ? ((await api.storeTelecharges()) || []) : [];
+  } catch { return []; }
+}
+
 // format: 'png' (default) or 'pdf', cf. the "Export this Page" submenu.
-export function exportPage(volumeIdx, pageIdx, format = 'png'){
+export async function exportPage(volumeIdx, pageIdx, format = 'png'){
+  const attributions = await attributionsPourExport();
   const t = S.tomes[volumeIdx];
   const pd = t.pages[pageIdx];
   const page = { w: t.w, h: t.h, scale: t.scale, style3d: t.style3d, objects: pd.objects, bgColor: pd.bgColor };
@@ -3245,8 +3257,33 @@ export function exportPage(volumeIdx, pageIdx, format = 'png'){
   });
   if (panels.length) infoHeight += padTop + padBottom - gapBetween;
 
+  // #444f : LES CRÉDITS DES MODÈLES 3D, sous la Planche (et sous les Cases s'il y en a), TOUJOURS,
+  // quel que soit le réglage des descriptions : c'est une obligation des licences, pas un choix de
+  // mise en page. Seuls les modèles venus d'une source ont une attribution (export-credits.js).
+  // Seuls les modèles VISIBLES dans leur Case (demandé) : la même décision que la liste « hors
+  // champ » de la barre latérale, à la boîte projetée du modèle. Un modèle caché DERRIÈRE un autre
+  // objet compte encore (on ne calcule pas l'occultation). Un modèle qui n'appartient à aucune Case
+  // n'est pas dessiné du tout (cf. drawContent) : pas de crédit. Dans le doute, une projection qui
+  // échoue, on crédite : un crédit de trop ne coûte rien, un crédit manquant enfreint une licence.
+  const visibleDansSaCase = (o) => {
+    try {
+      const panel = findOwningPanel(o, page);
+      return !!panel && !elementHorsChamp3D(o, panel, page);
+    } catch { return true; }
+  };
+  const credits = creditsDeLaPage(page, attributions, visibleDansSaCase);
+  const creditTitre = 20, creditTaille = 15, creditInterligne = 5, creditEcart = 10;
+  let creditsHeight = 0;
+  const creditBlocs = credits.map(a => {
+    measureCtx.font = `${creditTaille}px system-ui, sans-serif`;
+    const lignes = lignesCredit(a, S.appLang).flatMap(l => replierLigne(x => measureCtx.measureText(x).width, l, contentWidth));
+    creditsHeight += lignes.length * (creditTaille + creditInterligne) + creditEcart;
+    return lignes;
+  });
+  if (credits.length) creditsHeight += padTop + creditTitre + 10 + padBottom - creditEcart;
+
   const off = document.createElement('canvas');
-  off.width = pageW; off.height = pageH + infoHeight;
+  off.width = pageW; off.height = pageH + infoHeight + creditsHeight;
   const octx = off.getContext('2d');
   drawContent(octx, page, exportScale, false, S.exportShowPanelBadges);
 
@@ -3272,6 +3309,28 @@ export function exportPage(volumeIdx, pageIdx, format = 'png'){
         cy += lineGap;
       });
       cy += gapBetween;
+    });
+    octx.restore();
+  }
+
+  if (credits.length) {
+    const y0 = pageH + infoHeight;
+    octx.save();
+    octx.fillStyle = '#fff';
+    octx.fillRect(0, y0, pageW, creditsHeight);
+    octx.strokeStyle = '#ddd'; octx.lineWidth = 1;
+    octx.beginPath(); octx.moveTo(0, y0 + 0.5); octx.lineTo(pageW, y0 + 0.5); octx.stroke();
+    let cy = y0 + padTop + creditTitre;
+    octx.textAlign = 'left'; octx.textBaseline = 'alphabetic';
+    octx.fillStyle = '#1a1a1a';
+    octx.font = `bold ${creditTitre}px system-ui, sans-serif`;
+    octx.fillText(titreCredits(S.appLang), padX, cy);
+    cy += 10;
+    octx.fillStyle = '#444';
+    octx.font = `${creditTaille}px system-ui, sans-serif`;
+    creditBlocs.forEach(lignes => {
+      lignes.forEach(l => { cy += creditTaille; octx.fillText(l, padX, cy); cy += creditInterligne; });
+      cy += creditEcart;
     });
     octx.restore();
   }

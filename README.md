@@ -2,7 +2,7 @@
 
 > 🇫🇷 [Version française](README.fr.md)
 
-**Version 1.10.39**
+**Version 1.10.41**
 
 **Comic book storyboarding application**: a desktop tool to create, organize and visualize comic book pages with real-time 3D scene rendering.
 
@@ -95,7 +95,7 @@ Previous versions and release notes: [all releases](https://github.com/val66/sto
 - 💾 **JSON** project format, human-readable and versionable
 - ⏱️ Configurable auto-save
 - 🗑️ **Delete a project**, confirmed by typing the word
-- 🖼️ Export pages as **PNG** or **PDF**
+- 🖼️ Export pages as **PNG** or **PDF**, with the credits of the downloaded 3D models they use
 - ↩️ Undo, over the last 50 actions
 - 🔎 **Missing files explained**: when an opened project uses models or images the Projects folder does not contain, a window says where the application looked and how to fix it
 

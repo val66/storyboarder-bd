@@ -58,6 +58,7 @@ export const HELP_MANUAL_EN = [
   { id: 'tomes', title: 'Volumes & pages', paragraphs: [
     '"New volume" and "Add a page" in the left-hand menu.',
     'Right-click a volume or a page to export it as PNG or delete it.',
+    'An exported page lists under its image the credits of the 3D models downloaded from the library that are visible in its panels: title, author, license, source and links. The licenses require it, so it is always there.',
     'Expand a volume in the left-hand menu to change its format: Franco-Belge, US comics, vertical webtoon, or custom.',
     'Select a page to set its "Background" on the right: "Page color" is the colour of the paper under the panels. It belongs to the page, not to the volume, so each page can have its own.',
   ]},
@@ -282,6 +283,7 @@ export const HELP_MANUAL_FR = [
   { id: 'tomes', title: 'Tomes & planches', paragraphs: [
     '« Nouveau tome » et « Ajouter une planche » dans le menu de gauche.',
     "Clic droit sur un tome ou une planche pour l'exporter en PNG ou le supprimer.",
+    "Une Planche exportée liste sous son image les crédits des modèles 3D téléchargés depuis la bibliothèque visibles dans ses Cases : titre, auteur, licence, source et liens. Les licences l'exigent, la section est donc toujours là.",
     "Dépliez un tome dans le menu de gauche pour changer son format : Franco-Belge, Comics US, webtoon vertical ou personnalisé.",
     "Sélectionnez une Planche pour régler son « Arrière-plan » à droite : « Couleur de la Planche » est celle du papier sous les Cases. Elle appartient à la Planche et non au Tome, chacune peut donc avoir la sienne.",
   ]},
